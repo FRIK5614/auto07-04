@@ -69,6 +69,7 @@ export interface Car {
   description: string;
   isNew: boolean;
   isPopular?: boolean;
+  country?: string; // Add country field for car origin
 }
 
 export interface CarFilter {

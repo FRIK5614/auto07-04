@@ -18,9 +18,6 @@ const Header = () => {
             {isAdmin && (
               <li><Link to="/admin" className="hover:text-blue-600">Админ панель</Link></li>
             )}
-            {!isAdmin && (
-              <li><Link to="/admin/login" className="hover:text-blue-600">Вход для администратора</Link></li>
-            )}
           </ul>
         </nav>
       </div>

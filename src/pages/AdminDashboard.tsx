@@ -1,6 +1,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { CarFront } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const AdminDashboard = () => {
   return (
@@ -26,12 +27,12 @@ const AdminDashboard = () => {
               Управление импортом автомобилей из каталога
             </p>
             <div className="mt-4">
-              <a 
-                href="/admin/tmcavto-catalog" 
+              <Link 
+                to="/admin/tmcavto-catalog" 
                 className="text-sm text-blue-600 hover:underline"
               >
                 Перейти к управлению
-              </a>
+              </Link>
             </div>
           </CardContent>
         </Card>

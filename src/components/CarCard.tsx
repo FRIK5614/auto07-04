@@ -47,9 +47,15 @@ const CarCard = ({ car, className }: CarCardProps) => {
           />
         </Link>
         
-        {car.isNew && (
-          <Badge className="absolute top-3 left-3 bg-auto-blue-600">Новинка</Badge>
-        )}
+        <div className="absolute top-3 left-3 flex flex-col gap-2">
+          {car.isNew && (
+            <Badge className="bg-auto-blue-600">Новинка</Badge>
+          )}
+          
+          {car.country && (
+            <Badge className="bg-green-600">{car.country}</Badge>
+          )}
+        </div>
         
         {car.price.discount && car.price.discount > 0 && (
           <Badge variant="outline" className="absolute top-3 right-3 bg-white text-red-600 border-red-600">

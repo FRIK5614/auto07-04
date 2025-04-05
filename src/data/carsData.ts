@@ -1,4 +1,3 @@
-
 import { Car } from "../types/car";
 
 export const carsData: Car[] = [
@@ -57,7 +56,8 @@ export const carsData: Car[] = [
     ],
     description: "The Toyota Camry is a reliable midsize sedan with a spacious interior, smooth ride, and excellent fuel efficiency. It comes with Toyota's Safety Sense suite of safety features as standard.",
     isNew: true,
-    isPopular: true
+    isPopular: true,
+    country: "Япония"
   },
   {
     id: "2",
@@ -112,7 +112,8 @@ export const carsData: Car[] = [
       { id: "img3", url: "/placeholder.svg", alt: "Honda Accord Rear" }
     ],
     description: "The Honda Accord offers a comfortable ride, excellent fuel economy, and a spacious interior. Standard features include the Honda Sensing suite of safety technologies and a user-friendly infotainment system.",
-    isNew: true
+    isNew: true,
+    country: "Япония"
   },
   {
     id: "3",
@@ -169,7 +170,8 @@ export const carsData: Car[] = [
     ],
     description: "The Volkswagen Tiguan is a versatile compact SUV with optional third-row seating, making it one of the few in its class to offer seating for seven. It provides a comfortable ride, refined handling, and a premium interior.",
     isNew: false,
-    isPopular: true
+    isPopular: true,
+    country: "Германия"
   },
   {
     id: "4",
@@ -224,7 +226,8 @@ export const carsData: Car[] = [
       { id: "img3", url: "/placeholder.svg", alt: "BMW X5 Rear" }
     ],
     description: "The BMW X5 is a luxury SUV that combines impressive performance with a premium interior and the latest technology features. It offers a refined driving experience, powerful engine options, and excellent build quality.",
-    isNew: true
+    isNew: true,
+    country: "Германия"
   },
   {
     id: "5",
@@ -280,7 +283,8 @@ export const carsData: Car[] = [
     ],
     description: "The Audi A6 is a midsize luxury sedan with a sophisticated design, high-quality interior, and advanced technology features. It offers a smooth and refined driving experience with optional Quattro all-wheel drive.",
     isNew: false,
-    isPopular: true
+    isPopular: true,
+    country: "Германия"
   },
   {
     id: "6",
@@ -335,7 +339,8 @@ export const carsData: Car[] = [
       { id: "img3", url: "/placeholder.svg", alt: "Mercedes-Benz E-Class Rear" }
     ],
     description: "The Mercedes-Benz E-Class is a midsize luxury sedan that offers a perfect blend of comfort, technology, and performance. It features a sophisticated interior, advanced safety features, and a smooth ride quality.",
-    isNew: true
+    isNew: true,
+    country: "Германия"
   }
 ];
 
