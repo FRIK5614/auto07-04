@@ -10,28 +10,43 @@ import CompareCars from "./pages/CompareCars";
 import Favorites from "./pages/Favorites";
 import NotFound from "./pages/NotFound";
 import TmcAvtoCatalog from "./components/TmcAvtoCatalog";
+import { AdminProvider } from "./contexts/AdminContext";
+import AdminLogin from "./pages/AdminLogin";
+import AdminLayout from "./components/AdminLayout";
+import AdminDashboard from "./pages/AdminDashboard";
 
 const queryClient = new QueryClient();
 
-// Fix the App component to properly structure React components
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/car/:id" element={<CarDetails />} />
-            <Route path="/compare" element={<CompareCars />} />
-            <Route path="/favorites" element={<Favorites />} />
-            <Route path="/tmcavto-catalog" element={<TmcAvtoCatalog />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </TooltipProvider>
-      </BrowserRouter>
+      <AdminProvider>
+        <BrowserRouter>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/car/:id" element={<CarDetails />} />
+              <Route path="/compare" element={<CompareCars />} />
+              <Route path="/favorites" element={<Favorites />} />
+              
+              {/* Admin routes */}
+              <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<AdminDashboard />} />
+                <Route path="tmcavto-catalog" element={<TmcAvtoCatalog />} />
+              </Route>
+              
+              {/* Redirect old route to admin panel */}
+              <Route path="/tmcavto-catalog" element={<AdminLogin />} />
+              
+              {/* Catch-all route */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </TooltipProvider>
+        </BrowserRouter>
+      </AdminProvider>
     </QueryClientProvider>
   );
 };
