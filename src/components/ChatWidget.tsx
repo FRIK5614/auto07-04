@@ -9,7 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { ChatMessage } from '@/types/chat';
-import { MessageCircle, X, Minimize2, Maximize2, Send, PaperclipIcon, UserCircle } from 'lucide-react';
+import { MessageCircle, X, Minimize2, Maximize2, Send, PaperclipIcon, UserCircle, Phone } from 'lucide-react';
 
 const ChatWidget: React.FC = () => {
   const { 
@@ -20,14 +20,18 @@ const ChatWidget: React.FC = () => {
     toggleChat,
     minimizeChat,
     maximizeChat,
-    sendMessage 
+    sendMessage,
+    submitPhoneNumber
   } = useChat();
   const [messageText, setMessageText] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const messageInputRef = useRef<HTMLInputElement>(null);
+  const phoneInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const { sessions, activeSessionId, isMinimized } = chatState;
   const activeSession = sessions.find(session => session.id === activeSessionId);
+  const isAwaitingPhoneNumber = activeSession?.awaitingPhoneNumber;
   
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -38,10 +42,14 @@ const ChatWidget: React.FC = () => {
   
   // Focus input when chat opens
   useEffect(() => {
-    if (isOpen && !isMinimized && messageInputRef.current) {
-      messageInputRef.current.focus();
+    if (isOpen && !isMinimized) {
+      if (isAwaitingPhoneNumber && phoneInputRef.current) {
+        phoneInputRef.current.focus();
+      } else if (messageInputRef.current) {
+        messageInputRef.current.focus();
+      }
     }
-  }, [isOpen, isMinimized, activeSessionId]);
+  }, [isOpen, isMinimized, activeSessionId, isAwaitingPhoneNumber]);
   
   const handleSendMessage = () => {
     if (messageText.trim()) {
@@ -50,9 +58,20 @@ const ChatWidget: React.FC = () => {
     }
   };
   
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleSubmitPhoneNumber = () => {
+    if (phoneNumber.trim() && phoneNumber.length > 5) {
+      submitPhoneNumber(phoneNumber);
+      setPhoneNumber('');
+    }
+  };
+  
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>, action: 'message' | 'phone') => {
     if (e.key === 'Enter') {
-      handleSendMessage();
+      if (action === 'message') {
+        handleSendMessage();
+      } else {
+        handleSubmitPhoneNumber();
+      }
     }
   };
   
@@ -126,19 +145,38 @@ const ChatWidget: React.FC = () => {
           
           {/* Chat input */}
           <div className="p-3 border-t">
-            <div className="flex space-x-2">
-              <Input
-                ref={messageInputRef}
-                value={messageText}
-                onChange={(e) => setMessageText(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Введите сообщение..."
-                className="flex-1"
-              />
-              <Button size="icon" onClick={handleSendMessage} disabled={!messageText.trim()}>
-                <Send className="h-4 w-4" />
-              </Button>
-            </div>
+            {isAwaitingPhoneNumber ? (
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">Введите ваш номер телефона:</p>
+                <div className="flex space-x-2">
+                  <Input
+                    ref={phoneInputRef}
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    onKeyPress={(e) => handleKeyPress(e, 'phone')}
+                    placeholder="+7 (999) 123-45-67"
+                    className="flex-1"
+                  />
+                  <Button size="icon" onClick={handleSubmitPhoneNumber} disabled={!phoneNumber.trim() || phoneNumber.length < 5}>
+                    <Phone className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex space-x-2">
+                <Input
+                  ref={messageInputRef}
+                  value={messageText}
+                  onChange={(e) => setMessageText(e.target.value)}
+                  onKeyPress={(e) => handleKeyPress(e, 'message')}
+                  placeholder="Введите сообщение..."
+                  className="flex-1"
+                />
+                <Button size="icon" onClick={handleSendMessage} disabled={!messageText.trim()}>
+                  <Send className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </div>
         </>
       )}

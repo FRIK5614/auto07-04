@@ -28,6 +28,7 @@ export interface ChatSession {
   lastActivity: string;
   unreadCount: number;
   messages: ChatMessage[];
+  awaitingPhoneNumber?: boolean;
 }
 
 export interface ChatState {

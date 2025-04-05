@@ -16,6 +16,7 @@ interface ChatContextType {
   setActiveSession: (sessionId: string) => void;
   startNewSession: (userName?: string, userContact?: string) => void;
   closeSession: (sessionId: string) => void;
+  submitPhoneNumber: (phone: string) => void;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -27,6 +28,8 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     activeSessionId: null,
     isMinimized: false
   });
+  const [responseTimeoutId, setResponseTimeoutId] = useState<number | null>(null);
+  const [hasRequestedContact, setHasRequestedContact] = useState(false);
   const { toast } = useToast();
 
   // Load chat sessions from localStorage on mount
@@ -51,13 +54,13 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [chatState.sessions]);
 
   // Add a system message to welcome the user when they start a new session
-  const addSystemMessage = (sessionId: string) => {
+  const addSystemMessage = (sessionId: string, content: string = 'Здравствуйте! Чем мы можем вам помочь?') => {
     const systemMessage: ChatMessage = {
       id: uuidv4(),
       senderId: 'system',
       senderName: 'Система',
       senderType: 'system',
-      content: 'Здравствуйте! Чем мы можем вам помочь?',
+      content,
       timestamp: new Date().toISOString(),
       isRead: true
     };
@@ -75,6 +78,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const openChat = () => {
     setIsOpen(true);
     setChatState(prev => ({ ...prev, isMinimized: false }));
+    setHasRequestedContact(false);
     
     // If there's no active session, start a new one
     if (!chatState.activeSessionId && chatState.sessions.length === 0) {
@@ -84,6 +88,12 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const closeChat = () => {
     setIsOpen(false);
+    
+    // Clear any pending response timeouts
+    if (responseTimeoutId) {
+      clearTimeout(responseTimeoutId);
+      setResponseTimeoutId(null);
+    }
   };
 
   const toggleChat = () => {
@@ -100,6 +110,79 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const maximizeChat = () => {
     setChatState(prev => ({ ...prev, isMinimized: false }));
+  };
+
+  const requestPhoneNumber = (sessionId: string) => {
+    if (hasRequestedContact) return;
+    
+    const systemMessage: ChatMessage = {
+      id: uuidv4(),
+      senderId: 'system',
+      senderName: 'Система',
+      senderType: 'system',
+      content: 'Кажется, наши менеджеры сейчас заняты. Пожалуйста, оставьте свой номер телефона, и мы свяжемся с вами в ближайшее время или оставьте заявку на консультацию.',
+      timestamp: new Date().toISOString(),
+      isRead: true
+    };
+    
+    setChatState(prevState => ({
+      ...prevState,
+      sessions: prevState.sessions.map(session => 
+        session.id === sessionId 
+          ? { 
+              ...session, 
+              messages: [...session.messages, systemMessage],
+              awaitingPhoneNumber: true
+            }
+          : session
+      )
+    }));
+    
+    setHasRequestedContact(true);
+  };
+
+  const submitPhoneNumber = (phone: string) => {
+    if (!chatState.activeSessionId) return;
+    
+    const userMessage: ChatMessage = {
+      id: uuidv4(),
+      senderId: 'user',
+      senderName: 'Вы',
+      senderType: 'user',
+      content: `Мой номер телефона: ${phone}`,
+      timestamp: new Date().toISOString(),
+      isRead: true
+    };
+    
+    const confirmationMessage: ChatMessage = {
+      id: uuidv4(),
+      senderId: 'system',
+      senderName: 'Система',
+      senderType: 'system',
+      content: 'Спасибо! Мы получили ваш номер телефона и свяжемся с вами в ближайшее время.',
+      timestamp: new Date().toISOString(),
+      isRead: true
+    };
+    
+    setChatState(prevState => ({
+      ...prevState,
+      sessions: prevState.sessions.map(session => 
+        session.id === prevState.activeSessionId 
+          ? { 
+              ...session, 
+              messages: [...session.messages, userMessage, confirmationMessage],
+              userContact: phone,
+              awaitingPhoneNumber: false
+            }
+          : session
+      )
+    }));
+    
+    // Clear any pending response timeouts
+    if (responseTimeoutId) {
+      clearTimeout(responseTimeoutId);
+      setResponseTimeoutId(null);
+    }
   };
 
   const sendMessage = (content: string, attachments: any[] = []) => {
@@ -125,7 +208,35 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }))
     };
     
+    // Clear any pending response timeouts
+    if (responseTimeoutId) {
+      clearTimeout(responseTimeoutId);
+      setResponseTimeoutId(null);
+    }
+    
     setChatState(prevState => {
+      const activeSession = prevState.sessions.find(session => session.id === prevState.activeSessionId);
+      const isPhoneNumberSubmission = activeSession?.awaitingPhoneNumber && 
+        content.match(/\+?\d[\d\s-]{8,}/); // Simple phone number regex
+      
+      if (isPhoneNumberSubmission) {
+        // If this is a phone number submission, handle it differently
+        return {
+          ...prevState,
+          sessions: prevState.sessions.map(session => 
+            session.id === prevState.activeSessionId 
+              ? { 
+                  ...session, 
+                  messages: [...session.messages, message],
+                  userContact: content,
+                  awaitingPhoneNumber: false,
+                  lastActivity: new Date().toISOString()
+                }
+              : session
+          )
+        };
+      }
+      
       const updatedSessions = prevState.sessions.map(session => 
         session.id === prevState.activeSessionId 
           ? { 
@@ -142,6 +253,15 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       };
     });
     
+    // Set a timeout for the system to request a phone number if no response
+    const timeoutId = window.setTimeout(() => {
+      if (chatState.activeSessionId) {
+        requestPhoneNumber(chatState.activeSessionId);
+      }
+    }, 10000); // 10 seconds
+    
+    setResponseTimeoutId(timeoutId);
+    
     // Simulate a response from the admin after a delay
     setTimeout(() => {
       simulateAdminResponse(content);
@@ -151,6 +271,12 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const simulateAdminResponse = (userMessage: string) => {
     // Only respond if there's an active session
     if (!chatState.activeSessionId) return;
+    
+    // Clear any pending response timeouts
+    if (responseTimeoutId) {
+      clearTimeout(responseTimeoutId);
+      setResponseTimeoutId(null);
+    }
     
     let responseContent = 'Спасибо за ваше сообщение! Наш специалист ответит вам в ближайшее время.';
     
@@ -217,7 +343,8 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       status: 'active',
       lastActivity: new Date().toISOString(),
       unreadCount: 0,
-      messages: []
+      messages: [],
+      awaitingPhoneNumber: false
     };
     
     setChatState(prevState => ({
@@ -268,7 +395,8 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         sendMessage,
         setActiveSession,
         startNewSession,
-        closeSession
+        closeSession,
+        submitPhoneNumber
       }}
     >
       {children}

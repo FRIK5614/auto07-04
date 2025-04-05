@@ -41,6 +41,23 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
   const [filter, setFilter] = useState<CarFilter>({});
   const { toast } = useToast();
 
+  useEffect(() => {
+    const savedOrders = localStorage.getItem("orders");
+    if (savedOrders) {
+      try {
+        setOrders(JSON.parse(savedOrders));
+      } catch (err) {
+        console.error("Failed to parse saved orders:", err);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (orders.length > 0) {
+      localStorage.setItem("orders", JSON.stringify(orders));
+    }
+  }, [orders]);
+
   const loadCars = async () => {
     try {
       setLoading(true);
@@ -50,37 +67,16 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
       setCars(data);
       setFilteredCars(data);
       
-      if (orders.length === 0) {
-        const sampleOrders: Order[] = [
-          {
-            id: "order1",
-            carId: data[0]?.id || "car1",
-            customerName: "Иван Иванов",
-            customerPhone: "+7 (999) 123-45-67",
-            customerEmail: "ivan@example.com",
-            status: "new",
-            createdAt: new Date().toISOString(),
-          },
-          {
-            id: "order2",
-            carId: data[1]?.id || "car2",
-            customerName: "Петр Петров",
-            customerPhone: "+7 (999) 765-43-21",
-            customerEmail: "petr@example.com",
-            status: "processing",
-            createdAt: new Date(Date.now() - 86400000).toISOString(),
-          },
-          {
-            id: "order3",
-            carId: data[2]?.id || "car3",
-            customerName: "Мария Сидорова",
-            customerPhone: "+7 (999) 555-55-55",
-            customerEmail: "maria@example.com",
-            status: "completed",
-            createdAt: new Date(Date.now() - 172800000).toISOString(),
-          },
-        ];
-        setOrders(sampleOrders);
+      const savedOrders = localStorage.getItem("orders");
+      if (savedOrders) {
+        try {
+          setOrders(JSON.parse(savedOrders));
+        } catch (err) {
+          console.error("Failed to parse saved orders:", err);
+          createSampleOrders(data);
+        }
+      } else {
+        createSampleOrders(data);
       }
       
       setLoading(false);
@@ -95,6 +91,40 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
         description: errorMessage
       });
     }
+  };
+
+  const createSampleOrders = (data: Car[]) => {
+    const sampleOrders: Order[] = [
+      {
+        id: "order1",
+        carId: data[0]?.id || "car1",
+        customerName: "Иван Иванов",
+        customerPhone: "+7 (999) 123-45-67",
+        customerEmail: "ivan@example.com",
+        status: "new",
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: "order2",
+        carId: data[1]?.id || "car2",
+        customerName: "Петр Петров",
+        customerPhone: "+7 (999) 765-43-21",
+        customerEmail: "petr@example.com",
+        status: "processing",
+        createdAt: new Date(Date.now() - 86400000).toISOString(),
+      },
+      {
+        id: "order3",
+        carId: data[2]?.id || "car3",
+        customerName: "Мария Сидорова",
+        customerPhone: "+7 (999) 555-55-55",
+        customerEmail: "maria@example.com",
+        status: "completed",
+        createdAt: new Date(Date.now() - 172800000).toISOString(),
+      },
+    ];
+    setOrders(sampleOrders);
+    localStorage.setItem("orders", JSON.stringify(sampleOrders));
   };
 
   useEffect(() => {
@@ -266,11 +296,13 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const processOrder = (orderId: string, status: Order['status']) => {
-    setOrders(prevOrders => 
-      prevOrders.map(order => 
-        order.id === orderId ? { ...order, status } : order
-      )
+    const updatedOrders = orders.map(order => 
+      order.id === orderId ? { ...order, status } : order
     );
+    
+    setOrders(updatedOrders);
+    localStorage.setItem("orders", JSON.stringify(updatedOrders));
+    
     toast({
       title: "Заказ обновлен",
       description: `Статус заказа изменен на: ${status}`
