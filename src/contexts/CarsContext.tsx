@@ -2,6 +2,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { Car, CarFilter } from "../types/car";
 import { fetchAllCars } from "../services/api";
+import { useToast } from "@/hooks/use-toast";
 
 interface CarsContextType {
   cars: Car[];
@@ -18,6 +19,7 @@ interface CarsContextType {
   removeFromCompare: (carId: string) => void;
   clearCompare: () => void;
   getCarById: (id: string) => Car | undefined;
+  reloadCars: () => Promise<void>;
 }
 
 const CarsContext = createContext<CarsContextType | undefined>(undefined);
@@ -30,24 +32,37 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<CarFilter>({});
+  const { toast } = useToast();
+
+  const loadCars = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await fetchAllCars();
+      setCars(data);
+      setFilteredCars(data);
+      setLoading(false);
+    } catch (err) {
+      const errorMessage = "Не удалось загрузить данные об автомобилях";
+      setError(errorMessage);
+      setLoading(false);
+      toast({
+        variant: "destructive",
+        title: "Ошибка загрузки",
+        description: errorMessage
+      });
+    }
+  };
 
   // Загрузка данных с API
   useEffect(() => {
-    const loadCars = async () => {
-      try {
-        setLoading(true);
-        const data = await fetchAllCars();
-        setCars(data);
-        setFilteredCars(data);
-        setLoading(false);
-      } catch (err) {
-        setError("Не удалось загрузить данные об автомобилях");
-        setLoading(false);
-      }
-    };
-
     loadCars();
   }, []);
+
+  // Функция для повторной загрузки данных
+  const reloadCars = async () => {
+    await loadCars();
+  };
 
   // Load favorites from localStorage
   useEffect(() => {
@@ -129,25 +144,51 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
   const addToFavorites = (carId: string) => {
     if (!favorites.includes(carId)) {
       setFavorites([...favorites, carId]);
+      toast({
+        title: "Добавлено в избранное",
+        description: "Автомобиль добавлен в список избранного"
+      });
     }
   };
 
   const removeFromFavorites = (carId: string) => {
     setFavorites(favorites.filter(id => id !== carId));
+    toast({
+      title: "Удалено из избранного",
+      description: "Автомобиль удален из списка избранного"
+    });
   };
 
   const addToCompare = (carId: string) => {
     if (!compareCars.includes(carId) && compareCars.length < 3) {
       setCompareCars([...compareCars, carId]);
+      toast({
+        title: "Добавлено к сравнению",
+        description: "Автомобиль добавлен к сравнению"
+      });
+    } else if (compareCars.length >= 3) {
+      toast({
+        variant: "destructive",
+        title: "Ограничение сравнения",
+        description: "Можно сравнивать не более 3 автомобилей одновременно"
+      });
     }
   };
 
   const removeFromCompare = (carId: string) => {
     setCompareCars(compareCars.filter(id => id !== carId));
+    toast({
+      title: "Удалено из сравнения",
+      description: "Автомобиль удален из списка сравнения"
+    });
   };
 
   const clearCompare = () => {
     setCompareCars([]);
+    toast({
+      title: "Список сравнения очищен",
+      description: "Все автомобили удалены из списка сравнения"
+    });
   };
 
   const getCarById = (id: string) => {
@@ -170,7 +211,8 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
         addToCompare,
         removeFromCompare,
         clearCompare,
-        getCarById
+        getCarById,
+        reloadCars
       }}
     >
       {children}

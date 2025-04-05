@@ -2,12 +2,12 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useCars } from "@/hooks/useCars";
-import { X, BarChart2 } from "lucide-react";
+import { X, BarChart2, RefreshCw } from "lucide-react";
 
 const ComparePanel = () => {
-  const { comparisonCars, removeFromCompare, clearCompare } = useCars();
+  const { comparisonCars, removeFromCompare, clearCompare, loading, error, reloadCars } = useCars();
   
-  if (comparisonCars.length === 0) {
+  if (loading || error || comparisonCars.length === 0) {
     return null;
   }
 
@@ -21,11 +21,11 @@ const ComparePanel = () => {
               <span className="font-medium">Сравнение: {comparisonCars.length} {comparisonCars.length === 1 ? 'автомобиль' : comparisonCars.length < 5 ? 'автомобиля' : 'автомобилей'}</span>
             </div>
             
-            <div className="hidden md:flex items-center space-x-2">
+            <div className="hidden md:flex items-center space-x-2 flex-wrap">
               {comparisonCars.map(car => (
                 <div 
                   key={car.id} 
-                  className="flex items-center bg-auto-gray-100 px-2 py-1 rounded"
+                  className="flex items-center bg-auto-gray-100 px-2 py-1 rounded mb-1"
                 >
                   <span className="text-sm truncate max-w-[150px]">{car.brand} {car.model}</span>
                   <button 
@@ -40,6 +40,16 @@ const ComparePanel = () => {
           </div>
           
           <div className="flex items-center space-x-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={reloadCars}
+              className="text-auto-gray-700 md:flex hidden items-center"
+            >
+              <RefreshCw className="h-4 w-4 mr-1" />
+              Обновить
+            </Button>
+            
             <Button 
               variant="outline" 
               size="sm" 

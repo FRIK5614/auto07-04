@@ -17,7 +17,8 @@ export const useCars = () => {
     addToCompare,
     removeFromCompare,
     clearCompare,
-    getCarById
+    getCarById,
+    reloadCars
   } = useGlobalCars();
 
   const favoriteCars = cars.filter(car => favorites.includes(car.id));
@@ -62,6 +63,7 @@ export const useCars = () => {
     isFavorite,
     isInCompare,
     getCarById,
+    reloadCars,
     // Export these functions to fix the build errors
     addToFavorites,
     removeFromFavorites,

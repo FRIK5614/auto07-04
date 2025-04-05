@@ -2,11 +2,29 @@
 import { useCars } from "@/hooks/useCars";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Heart, Trash2, Car } from "lucide-react";
+import { Heart, Trash2, Car, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
+import LoadingState from "./LoadingState";
+import ErrorState from "./ErrorState";
 
 const FavoritesPanel = () => {
-  const { favoriteCars, removeFromFavorites, toggleCompare, isInCompare } = useCars();
+  const { 
+    favoriteCars, 
+    removeFromFavorites, 
+    toggleCompare, 
+    isInCompare, 
+    loading, 
+    error,
+    reloadCars
+  } = useCars();
+
+  if (loading) {
+    return <LoadingState count={3} type="list" />;
+  }
+
+  if (error) {
+    return <ErrorState message={error} onRetry={reloadCars} />;
+  }
 
   if (favoriteCars.length === 0) {
     return (
@@ -29,6 +47,15 @@ const FavoritesPanel = () => {
         <h2 className="text-2xl font-bold text-auto-gray-900">
           Избранное <span className="text-auto-gray-500 text-lg font-normal">({favoriteCars.length})</span>
         </h2>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={reloadCars}
+          className="flex items-center"
+        >
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Обновить
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 gap-4">
