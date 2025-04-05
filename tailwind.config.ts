@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,6 +62,33 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				// Auto catalog custom colors
+				"auto": {
+					"blue": {
+						"50": "#F0F7FF",
+						"100": "#C2E0FF",
+						"200": "#99CCF3",
+						"300": "#66B2FF",
+						"400": "#3399FF",
+						"500": "#0078FA",
+						"600": "#0062CC",
+						"700": "#004C99",
+						"800": "#003366",
+						"900": "#001933"
+					},
+					"gray": {
+						"50": "#F5F7FA",
+						"100": "#E4E7EB",
+						"200": "#CBD2D9",
+						"300": "#9AA5B1",
+						"400": "#7B8794",
+						"500": "#616E7C",
+						"600": "#52606D",
+						"700": "#3E4C59",
+						"800": "#323F4B",
+						"900": "#1F2933"
+					}
 				}
 			},
 			borderRadius: {
@@ -84,11 +112,16 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'pulse-scale': {
+					'0%, 100%': { transform: 'scale(1)' },
+					'50%': { transform: 'scale(1.05)' }
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'pulse-scale': 'pulse-scale 2s infinite ease-in-out'
 			}
 		}
 	},
