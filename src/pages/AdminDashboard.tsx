@@ -6,6 +6,16 @@ import { Card } from '@/components/ui/card';
 
 const AdminDashboard: React.FC = () => {
   const { cars, orders } = useCars();
+  
+  // Make sure we have data before proceeding
+  if (!cars || !orders) {
+    return (
+      <div className="container mx-auto p-6">
+        <h1 className="text-2xl font-bold mb-6">Панель администратора</h1>
+        <p>Загрузка данных...</p>
+      </div>
+    );
+  }
 
   const salesData = [
     { name: 'Новые', value: cars.filter(car => car.isNew).length },
