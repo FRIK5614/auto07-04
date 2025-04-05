@@ -1,5 +1,6 @@
 
-import { Navigate, Outlet } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Navigate, Outlet, useNavigate } from 'react-router-dom';
 import { useAdmin } from '@/contexts/AdminContext';
 import { Button } from '@/components/ui/button';
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
@@ -12,24 +13,44 @@ import {
   FileArchive, 
   Package
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
 import { useCars } from '@/hooks/useCars';
+import { useToast } from '@/hooks/use-toast';
 
 const AdminLayout = () => {
   const { isAdmin, logout } = useAdmin();
   const { orders } = useCars();
   const [newOrdersCount, setNewOrdersCount] = useState(0);
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
   // Count new orders for the badge
   useEffect(() => {
-    const count = orders.filter(order => order.status === 'new').length;
-    setNewOrdersCount(count);
+    if (orders && orders.length > 0) {
+      const count = orders.filter(order => order.status === 'new').length;
+      setNewOrdersCount(count);
+    }
   }, [orders]);
 
-  // Redirect to login if not admin
+  useEffect(() => {
+    if (!isAdmin) {
+      navigate('/admin/login');
+    }
+  }, [isAdmin, navigate]);
+
+  useEffect(() => {
+    // Debug info
+    console.log('Admin Layout State:', { isAdmin, ordersCount: orders?.length });
+  }, [isAdmin, orders]);
+
+  // Redirect to login if not admin - early return
   if (!isAdmin) {
     return <Navigate to="/admin/login" />;
   }
+
+  const handleMenuItemClick = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
+    e.preventDefault();
+    navigate(path);
+  };
 
   return (
     <SidebarProvider>
@@ -45,7 +66,7 @@ const AdminLayout = () => {
                 <SidebarMenu>
                   <SidebarMenuItem>
                     <SidebarMenuButton asChild>
-                      <a href="/admin">
+                      <a href="#" onClick={(e) => handleMenuItemClick(e, "/admin")}>
                         <BarChart3 className="h-5 w-5" />
                         <span>Главная</span>
                       </a>
@@ -53,7 +74,7 @@ const AdminLayout = () => {
                   </SidebarMenuItem>
                   <SidebarMenuItem>
                     <SidebarMenuButton asChild>
-                      <a href="/admin/cars">
+                      <a href="#" onClick={(e) => handleMenuItemClick(e, "/admin/cars")}>
                         <CarFront className="h-5 w-5" />
                         <span>Автомобили</span>
                       </a>
@@ -61,7 +82,7 @@ const AdminLayout = () => {
                   </SidebarMenuItem>
                   <SidebarMenuItem>
                     <SidebarMenuButton asChild>
-                      <a href="/admin/orders">
+                      <a href="#" onClick={(e) => handleMenuItemClick(e, "/admin/orders")}>
                         <ShoppingCart className="h-5 w-5" />
                         <span>Заказы</span>
                         {newOrdersCount > 0 && (
@@ -82,7 +103,7 @@ const AdminLayout = () => {
                 <SidebarMenu>
                   <SidebarMenuItem>
                     <SidebarMenuButton asChild>
-                      <a href="/admin/import">
+                      <a href="#" onClick={(e) => handleMenuItemClick(e, "/admin/import")}>
                         <FileArchive className="h-5 w-5" />
                         <span>Импорт данных</span>
                       </a>
@@ -90,7 +111,7 @@ const AdminLayout = () => {
                   </SidebarMenuItem>
                   <SidebarMenuItem>
                     <SidebarMenuButton asChild>
-                      <a href="/admin/tmcavto-catalog">
+                      <a href="#" onClick={(e) => handleMenuItemClick(e, "/admin/tmcavto-catalog")}>
                         <Package className="h-5 w-5" />
                         <span>Каталог TMC Авто</span>
                       </a>
@@ -106,7 +127,7 @@ const AdminLayout = () => {
                 <SidebarMenu>
                   <SidebarMenuItem>
                     <SidebarMenuButton asChild>
-                      <a href="/admin/settings">
+                      <a href="#" onClick={(e) => handleMenuItemClick(e, "/admin/settings")}>
                         <Cog className="h-5 w-5" />
                         <span>Настройки</span>
                       </a>
@@ -122,7 +143,11 @@ const AdminLayout = () => {
               className="w-full" 
               onClick={() => {
                 logout();
-                window.location.href = '/';
+                toast({
+                  title: "Выход выполнен",
+                  description: "Вы вышли из панели администратора"
+                });
+                navigate('/');
               }}
             >
               <LogOut className="mr-2 h-4 w-4" />

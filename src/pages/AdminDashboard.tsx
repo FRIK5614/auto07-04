@@ -5,11 +5,13 @@ import { useCars } from '@/hooks/useCars';
 import { Card } from '@/components/ui/card';
 import { useAdmin } from '@/contexts/AdminContext';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
 
 const AdminDashboard: React.FC = () => {
   const { cars, orders } = useCars();
   const { isAdmin } = useAdmin();
   const navigate = useNavigate();
+  const { toast } = useToast();
   
   // Redirect non-admin users to login
   useEffect(() => {
@@ -18,27 +20,39 @@ const AdminDashboard: React.FC = () => {
     }
   }, [isAdmin, navigate]);
   
-  // Make sure we have data before proceeding
-  if (!cars || !orders) {
-    return (
-      <div className="container mx-auto p-6">
-        <h1 className="text-2xl font-bold mb-6">Панель администратора</h1>
-        <p>Загрузка данных...</p>
-      </div>
-    );
-  }
+  // Initialize empty arrays as fallbacks to prevent rendering errors
+  const safeCars = cars || [];
+  const safeOrders = orders || [];
+  
+  useEffect(() => {
+    // Log data to debug
+    console.log('Admin Dashboard Data:', { cars: safeCars, orders: safeOrders });
+    
+    if (safeCars.length === 0 && isAdmin) {
+      toast({
+        title: "Нет данных об автомобилях",
+        description: "Каталог автомобилей пуст",
+        variant: "destructive"
+      });
+    }
+  }, [safeCars, safeOrders, isAdmin, toast]);
 
   const salesData = [
-    { name: 'Новые', value: cars.filter(car => car.isNew).length },
-    { name: 'Популярные', value: cars.filter(car => car.isPopular).length },
-    { name: 'Всего', value: cars.length }
+    { name: 'Новые', value: safeCars.filter(car => car.isNew).length },
+    { name: 'Популярные', value: safeCars.filter(car => car.isPopular).length },
+    { name: 'Всего', value: safeCars.length }
   ];
 
   const orderData = [
-    { name: 'Новые', value: orders.filter(order => order.status === 'new').length },
-    { name: 'В обработке', value: orders.filter(order => order.status === 'processing').length },
-    { name: 'Завершенные', value: orders.filter(order => order.status === 'completed').length }
+    { name: 'Новые', value: safeOrders.filter(order => order.status === 'new').length },
+    { name: 'В обработке', value: safeOrders.filter(order => order.status === 'processing').length },
+    { name: 'Завершенные', value: safeOrders.filter(order => order.status === 'completed').length }
   ];
+
+  // If not admin, don't render anything (we'll redirect)
+  if (!isAdmin) {
+    return null;
+  }
 
   return (
     <div className="container mx-auto p-6">

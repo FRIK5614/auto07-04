@@ -46,10 +46,43 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
       setLoading(true);
       setError(null);
       const data = await fetchAllCars();
+      console.log("Loaded cars:", data);
       setCars(data);
       setFilteredCars(data);
+      
+      if (orders.length === 0) {
+        const sampleOrders: Order[] = [
+          {
+            id: "order1",
+            carId: data[0]?.id || "car1",
+            customerName: "Иван Иванов",
+            customerPhone: "+7 (999) 123-45-67",
+            status: "new",
+            createdAt: new Date().toISOString(),
+          },
+          {
+            id: "order2",
+            carId: data[1]?.id || "car2",
+            customerName: "Петр Петров",
+            customerPhone: "+7 (999) 765-43-21",
+            status: "processing",
+            createdAt: new Date(Date.now() - 86400000).toISOString(),
+          },
+          {
+            id: "order3",
+            carId: data[2]?.id || "car3",
+            customerName: "Мария Сидорова",
+            customerPhone: "+7 (999) 555-55-55",
+            status: "completed",
+            createdAt: new Date(Date.now() - 172800000).toISOString(),
+          },
+        ];
+        setOrders(sampleOrders);
+      }
+      
       setLoading(false);
     } catch (err) {
+      console.error("Failed to load cars:", err);
       const errorMessage = "Не удалось загрузить данные об автомобилях";
       setError(errorMessage);
       setLoading(false);
