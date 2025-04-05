@@ -8,6 +8,7 @@ import SearchFilters from "@/components/SearchFilters";
 import CarCard from "@/components/CarCard";
 import ComparePanel from "@/components/ComparePanel";
 import PurchaseRequestForm from "@/components/PurchaseRequestForm";
+import SearchFiltersModal from "@/components/SearchFiltersModal";
 import { Button } from "@/components/ui/button";
 import { useCars } from "@/hooks/useCars";
 import { CarsProvider } from "@/contexts/CarsContext";
@@ -17,6 +18,7 @@ const IndexContent = () => {
   const { cars, filteredCars, setFilter, filter } = useCars();
   const [searchParams] = useSearchParams();
   const [visibleCars, setVisibleCars] = useState(12);
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
   // Apply filters from URL params
   useEffect(() => {
@@ -49,6 +51,14 @@ const IndexContent = () => {
   const newCars = cars.filter(car => car.isNew);
   const popularCars = cars.filter(car => car.isPopular);
 
+  const openFilterModal = () => {
+    setIsFilterModalOpen(true);
+  };
+
+  const closeFilterModal = () => {
+    setIsFilterModalOpen(false);
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -69,7 +79,12 @@ const IndexContent = () => {
                   <Car className="mr-2 h-5 w-5" />
                   Все автомобили
                 </Button>
-                <Button size="lg" variant="outline" className="text-white border-white hover:bg-auto-blue-800">
+                <Button 
+                  size="lg" 
+                  variant="outline" 
+                  className="text-white border-white hover:bg-auto-blue-800"
+                  onClick={openFilterModal}
+                >
                   <Settings className="mr-2 h-5 w-5" />
                   Подбор по параметрам
                 </Button>
@@ -108,6 +123,9 @@ const IndexContent = () => {
           </svg>
         </div>
       </section>
+
+      {/* Modal for parameter selection */}
+      <SearchFiltersModal isOpen={isFilterModalOpen} onClose={closeFilterModal} />
 
       {/* Features Section */}
       <section className="py-12 bg-auto-gray-50">

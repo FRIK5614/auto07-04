@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { CarFilter } from "@/types/car";
 import { useCars } from "@/hooks/useCars";
@@ -24,7 +23,12 @@ import {
   getCountries
 } from "@/data/carsData";
 
-const SearchFilters = () => {
+interface SearchFiltersProps {
+  closeModal?: () => void;
+  isInModal?: boolean;
+}
+
+const SearchFilters = ({ closeModal, isInModal = false }: SearchFiltersProps) => {
   const { filter, setFilter } = useCars();
   const [isOpen, setIsOpen] = useState(false);
   const [localFilter, setLocalFilter] = useState<CarFilter>(filter);
@@ -40,7 +44,6 @@ const SearchFilters = () => {
   const countries = getCountries();
   const { min: minPriceData, max: maxPriceData } = getPriceRange();
 
-  // Initialize price range from data
   useEffect(() => {
     setMinPrice(minPriceData);
     setMaxPrice(maxPriceData);
@@ -101,7 +104,10 @@ const SearchFilters = () => {
 
   const applyFilters = () => {
     setFilter(localFilter);
-    if (window.innerWidth < 768) {
+    
+    if (isInModal && closeModal) {
+      closeModal();
+    } else if (window.innerWidth < 768) {
       setIsOpen(false);
     }
   };
@@ -111,9 +117,220 @@ const SearchFilters = () => {
      localFilter.priceRange.min === minPriceData && 
      localFilter.priceRange.max === maxPriceData);
 
+  if (isInModal) {
+    return (
+      <div className="space-y-6">
+        <Accordion type="multiple" defaultValue={["brand", "price", "body", "country"]}>
+          <AccordionItem value="brand">
+            <AccordionTrigger className="text-base font-medium">Марка</AccordionTrigger>
+            <AccordionContent>
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                {brands.map(brand => (
+                  <div key={brand} className="flex items-center space-x-2">
+                    <Checkbox 
+                      id={`brand-${brand}`} 
+                      checked={(localFilter.brands || []).includes(brand)}
+                      onCheckedChange={() => toggleFilter('brands', brand)}
+                    />
+                    <Label 
+                      htmlFor={`brand-${brand}`}
+                      className="cursor-pointer"
+                    >
+                      {brand}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="body">
+            <AccordionTrigger className="text-base font-medium">Тип кузова</AccordionTrigger>
+            <AccordionContent>
+              <div className="space-y-2">
+                {bodyTypes.map(bodyType => (
+                  <div key={bodyType} className="flex items-center space-x-2">
+                    <Checkbox 
+                      id={`body-${bodyType}`} 
+                      checked={(localFilter.bodyTypes || []).includes(bodyType)}
+                      onCheckedChange={() => toggleFilter('bodyTypes', bodyType)}
+                    />
+                    <Label 
+                      htmlFor={`body-${bodyType}`}
+                      className="cursor-pointer"
+                    >
+                      {bodyType}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="country">
+            <AccordionTrigger className="text-base font-medium">Страна происхождения</AccordionTrigger>
+            <AccordionContent>
+              <div className="space-y-2">
+                {countries.map(country => (
+                  <div key={country} className="flex items-center space-x-2">
+                    <Checkbox 
+                      id={`country-${country}`} 
+                      checked={(localFilter.countries || []).includes(country)}
+                      onCheckedChange={() => toggleFilter('countries', country)}
+                    />
+                    <Label 
+                      htmlFor={`country-${country}`}
+                      className="cursor-pointer"
+                    >
+                      {country}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="price">
+            <AccordionTrigger className="text-base font-medium">Цена</AccordionTrigger>
+            <AccordionContent>
+              <div className="space-y-4">
+                <Slider
+                  defaultValue={[minPriceData, maxPriceData]}
+                  min={minPriceData}
+                  max={maxPriceData}
+                  step={50000}
+                  value={priceRange}
+                  onValueChange={handlePriceRangeChange}
+                  className="py-4"
+                />
+                <div className="flex items-center space-x-2">
+                  <div className="w-1/2">
+                    <Label htmlFor="min-price" className="text-xs mb-1 block">
+                      От
+                    </Label>
+                    <Input
+                      id="min-price"
+                      type="number"
+                      value={priceRange[0]}
+                      onChange={(e) => 
+                        handlePriceRangeChange([parseInt(e.target.value), priceRange[1]])
+                      }
+                      className="text-sm"
+                    />
+                  </div>
+                  <div className="w-1/2">
+                    <Label htmlFor="max-price" className="text-xs mb-1 block">
+                      До
+                    </Label>
+                    <Input
+                      id="max-price"
+                      type="number"
+                      value={priceRange[1]}
+                      onChange={(e) => 
+                        handlePriceRangeChange([priceRange[0], parseInt(e.target.value)])
+                      }
+                      className="text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="engine">
+            <AccordionTrigger className="text-base font-medium">Двигатель</AccordionTrigger>
+            <AccordionContent>
+              <div className="space-y-2">
+                {engineTypes.map(engineType => (
+                  <div key={engineType} className="flex items-center space-x-2">
+                    <Checkbox 
+                      id={`engine-${engineType}`} 
+                      checked={(localFilter.engineTypes || []).includes(engineType)}
+                      onCheckedChange={() => toggleFilter('engineTypes', engineType)}
+                    />
+                    <Label 
+                      htmlFor={`engine-${engineType}`}
+                      className="cursor-pointer"
+                    >
+                      {engineType}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="drivetrain">
+            <AccordionTrigger className="text-base font-medium">Привод</AccordionTrigger>
+            <AccordionContent>
+              <div className="space-y-2">
+                {drivetrains.map(drivetrain => (
+                  <div key={drivetrain} className="flex items-center space-x-2">
+                    <Checkbox 
+                      id={`drivetrain-${drivetrain}`} 
+                      checked={(localFilter.drivetrains || []).includes(drivetrain)}
+                      onCheckedChange={() => toggleFilter('drivetrains', drivetrain)}
+                    />
+                    <Label 
+                      htmlFor={`drivetrain-${drivetrain}`}
+                      className="cursor-pointer"
+                    >
+                      {drivetrain}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="new">
+            <AccordionTrigger className="text-base font-medium">Новизна</AccordionTrigger>
+            <AccordionContent>
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="new-car" 
+                    checked={localFilter.isNew === true}
+                    onCheckedChange={() => 
+                      setLocalFilter(prev => ({
+                        ...prev,
+                        isNew: prev.isNew === true ? undefined : true
+                      }))
+                    }
+                  />
+                  <Label 
+                    htmlFor="new-car"
+                    className="cursor-pointer"
+                  >
+                    Только новые автомобили
+                  </Label>
+                </div>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+
+        <div className="flex flex-col space-y-2 pt-4">
+          <Button 
+            onClick={applyFilters} 
+            className="bg-auto-blue-600 hover:bg-auto-blue-700"
+          >
+            Применить фильтры
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={resetFilters}
+            disabled={isFilterEmpty}
+          >
+            Сбросить фильтры
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
-      {/* Mobile filter button */}
       <div className="md:hidden p-4 bg-white sticky top-16 z-40 shadow-sm">
         <Button 
           onClick={() => setIsOpen(!isOpen)} 
@@ -132,7 +349,6 @@ const SearchFilters = () => {
         </Button>
       </div>
 
-      {/* Filters panel */}
       <div className={`
         md:block
         ${isOpen ? 'fixed inset-0 z-50 bg-white md:relative md:bg-transparent' : 'hidden'}
@@ -148,7 +364,6 @@ const SearchFilters = () => {
 
         <div className="space-y-6">
           <Accordion type="multiple" defaultValue={["brand", "price", "body", "country"]}>
-            {/* Brand Filter */}
             <AccordionItem value="brand">
               <AccordionTrigger className="text-base font-medium">Марка</AccordionTrigger>
               <AccordionContent>
@@ -172,7 +387,6 @@ const SearchFilters = () => {
               </AccordionContent>
             </AccordionItem>
 
-            {/* Body Type Filter */}
             <AccordionItem value="body">
               <AccordionTrigger className="text-base font-medium">Тип кузова</AccordionTrigger>
               <AccordionContent>
@@ -196,7 +410,6 @@ const SearchFilters = () => {
               </AccordionContent>
             </AccordionItem>
 
-            {/* Country Filter */}
             <AccordionItem value="country">
               <AccordionTrigger className="text-base font-medium">Страна происхождения</AccordionTrigger>
               <AccordionContent>
@@ -220,7 +433,6 @@ const SearchFilters = () => {
               </AccordionContent>
             </AccordionItem>
 
-            {/* Price Range Filter */}
             <AccordionItem value="price">
               <AccordionTrigger className="text-base font-medium">Цена</AccordionTrigger>
               <AccordionContent>
@@ -268,7 +480,6 @@ const SearchFilters = () => {
               </AccordionContent>
             </AccordionItem>
 
-            {/* Engine Type Filter */}
             <AccordionItem value="engine">
               <AccordionTrigger className="text-base font-medium">Двигатель</AccordionTrigger>
               <AccordionContent>
@@ -292,7 +503,6 @@ const SearchFilters = () => {
               </AccordionContent>
             </AccordionItem>
 
-            {/* Drivetrain Filter */}
             <AccordionItem value="drivetrain">
               <AccordionTrigger className="text-base font-medium">Привод</AccordionTrigger>
               <AccordionContent>
@@ -316,7 +526,6 @@ const SearchFilters = () => {
               </AccordionContent>
             </AccordionItem>
 
-            {/* New Car Filter */}
             <AccordionItem value="new">
               <AccordionTrigger className="text-base font-medium">Новизна</AccordionTrigger>
               <AccordionContent>
