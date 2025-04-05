@@ -1,7 +1,8 @@
 
 import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useCars } from '@/hooks/useCars';
+import { Card } from '@/components/ui/card';
 
 const AdminDashboard: React.FC = () => {
   const { cars, orders } = useCars();
@@ -23,29 +24,33 @@ const AdminDashboard: React.FC = () => {
       <h1 className="text-2xl font-bold mb-6">Панель администратора</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <Card className="p-6">
           <h2 className="text-xl font-semibold mb-4">Статистика автомобилей</h2>
-          <BarChart width={400} height={300} data={salesData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" />
-            <YAxis />
-            <Tooltip />
-            <Legend />
-            <Bar dataKey="value" fill="#8884d8" />
-          </BarChart>
-        </div>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={salesData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="value" fill="#8884d8" />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
         
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <Card className="p-6">
           <h2 className="text-xl font-semibold mb-4">Статистика заказов</h2>
-          <BarChart width={400} height={300} data={orderData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" />
-            <YAxis />
-            <Tooltip />
-            <Legend />
-            <Bar dataKey="value" fill="#82ca9d" />
-          </BarChart>
-        </div>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={orderData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="value" fill="#82ca9d" />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
       </div>
     </div>
   );

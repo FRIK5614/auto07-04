@@ -11,13 +11,14 @@ import SearchFiltersModal from "@/components/SearchFiltersModal";
 import { Button } from "@/components/ui/button";
 import { useCars } from "@/hooks/useCars";
 import { CarsProvider } from "@/contexts/CarsContext";
-import { ChevronDown, Car, CarFront, Settings } from "lucide-react";
+import { ChevronDown, Car, CarFront, Settings, UserRound } from "lucide-react";
 
 const IndexContent = () => {
   const { cars, filteredCars, setFilter, filter } = useCars();
   const [searchParams] = useSearchParams();
   const [visibleCars, setVisibleCars] = useState(12);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const consultFormRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const newFilter: any = { ...filter };
@@ -54,6 +55,10 @@ const IndexContent = () => {
     setIsFilterModalOpen(false);
   };
 
+  const scrollToConsultForm = () => {
+    consultFormRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -80,6 +85,17 @@ const IndexContent = () => {
                 >
                   <Settings className="mr-2 h-5 w-5" />
                   Подбор по параметрам
+                </Button>
+              </div>
+              <div className="mt-4">
+                <Button 
+                  size="lg" 
+                  variant="outline"
+                  className="bg-transparent border-white text-white hover:bg-white hover:text-auto-blue-800"
+                  onClick={scrollToConsultForm}
+                >
+                  <UserRound className="mr-2 h-5 w-5" />
+                  Подобрать через специалиста
                 </Button>
               </div>
             </div>
@@ -227,7 +243,7 @@ const IndexContent = () => {
         </div>
       </section>
 
-      <section className="py-16 bg-white">
+      <section className="py-16 bg-white" ref={consultFormRef}>
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center">
             <div className="md:w-1/2 mb-8 md:mb-0 md:pr-12">
