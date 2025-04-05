@@ -236,7 +236,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setChatState(prevState => {
       const updatedSessions = prevState.sessions.map(session => 
         session.id === sessionId 
-          ? { ...session, status: 'closed' }
+          ? { ...session, status: 'closed' as const }
           : session
       );
       

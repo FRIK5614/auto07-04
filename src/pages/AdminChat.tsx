@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useChat } from '@/contexts/ChatContext';
 import { useAdmin } from '@/contexts/AdminContext';
@@ -13,7 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { ChatMessage, ChatSession } from '@/types/chat';
-import { Send, MessageCircle, User, Clock, CheckCircle, Telegram } from 'lucide-react';
+import { Send, MessageCircle, User, Clock, CheckCircle, MessageSquare } from 'lucide-react';
 
 const MessageBubble: React.FC<{ message: ChatMessage; isAdmin?: boolean }> = ({ message, isAdmin = false }) => {
   const isUserMessage = message.senderType === 'user';
@@ -40,7 +39,7 @@ const MessageBubble: React.FC<{ message: ChatMessage; isAdmin?: boolean }> = ({ 
         <Avatar className="h-8 w-8 mr-2 mt-1">
           {isTelegramMessage ? (
             <AvatarFallback className="bg-blue-500 text-white">
-              <Telegram className="h-4 w-4" />
+              <MessageSquare className="h-4 w-4" />
             </AvatarFallback>
           ) : (
             <AvatarFallback>
@@ -76,7 +75,6 @@ const AdminChat: React.FC = () => {
   const activeSessions = sessions.filter(session => session.status === 'active');
   const closedSessions = sessions.filter(session => session.status === 'closed');
   
-  // Redirect non-admin users to login
   React.useEffect(() => {
     if (!isAdmin) {
       navigate('/admin/login');
@@ -96,7 +94,6 @@ const AdminChat: React.FC = () => {
       isRead: true
     };
     
-    // Update the active session with the new admin message
     const updatedSessions = sessions.map(session => 
       session.id === activeSessionId 
         ? { 
@@ -107,7 +104,6 @@ const AdminChat: React.FC = () => {
         : session
     );
     
-    // Update the chat context
     setActiveSession(activeSessionId);
     setMessageText('');
   };
@@ -122,7 +118,6 @@ const AdminChat: React.FC = () => {
     return null;
   }
 
-  // Calculate total unread messages
   const totalUnread = sessions.reduce((total, session) => total + session.unreadCount, 0);
 
   return (
@@ -130,7 +125,6 @@ const AdminChat: React.FC = () => {
       <h1 className="text-2xl font-bold mb-6">Чат с клиентами</h1>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Session list */}
         <div className="lg:col-span-1">
           <Card>
             <CardHeader>
@@ -258,7 +252,7 @@ const AdminChat: React.FC = () => {
                     {telegramConnected ? (
                       <div className="text-center">
                         <div className="flex items-center justify-center mb-4">
-                          <Telegram className="h-12 w-12 text-blue-500" />
+                          <MessageSquare className="h-12 w-12 text-blue-500" />
                         </div>
                         <h3 className="font-medium mb-1">Telegram подключен</h3>
                         <p className="text-sm text-muted-foreground mb-4">
@@ -271,7 +265,7 @@ const AdminChat: React.FC = () => {
                     ) : (
                       <div className="text-center">
                         <div className="flex items-center justify-center mb-4">
-                          <Telegram className="h-12 w-12 text-muted-foreground" />
+                          <MessageSquare className="h-12 w-12 text-muted-foreground" />
                         </div>
                         <h3 className="font-medium mb-1">Telegram не подключен</h3>
                         <p className="text-sm text-muted-foreground mb-4">
@@ -289,7 +283,6 @@ const AdminChat: React.FC = () => {
           </Card>
         </div>
         
-        {/* Chat window */}
         <div className="lg:col-span-2">
           <Card className="h-full flex flex-col">
             {activeSession ? (
