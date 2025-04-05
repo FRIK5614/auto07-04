@@ -12,6 +12,7 @@ import Favorites from "./pages/Favorites";
 import NotFound from "./pages/NotFound";
 import TmcAvtoCatalog from "./components/TmcAvtoCatalog";
 import { AdminProvider } from "./contexts/AdminContext";
+import { CarsProvider } from "./contexts/CarsContext";
 import AdminLogin from "./pages/AdminLogin";
 import AdminLayout from "./components/AdminLayout";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -29,36 +30,38 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <AdminProvider>
-        <BrowserRouter>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/car/:id" element={<CarDetails />} />
-              <Route path="/compare" element={<CompareCars />} />
-              <Route path="/favorites" element={<Favorites />} />
-              
-              {/* Admin routes */}
-              <Route path="/admin/login" element={<AdminLogin />} />
-              <Route path="/admin" element={<AdminLayout />}>
-                <Route index element={<AdminDashboard />} />
-                <Route path="dashboard" element={<AdminDashboard />} />
-                <Route path="tmcavto-catalog" element={<TmcAvtoCatalog />} />
-                <Route path="cars" element={<AdminDashboard />} />
-                <Route path="orders" element={<AdminDashboard />} />
-                <Route path="import" element={<AdminDashboard />} />
-                <Route path="settings" element={<AdminDashboard />} />
-              </Route>
-              
-              {/* Redirect old route to admin panel */}
-              <Route path="/tmcavto-catalog" element={<AdminLogin />} />
-              
-              {/* Catch-all route */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </TooltipProvider>
-        </BrowserRouter>
+        <CarsProvider>
+          <BrowserRouter>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/car/:id" element={<CarDetails />} />
+                <Route path="/compare" element={<CompareCars />} />
+                <Route path="/favorites" element={<Favorites />} />
+                
+                {/* Admin routes */}
+                <Route path="/admin/login" element={<AdminLogin />} />
+                <Route path="/admin" element={<AdminLayout />}>
+                  <Route index element={<AdminDashboard />} />
+                  <Route path="dashboard" element={<AdminDashboard />} />
+                  <Route path="tmcavto-catalog" element={<TmcAvtoCatalog />} />
+                  <Route path="cars" element={<AdminDashboard />} />
+                  <Route path="orders" element={<AdminDashboard />} />
+                  <Route path="import" element={<AdminDashboard />} />
+                  <Route path="settings" element={<AdminDashboard />} />
+                </Route>
+                
+                {/* Redirect old route to admin panel */}
+                <Route path="/tmcavto-catalog" element={<AdminLogin />} />
+                
+                {/* Catch-all route */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </TooltipProvider>
+          </BrowserRouter>
+        </CarsProvider>
       </AdminProvider>
     </QueryClientProvider>
   );
