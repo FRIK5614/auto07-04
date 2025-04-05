@@ -1,1 +1,5 @@
+
 project_id = "hcgwcofyvkyabebpsnev"
+
+[functions.tmcavto-catalog]
+verify_jwt = false

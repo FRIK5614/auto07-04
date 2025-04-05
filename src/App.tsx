@@ -9,6 +9,7 @@ import CarDetails from "./pages/CarDetails";
 import CompareCars from "./pages/CompareCars";
 import Favorites from "./pages/Favorites";
 import NotFound from "./pages/NotFound";
+import TmcAvtoCatalog from "./components/TmcAvtoCatalog";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +26,7 @@ const App = () => {
             <Route path="/car/:id" element={<CarDetails />} />
             <Route path="/compare" element={<CompareCars />} />
             <Route path="/favorites" element={<Favorites />} />
+            <Route path="/tmcavto-catalog" element={<TmcAvtoCatalog />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
