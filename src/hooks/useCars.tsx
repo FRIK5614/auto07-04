@@ -61,6 +61,11 @@ export const useCars = () => {
     clearCompare,
     isFavorite,
     isInCompare,
-    getCarById
+    getCarById,
+    // Export these functions to fix the build errors
+    addToFavorites,
+    removeFromFavorites,
+    addToCompare,
+    removeFromCompare
   };
 };
