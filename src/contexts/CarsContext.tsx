@@ -1,7 +1,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { Car, CarFilter } from "../types/car";
-import { carsData } from "../data/carsData";
+import { fetchAllCars } from "../services/api";
 
 interface CarsContextType {
   cars: Car[];
@@ -31,16 +31,22 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<CarFilter>({});
 
-  // Load data
+  // Загрузка данных с API
   useEffect(() => {
-    try {
-      setCars(carsData);
-      setFilteredCars(carsData);
-      setLoading(false);
-    } catch (err) {
-      setError("Failed to load car data");
-      setLoading(false);
-    }
+    const loadCars = async () => {
+      try {
+        setLoading(true);
+        const data = await fetchAllCars();
+        setCars(data);
+        setFilteredCars(data);
+        setLoading(false);
+      } catch (err) {
+        setError("Не удалось загрузить данные об автомобилях");
+        setLoading(false);
+      }
+    };
+
+    loadCars();
   }, []);
 
   // Load favorites from localStorage
