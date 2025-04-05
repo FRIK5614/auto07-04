@@ -1,6 +1,5 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { Car, CarFilter } from "../types/car";
+import { Car, CarFilter, Order } from "../types/car";
 import { fetchAllCars } from "../services/api";
 import { useToast } from "@/hooks/use-toast";
 
@@ -9,6 +8,7 @@ interface CarsContextType {
   filteredCars: Car[];
   favorites: string[];
   compareCars: string[];
+  orders: Order[];
   loading: boolean;
   error: string | null;
   filter: CarFilter;
@@ -20,6 +20,12 @@ interface CarsContextType {
   clearCompare: () => void;
   getCarById: (id: string) => Car | undefined;
   reloadCars: () => Promise<void>;
+  viewCar: (carId: string) => void;
+  deleteCar: (carId: string) => void;
+  updateCar: (car: Car) => void;
+  addCar: (car: Car) => void;
+  processOrder: (orderId: string, status: Order['status']) => void;
+  getOrders: () => Order[];
 }
 
 const CarsContext = createContext<CarsContextType | undefined>(undefined);
@@ -29,6 +35,7 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
   const [filteredCars, setFilteredCars] = useState<Car[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [compareCars, setCompareCars] = useState<string[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<CarFilter>({});
@@ -54,17 +61,14 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Загрузка данных с API
   useEffect(() => {
     loadCars();
   }, []);
 
-  // Функция для повторной загрузки данных
   const reloadCars = async () => {
     await loadCars();
   };
 
-  // Load favorites from localStorage
   useEffect(() => {
     const savedFavorites = localStorage.getItem("favorites");
     if (savedFavorites) {
@@ -72,12 +76,10 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  // Save favorites to localStorage
   useEffect(() => {
     localStorage.setItem("favorites", JSON.stringify(favorites));
   }, [favorites]);
 
-  // Load compareCars from localStorage
   useEffect(() => {
     const savedCompareCars = localStorage.getItem("compareCars");
     if (savedCompareCars) {
@@ -85,36 +87,29 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  // Save compareCars to localStorage
   useEffect(() => {
     localStorage.setItem("compareCars", JSON.stringify(compareCars));
   }, [compareCars]);
 
-  // Apply filters
   useEffect(() => {
     let result = [...cars];
 
-    // Brand filter
     if (filter.brands && filter.brands.length > 0) {
       result = result.filter(car => filter.brands?.includes(car.brand));
     }
 
-    // Model filter
     if (filter.models && filter.models.length > 0) {
       result = result.filter(car => filter.models?.includes(car.model));
     }
 
-    // Year filter
     if (filter.years && filter.years.length > 0) {
       result = result.filter(car => filter.years?.includes(car.year));
     }
 
-    // Body type filter
     if (filter.bodyTypes && filter.bodyTypes.length > 0) {
       result = result.filter(car => filter.bodyTypes?.includes(car.bodyType));
     }
 
-    // Price range filter
     if (filter.priceRange) {
       result = result.filter(
         car => 
@@ -123,22 +118,18 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
       );
     }
 
-    // Engine type filter
     if (filter.engineTypes && filter.engineTypes.length > 0) {
       result = result.filter(car => filter.engineTypes?.includes(car.engine.type));
     }
 
-    // Drivetrain filter
     if (filter.drivetrains && filter.drivetrains.length > 0) {
       result = result.filter(car => filter.drivetrains?.includes(car.drivetrain));
     }
 
-    // New cars filter
     if (filter.isNew !== undefined) {
       result = result.filter(car => car.isNew === filter.isNew);
     }
     
-    // Country filter
     if (filter.countries && filter.countries.length > 0) {
       result = result.filter(car => car.country && filter.countries?.includes(car.country));
     }
@@ -200,6 +191,60 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
     return cars.find(car => car.id === id);
   };
 
+  const viewCar = (carId: string) => {
+    setCars(prevCars => 
+      prevCars.map(car => 
+        car.id === carId 
+          ? { ...car, viewCount: (car.viewCount || 0) + 1 } 
+          : car
+      )
+    );
+  };
+
+  const deleteCar = (carId: string) => {
+    setCars(prevCars => prevCars.filter(car => car.id !== carId));
+    toast({
+      title: "Автомобиль удален",
+      description: "Автомобиль был успешно удален из каталога"
+    });
+  };
+
+  const updateCar = (updatedCar: Car) => {
+    setCars(prevCars => 
+      prevCars.map(car => 
+        car.id === updatedCar.id ? updatedCar : car
+      )
+    );
+    toast({
+      title: "Автомобиль обновлен",
+      description: "Информация об автомобиле была успешно обновлена"
+    });
+  };
+
+  const addCar = (newCar: Car) => {
+    setCars(prevCars => [...prevCars, newCar]);
+    toast({
+      title: "Автомобиль добавлен",
+      description: "Новый автомобиль был успешно добавлен в каталог"
+    });
+  };
+
+  const processOrder = (orderId: string, status: Order['status']) => {
+    setOrders(prevOrders => 
+      prevOrders.map(order => 
+        order.id === orderId ? { ...order, status } : order
+      )
+    );
+    toast({
+      title: "Заказ обновлен",
+      description: `Статус заказа изменен на: ${status}`
+    });
+  };
+
+  const getOrders = () => {
+    return orders;
+  };
+
   return (
     <CarsContext.Provider
       value={{
@@ -207,6 +252,7 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
         filteredCars,
         favorites,
         compareCars,
+        orders,
         loading,
         error,
         filter,
@@ -217,7 +263,13 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
         removeFromCompare,
         clearCompare,
         getCarById,
-        reloadCars
+        reloadCars,
+        viewCar,
+        deleteCar,
+        updateCar,
+        addCar,
+        processOrder,
+        getOrders
       }}
     >
       {children}

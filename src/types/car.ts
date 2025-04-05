@@ -69,7 +69,8 @@ export interface Car {
   description: string;
   isNew: boolean;
   isPopular?: boolean;
-  country?: string; // Add country field for car origin
+  country?: string; // Country field for car origin
+  viewCount?: number; // Track number of views
 }
 
 export interface CarFilter {
@@ -84,5 +85,16 @@ export interface CarFilter {
   engineTypes?: string[];
   drivetrains?: string[];
   isNew?: boolean;
-  countries?: string[]; // Add countries filter
+  countries?: string[]; // Countries filter
+}
+
+export interface Order {
+  id: string;
+  carId: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail: string;
+  message?: string;
+  status: 'new' | 'processing' | 'completed' | 'canceled';
+  createdAt: string;
 }

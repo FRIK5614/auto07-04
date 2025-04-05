@@ -36,6 +36,10 @@ const App = () => {
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminDashboard />} />
                 <Route path="tmcavto-catalog" element={<TmcAvtoCatalog />} />
+                <Route path="cars" element={<AdminDashboard />} />
+                <Route path="orders" element={<AdminDashboard />} />
+                <Route path="import" element={<AdminDashboard />} />
+                <Route path="settings" element={<AdminDashboard />} />
               </Route>
               
               {/* Redirect old route to admin panel */}

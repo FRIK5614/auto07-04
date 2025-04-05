@@ -1,6 +1,6 @@
 
 import { useCars as useGlobalCars } from "../contexts/CarsContext";
-import { Car } from "../types/car";
+import { Car, Order } from "../types/car";
 
 export const useCars = () => {
   const {
@@ -8,6 +8,7 @@ export const useCars = () => {
     filteredCars,
     favorites,
     compareCars,
+    orders,
     loading,
     error,
     filter,
@@ -18,7 +19,13 @@ export const useCars = () => {
     removeFromCompare,
     clearCompare,
     getCarById,
-    reloadCars
+    reloadCars,
+    viewCar,
+    deleteCar,
+    updateCar,
+    addCar,
+    processOrder,
+    getOrders
   } = useGlobalCars();
 
   const favoriteCars = cars.filter(car => favorites.includes(car.id));
@@ -47,12 +54,21 @@ export const useCars = () => {
   
   const isInCompare = (carId: string) => compareCars.includes(carId);
   
+  // Get most viewed cars
+  const getMostViewedCars = (limit = 5): Car[] => {
+    return [...cars]
+      .filter(car => car.viewCount && car.viewCount > 0)
+      .sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0))
+      .slice(0, limit);
+  };
+  
   return {
     cars,
     filteredCars,
     favoriteCars,
     comparisonCars,
     compareCarsIds: compareCars,
+    orders,
     loading,
     error,
     filter,
@@ -64,6 +80,13 @@ export const useCars = () => {
     isInCompare,
     getCarById,
     reloadCars,
+    viewCar,
+    deleteCar,
+    updateCar,
+    addCar,
+    processOrder,
+    getOrders,
+    getMostViewedCars,
     // Export these functions to fix the build errors
     addToFavorites,
     removeFromFavorites,
