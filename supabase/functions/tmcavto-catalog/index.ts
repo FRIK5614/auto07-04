@@ -45,14 +45,18 @@ serve(async (req) => {
         { name: 'Китай', url: '/cars/china' }
       ];
       
+      console.log("Начинаем импорт автомобилей...");
       const allCars: Car[] = [];
       
       // Импортируем автомобили из каждой страны
       for (const country of countries) {
-        console.log(`Импорт автомобилей из ${country.name}...`);
+        console.log(`Импорт автомобилей из ${country.name}: ${country.url}`);
         const cars = await importCarsFromCountry(country.name, country.url);
+        console.log(`Импортировано ${cars.length} автомобилей из ${country.name}`);
         allCars.push(...cars);
       }
+      
+      console.log(`Всего импортировано: ${allCars.length} автомобилей`);
       
       return new Response(
         JSON.stringify({ 
@@ -129,6 +133,8 @@ serve(async (req) => {
 async function importCarsFromCountry(country: string, countryUrl: string): Promise<Car[]> {
   try {
     const targetUrl = `https://catalog.tmcavto.ru${countryUrl}`;
+    console.log(`Запрос к ${targetUrl}`);
+    
     const response = await fetch(targetUrl, {
       method: 'GET',
       headers: {
@@ -142,7 +148,15 @@ async function importCarsFromCountry(country: string, countryUrl: string): Promi
     }
     
     const html = await response.text();
-    return parseCarsFromHTML(html, country);
+    console.log(`Получен HTML (${html.length} символов) для ${country}`);
+    
+    // Для отладки - сохраняем первые 200 символов HTML
+    console.log(`Начало HTML: ${html.substring(0, 200)}...`);
+    
+    const cars = parseCarsFromHTML(html, country);
+    console.log(`Распарсено ${cars.length} автомобилей из ${country}`);
+    
+    return cars;
   } catch (error) {
     console.error(`Ошибка при импорте автомобилей из ${country}:`, error);
     return [];
@@ -155,49 +169,135 @@ function parseCarsFromHTML(html: string, country: string): Car[] {
   const doc = new DOMParser().parseFromString(html, "text/html");
   
   if (!doc) {
+    console.error("Не удалось создать DOM из HTML");
     return cars;
   }
   
-  // Находим все карточки автомобилей
-  const carCards = doc.querySelectorAll(".car-card");
+  // Печатаем структуру документа для отладки
+  console.log(`Парсинг HTML для ${country}`);
+  
+  // Пробуем различные селекторы для карточек автомобилей
+  let carCards = doc.querySelectorAll(".car-card");
+  
+  if (carCards.length === 0) {
+    console.log("Селектор .car-card не найден, пробуем .catalog-item");
+    carCards = doc.querySelectorAll(".catalog-item");
+  }
+  
+  if (carCards.length === 0) {
+    console.log("Селектор .catalog-item не найден, пробуем .item");
+    carCards = doc.querySelectorAll(".item");
+  }
+  
+  if (carCards.length === 0) {
+    console.log("Селектор .item не найден, пробуем .product-item");
+    carCards = doc.querySelectorAll(".product-item");
+  }
+  
+  console.log(`Найдено ${carCards.length} карточек автомобилей`);
+  
+  // Если карточки не найдены, пытаемся найти другие элементы
+  if (carCards.length === 0) {
+    const allDivs = doc.querySelectorAll("div");
+    console.log(`Всего найдено ${allDivs.length} div элементов`);
+    
+    // Выводим классы первых 10 div элементов для отладки
+    for (let i = 0; i < Math.min(10, allDivs.length); i++) {
+      const div = allDivs[i];
+      console.log(`Div ${i}: class="${div.getAttribute("class")}", id="${div.getAttribute("id")}"`);
+    }
+  }
   
   carCards.forEach((card, index) => {
     try {
-      const brandModelElement = card.querySelector(".car-title");
+      // Логи для отладки структуры карточки
+      console.log(`Обработка карточки ${index + 1}`);
+      
+      // Ищем заголовок (бренд + модель)
+      let brandModelElement = card.querySelector(".car-title");
+      if (!brandModelElement) {
+        brandModelElement = card.querySelector(".item-title");
+      }
+      if (!brandModelElement) {
+        brandModelElement = card.querySelector("h3");
+      }
+      if (!brandModelElement) {
+        brandModelElement = card.querySelector("h2");
+      }
+      
       const brandModel = brandModelElement ? brandModelElement.textContent.trim() : '';
+      console.log(`Бренд и модель: "${brandModel}"`);
       
-      const [brand, model] = brandModel.split(' ', 2);
+      // Разбиваем на бренд и модель
+      let brand = "Неизвестно";
+      let model = "Неизвестно";
       
-      const priceElement = card.querySelector(".car-price");
+      if (brandModel) {
+        const parts = brandModel.split(/\s+/);
+        if (parts.length >= 1) {
+          brand = parts[0];
+          model = parts.slice(1).join(' ') || "Неизвестно";
+        }
+      }
+      
+      // Ищем цену
+      let priceElement = card.querySelector(".car-price");
+      if (!priceElement) {
+        priceElement = card.querySelector(".price");
+      }
+      if (!priceElement) {
+        priceElement = card.querySelector(".item-price");
+      }
+      
       const priceText = priceElement ? priceElement.textContent.replace(/[^\d]/g, '') : '0';
       const price = parseInt(priceText, 10) || 0;
+      console.log(`Цена: ${price}`);
       
-      const yearElement = card.querySelector(".car-year");
+      // Ищем год
+      let yearElement = card.querySelector(".car-year");
+      if (!yearElement) {
+        yearElement = card.querySelector(".year");
+      }
+      if (!yearElement) {
+        yearElement = card.querySelector(".item-year");
+      }
+      
       const yearText = yearElement ? yearElement.textContent.replace(/[^\d]/g, '') : '2020';
       const year = parseInt(yearText, 10) || 2020;
+      console.log(`Год: ${year}`);
       
-      const imageElement = card.querySelector("img");
+      // Ищем изображение
+      let imageElement = card.querySelector("img");
       const imageSrc = imageElement ? imageElement.getAttribute("src") : '';
+      console.log(`Изображение: ${imageSrc}`);
+      
       const imageUrl = imageSrc ? (imageSrc.startsWith('http') ? imageSrc : `https://catalog.tmcavto.ru${imageSrc}`) : '';
       
-      const linkElement = card.querySelector("a");
+      // Ищем ссылку на детали
+      let linkElement = card.querySelector("a");
       const detailLink = linkElement ? linkElement.getAttribute("href") : '';
+      console.log(`Ссылка на детали: ${detailLink}`);
+      
       const detailUrl = detailLink ? (detailLink.startsWith('http') ? detailLink : `https://catalog.tmcavto.ru${detailLink}`) : '';
       
+      // Создаем объект автомобиля
       cars.push({
         id: `${country}-${brand}-${model}-${index}`,
-        brand: brand || 'Неизвестно',
-        model: model || 'Неизвестно',
+        brand: brand,
+        model: model,
         year: year,
         price: price,
         country: country,
         imageUrl: imageUrl,
         detailUrl: detailUrl
       });
+      
+      console.log(`Автомобиль добавлен: ${brand} ${model}, ${year}, ${price} руб.`);
     } catch (error) {
       console.error('Ошибка при парсинге карточки автомобиля:', error);
     }
   });
   
+  console.log(`Всего распарсено ${cars.length} автомобилей из ${country}`);
   return cars;
 }

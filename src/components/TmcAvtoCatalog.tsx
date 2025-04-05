@@ -6,14 +6,16 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'; 
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import ErrorState from '@/components/ErrorState';
-import { Loader2, Download, RefreshCw, Search } from 'lucide-react';
+import { Loader2, Download, RefreshCw, Search, AlertTriangle, CheckCircle } from 'lucide-react';
 
 const TmcAvtoCatalog = () => {
   const [url, setUrl] = useState('/cars/japan');
   const [responseData, setResponseData] = useState<string | null>(null);
-  const { fetchCatalogData, importAllCars, loading, error, cars } = useTmcAvtoCatalog();
+  const { fetchCatalogData, importAllCars, loading, error, cars, logs } = useTmcAvtoCatalog();
   const [activeTab, setActiveTab] = useState('catalog');
+  const [showLogs, setShowLogs] = useState(false);
 
   const handleFetch = async () => {
     const data = await fetchCatalogData({ url });
@@ -23,6 +25,7 @@ const TmcAvtoCatalog = () => {
   };
 
   const handleImport = async () => {
+    setShowLogs(true);
     await importAllCars();
   };
 
@@ -33,14 +36,6 @@ const TmcAvtoCatalog = () => {
   const japanCars = getCountryFilter('Япония');
   const koreaCars = getCountryFilter('Корея');
   const chinaCars = getCountryFilter('Китай');
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('ru-RU', {
-      style: 'currency',
-      currency: 'RUB',
-      maximumFractionDigits: 0,
-    }).format(price);
-  };
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -179,18 +174,63 @@ const TmcAvtoCatalog = () => {
                   </div>
                 </div>
 
-                {error && (
-                  <ErrorState 
-                    message={error} 
-                    onRetry={handleFetch}
-                  />
+                {loading && (
+                  <Alert className="bg-blue-50 border-blue-200 my-4">
+                    <Loader2 className="h-4 w-4 text-blue-500 mr-2 animate-spin" />
+                    <AlertTitle>Импорт в процессе</AlertTitle>
+                    <AlertDescription>
+                      Идёт импорт данных. Пожалуйста, подождите. Это может занять некоторое время.
+                    </AlertDescription>
+                  </Alert>
                 )}
 
-                {responseData && !error && (
+                {error && (
+                  <Alert variant="destructive" className="my-4">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Ошибка импорта</AlertTitle>
+                    <AlertDescription>{error}</AlertDescription>
+                    <div className="mt-2">
+                      <Button onClick={handleImport} variant="outline" size="sm">
+                        Повторить
+                      </Button>
+                    </div>
+                  </Alert>
+                )}
+
+                {cars.length > 0 && !loading && !error && (
+                  <Alert className="bg-green-50 border-green-200 my-4">
+                    <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                    <AlertTitle>Импорт успешно завершен</AlertTitle>
+                    <AlertDescription>
+                      Импортировано {cars.length} автомобилей.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {showLogs && (
                   <div className="mt-4">
-                    <h3 className="font-medium mb-2">Ответ от сервера:</h3>
+                    <div className="flex justify-between items-center mb-2">
+                      <h3 className="font-medium">Логи парсинга:</h3>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setShowLogs(!showLogs)}
+                      >
+                        {showLogs ? 'Скрыть логи' : 'Показать логи'}
+                      </Button>
+                    </div>
                     <div className="bg-gray-100 p-4 rounded-md max-h-96 overflow-auto">
-                      <pre className="text-xs whitespace-pre-wrap break-words">{responseData}</pre>
+                      <pre className="text-xs whitespace-pre-wrap break-words">
+                        {logs && logs.length > 0 ? (
+                          logs.map((log, index) => (
+                            <div key={index}>{log}</div>
+                          ))
+                        ) : responseData ? (
+                          responseData
+                        ) : (
+                          "Нет доступных логов"
+                        )}
+                      </pre>
                     </div>
                   </div>
                 )}
@@ -222,7 +262,7 @@ const CarTable = ({ cars }: CarTableProps) => {
           <TableHead>Модель</TableHead>
           <TableHead>Год</TableHead>
           <TableHead>Цена</TableHead>
-          <TableHead>Изображение</TableHead>
+          <TableHead>Фото</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -246,6 +286,11 @@ const CarTable = ({ cars }: CarTableProps) => {
                     src={car.imageUrl} 
                     alt={`${car.brand} ${car.model}`}
                     className="w-16 h-12 object-cover rounded" 
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.onerror = null;
+                      target.src = '/placeholder.svg';
+                    }}
                   />
                 </a>
               ) : (

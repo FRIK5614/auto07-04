@@ -30,15 +30,21 @@ export const useTmcAvtoCatalog = ({ onError }: UseTmcAvtoCatalogProps = {}) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cars, setCars] = useState<Car[]>([]);
+  const [logs, setLogs] = useState<string[]>([]);
 
   const fetchCatalogData = async ({ url }: FetchCatalogDataParams) => {
     setLoading(true);
     setError(null);
+    setLogs([]);
 
     try {
+      console.log(`Отправка запроса к tmcavto-catalog с URL: ${url}`);
+      
       const { data, error } = await supabase.functions.invoke('tmcavto-catalog', {
         body: { url },
       });
+
+      console.log('Ответ от функции:', data, error);
 
       if (error) {
         const errorMessage = error.message || 'Ошибка при получении данных';
@@ -68,7 +74,10 @@ export const useTmcAvtoCatalog = ({ onError }: UseTmcAvtoCatalogProps = {}) => {
 
       // Если ответ содержит данные об автомобилях
       if (Array.isArray(data.data)) {
+        console.log(`Получено ${data.data.length} автомобилей`);
         setCars(data.data);
+      } else {
+        console.log('Получены данные не в формате массива');
       }
 
       return data.data;
@@ -91,11 +100,21 @@ export const useTmcAvtoCatalog = ({ onError }: UseTmcAvtoCatalogProps = {}) => {
   const importAllCars = async ({ onSuccess }: ImportCarsParams = {}) => {
     setLoading(true);
     setError(null);
+    setLogs([]);
 
     try {
+      console.log('Начинаем импорт всех автомобилей...');
+      
+      toast({
+        title: 'Импорт запущен',
+        description: 'Начинаем импорт автомобилей. Это может занять некоторое время.',
+      });
+      
       const { data, error } = await supabase.functions.invoke('tmcavto-catalog', {
         body: { action: 'import' },
       });
+
+      console.log('Ответ от функции импорта:', data, error);
 
       if (error) {
         const errorMessage = error.message || 'Ошибка при импорте данных';
@@ -110,7 +129,7 @@ export const useTmcAvtoCatalog = ({ onError }: UseTmcAvtoCatalogProps = {}) => {
         return null;
       }
 
-      if (!data || !data.data) {
+      if (!data) {
         const errorMessage = 'Получен пустой ответ от сервера';
         console.error(errorMessage);
         setError(errorMessage);
@@ -123,18 +142,38 @@ export const useTmcAvtoCatalog = ({ onError }: UseTmcAvtoCatalogProps = {}) => {
         return null;
       }
 
-      setCars(data.data);
-      
-      toast({
-        title: 'Импорт завершен',
-        description: `Импортировано ${data.total || data.data.length} автомобилей`,
-      });
-
-      if (onSuccess) {
-        onSuccess(data.data);
+      // Обработка логов если они есть
+      if (data.logs) {
+        setLogs(data.logs);
       }
 
-      return data.data;
+      // Проверяем, что данные содержат массив автомобилей
+      if (data.data && Array.isArray(data.data)) {
+        console.log(`Импортировано ${data.data.length} автомобилей`);
+        setCars(data.data);
+        
+        toast({
+          title: 'Импорт завершен',
+          description: `Импортировано ${data.total || data.data.length} автомобилей`,
+        });
+
+        if (onSuccess) {
+          onSuccess(data.data);
+        }
+
+        return data.data;
+      } else {
+        const errorMessage = 'Данные не содержат список автомобилей';
+        console.error(errorMessage, data);
+        setError(errorMessage);
+        toast({
+          title: 'Ошибка',
+          description: errorMessage,
+          variant: 'destructive',
+        });
+        if (onError) onError(errorMessage);
+        return null;
+      }
     } catch (err: any) {
       const errorMessage = err.message || 'Произошла неизвестная ошибка';
       console.error('Ошибка импорта:', errorMessage);
@@ -156,6 +195,7 @@ export const useTmcAvtoCatalog = ({ onError }: UseTmcAvtoCatalogProps = {}) => {
     importAllCars,
     loading,
     error,
-    cars
+    cars,
+    logs
   };
 };
