@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import React, { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -12,6 +11,7 @@ import { CarsProvider } from "@/contexts/CarsContext";
 import { useCars } from "@/hooks/useCars";
 import { Heart, BarChart2, ChevronRight, ChevronLeft, Share2, Phone } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/components/ui/use-toast";
 
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat("ru-RU", {
@@ -25,6 +25,7 @@ const CarDetailsContent = () => {
   const { id } = useParams<{ id: string }>();
   const { getCarById, toggleFavorite, toggleCompare, isFavorite, isInCompare } = useCars();
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const { toast } = useToast();
   
   const car = getCarById(id || "");
   
@@ -58,6 +59,19 @@ const CarDetailsContent = () => {
     setActiveImageIndex((prev) => 
       prev === car.images.length - 1 ? 0 : prev + 1
     );
+  };
+
+  const handleCallClick = () => {
+    navigator.clipboard.writeText("+7 (495) 123-45-67")
+      .then(() => {
+        toast({
+          title: "Номер телефона скопирован",
+          description: "+7 (495) 123-45-67",
+        });
+      })
+      .catch(() => {
+        window.location.href = "tel:+74951234567";
+      });
   };
 
   return (
@@ -421,6 +435,7 @@ const CarDetailsContent = () => {
                 <div className="pt-4 border-t border-auto-gray-200">
                   <Button 
                     className="w-full mb-3 bg-auto-blue-600 hover:bg-auto-blue-700 text-base"
+                    onClick={handleCallClick}
                   >
                     <Phone className="mr-2 h-5 w-5" />
                     Позвонить

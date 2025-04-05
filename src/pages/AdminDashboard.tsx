@@ -1,11 +1,22 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useCars } from '@/hooks/useCars';
 import { Card } from '@/components/ui/card';
+import { useAdmin } from '@/contexts/AdminContext';
+import { useNavigate } from 'react-router-dom';
 
 const AdminDashboard: React.FC = () => {
   const { cars, orders } = useCars();
+  const { isAdmin } = useAdmin();
+  const navigate = useNavigate();
+  
+  // Redirect non-admin users to login
+  useEffect(() => {
+    if (!isAdmin) {
+      navigate('/admin/login');
+    }
+  }, [isAdmin, navigate]);
   
   // Make sure we have data before proceeding
   if (!cars || !orders) {
