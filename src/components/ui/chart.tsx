@@ -1,3 +1,4 @@
+
 import * as React from "react"
 import * as RechartsPrimitive from "recharts"
 
@@ -353,6 +354,87 @@ function getPayloadConfigFromPayload(
     : config[key as keyof typeof config]
 }
 
+// Create a new BarChart component based on recharts BarChart
+interface BarChartProps {
+  data: Array<{ name: string; data: Array<{ x: string; y: number }> }>;
+  categories?: string[];
+  index?: string;
+  colors?: string[];
+  valueFormatter?: (value: number) => string;
+  yAxisWidth?: number;
+  className?: string;
+}
+
+const BarChart = ({
+  data,
+  categories,
+  index = "x",
+  colors = ["#2563eb", "#4ade80", "#f97316"],
+  valueFormatter = (value) => value.toString(),
+  yAxisWidth = 40,
+  className
+}: BarChartProps) => {
+  // Create a config object for the chart
+  const chartConfig: ChartConfig = {};
+  
+  // Prepare the data for recharts
+  const formattedData = data[0].data.map((item) => {
+    const entry: Record<string, any> = { [index]: item.x };
+    
+    // Add values for each category
+    data.forEach((serie, serieIndex) => {
+      const matchingItem = serie.data.find(d => d.x === item.x);
+      entry[serie.name] = matchingItem?.y ?? 0;
+    });
+    
+    return entry;
+  });
+  
+  return (
+    <ChartContainer config={chartConfig} className={className}>
+      <RechartsPrimitive.BarChart data={formattedData} margin={{ top: 10, right: 10, left: 10, bottom: 30 }}>
+        <RechartsPrimitive.CartesianGrid strokeDasharray="3 3" vertical={false} />
+        <RechartsPrimitive.XAxis 
+          dataKey={index} 
+          tickLine={false}
+          axisLine={false}
+          tick={{ fontSize: 12 }}
+          angle={-45}
+          textAnchor="end"
+          height={70}
+        />
+        <RechartsPrimitive.YAxis 
+          width={yAxisWidth} 
+          tickLine={false}
+          axisLine={false}
+          tick={{ fontSize: 12 }}
+          tickFormatter={(value) => value.toString()}
+        />
+        <ChartTooltip 
+          content={
+            <ChartTooltipContent 
+              labelFormatter={(value) => `${value}`}
+              formatter={(value, name) => [
+                valueFormatter(value as number), 
+                name as string
+              ]}
+            />
+          } 
+        />
+        {data.map((serie, index) => (
+          <RechartsPrimitive.Bar 
+            key={serie.name}
+            dataKey={serie.name} 
+            fill={colors[index % colors.length]} 
+            radius={[4, 4, 0, 0]}
+            barSize={30}
+          />
+        ))}
+      </RechartsPrimitive.BarChart>
+    </ChartContainer>
+  );
+};
+
 export {
   ChartContainer,
   ChartTooltip,
@@ -360,4 +442,5 @@ export {
   ChartLegend,
   ChartLegendContent,
   ChartStyle,
+  BarChart
 }
