@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import Header from "@/components/Header";
@@ -20,22 +19,18 @@ const IndexContent = () => {
   const [visibleCars, setVisibleCars] = useState(12);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
-  // Apply filters from URL params
   useEffect(() => {
     const newFilter: any = { ...filter };
     
-    // Handle body type filter
     const bodyType = searchParams.get("bodyType");
     if (bodyType) {
       newFilter.bodyTypes = [bodyType];
     }
     
-    // Handle new cars filter
     if (searchParams.get("filter") === "new") {
       newFilter.isNew = true;
     }
     
-    // Handle brand filter
     const brand = searchParams.get("brand");
     if (brand) {
       newFilter.brands = [brand];
@@ -63,7 +58,6 @@ const IndexContent = () => {
     <div className="min-h-screen flex flex-col">
       <Header />
       
-      {/* Hero Section */}
       <section className="relative bg-gradient-to-r from-auto-blue-900 to-auto-blue-700 text-white py-16 md:py-24">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row md:items-center">
@@ -81,8 +75,7 @@ const IndexContent = () => {
                 </Button>
                 <Button 
                   size="lg" 
-                  variant="outline" 
-                  className="text-white border-white hover:bg-auto-blue-800"
+                  className="bg-auto-blue-500 text-white hover:bg-auto-blue-600"
                   onClick={openFilterModal}
                 >
                   <Settings className="mr-2 h-5 w-5" />
@@ -124,10 +117,8 @@ const IndexContent = () => {
         </div>
       </section>
 
-      {/* Modal for parameter selection */}
       <SearchFiltersModal isOpen={isFilterModalOpen} onClose={closeFilterModal} />
 
-      {/* Features Section */}
       <section className="py-12 bg-auto-gray-50">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -164,7 +155,6 @@ const IndexContent = () => {
         </div>
       </section>
 
-      {/* Featured Cars Section */}
       {newCars.length > 0 && (
         <FeaturedCars 
           cars={newCars} 
@@ -181,18 +171,15 @@ const IndexContent = () => {
         />
       )}
 
-      {/* Main Catalog Section */}
       <section className="py-12 bg-auto-gray-50">
         <div className="container mx-auto px-4">
           <h2 className="text-3xl font-bold mb-8 text-auto-gray-900">Каталог автомобилей</h2>
           
           <div className="flex flex-col md:flex-row">
-            {/* Filters */}
             <div className="md:w-1/4 lg:w-1/5">
               <SearchFilters />
             </div>
             
-            {/* Cars Grid */}
             <div className="md:w-3/4 lg:w-4/5">
               {filteredCars.length === 0 ? (
                 <div className="flex flex-col items-center justify-center bg-white p-8 rounded-lg text-center">
@@ -240,7 +227,6 @@ const IndexContent = () => {
         </div>
       </section>
 
-      {/* Consultation Request */}
       <section className="py-16 bg-white">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center">
