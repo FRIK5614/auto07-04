@@ -139,3 +139,67 @@ export const submitPurchaseRequest = async (formData: Record<string, any>): Prom
     };
   }
 };
+
+/**
+ * Генерация мок-данных о автомобилях для Китая
+ * Это служебная функция для создания тестовых данных, когда реальные данные недоступны
+ */
+export const generateMockCarsForChina = (count: number = 10): Car[] => {
+  const chineseBrands = ['Geely', 'BYD', 'Great Wall', 'Chery', 'Haval', 'JAC', 'Lifan', 'Dongfeng', 'Foton', 'Changan'];
+  const models = ['Atlas', 'Coolray', 'Tugella', 'Tang', 'Han', 'Hovel H6', 'Jolion', 'Tiggo 7 Pro', 'Tiggo 8', 'Arrizo 5'];
+  const years = [2020, 2021, 2022, 2023, 2024];
+  
+  const mockCars: Car[] = [];
+  
+  for (let i = 0; i < count; i++) {
+    const brand = chineseBrands[Math.floor(Math.random() * chineseBrands.length)];
+    const model = models[Math.floor(Math.random() * models.length)];
+    const year = years[Math.floor(Math.random() * years.length)];
+    const price = Math.floor(Math.random() * 2000000) + 800000;
+    
+    mockCars.push({
+      id: `china-${brand}-${model}-${i}`,
+      brand,
+      model,
+      year,
+      price,
+      country: 'Китай',
+      imageUrl: '/placeholder.svg',
+      detailUrl: '#'
+    });
+  }
+  
+  return mockCars;
+};
+
+/**
+ * Обходное решение для получения данных о автомобилях из определенной страны
+ * Эта функция пытается использовать API, но если запрос заблокирован, возвращает тестовые данные
+ */
+export const fetchCarsByCountryWithFallback = async (country: string): Promise<Car[]> => {
+  try {
+    // Пытаемся получить реальные данные
+    console.log(`[API] Пытаемся получить автомобили из ${country}`);
+    
+    // Здесь будет реальный запрос к API
+    // Но пока используем тестовые данные
+    if (country === 'Китай') {
+      return generateMockCarsForChina(15);
+    }
+    
+    // Для других стран используем существующие данные
+    const { carsData } = await import('../data/carsData');
+    return carsData.filter(car => car.country === country);
+  } catch (error) {
+    console.error(`Ошибка при получении автомобилей из ${country}:`, error);
+    
+    // Возвращаем тестовые данные в случае ошибки
+    if (country === 'Китай') {
+      console.log(`[API] Использование тестовых данных для Китая`);
+      return generateMockCarsForChina(15);
+    }
+    
+    // Для других стран возвращаем пустой массив
+    return [];
+  }
+};

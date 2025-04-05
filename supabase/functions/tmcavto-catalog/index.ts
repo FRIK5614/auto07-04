@@ -47,22 +47,29 @@ serve(async (req) => {
       
       console.log("Начинаем импорт автомобилей...");
       const allCars: Car[] = [];
+      const logs: string[] = [];
       
       // Импортируем автомобили из каждой страны
       for (const country of countries) {
-        console.log(`Импорт автомобилей из ${country.name}: ${country.url}`);
-        const cars = await importCarsFromCountry(country.name, country.url);
-        console.log(`Импортировано ${cars.length} автомобилей из ${country.name}`);
-        allCars.push(...cars);
+        logs.push(`Импорт автомобилей из ${country.name}: ${country.url}`);
+        try {
+          const cars = await importCarsFromCountry(country.name, country.url);
+          logs.push(`Импортировано ${cars.length} автомобилей из ${country.name}`);
+          allCars.push(...cars);
+        } catch (error) {
+          logs.push(`Ошибка при импорте из ${country.name}: ${error.message}`);
+          console.error(`Ошибка при импорте из ${country.name}:`, error);
+        }
       }
       
-      console.log(`Всего импортировано: ${allCars.length} автомобилей`);
+      logs.push(`Всего импортировано: ${allCars.length} автомобилей`);
       
       return new Response(
         JSON.stringify({ 
           success: true, 
           data: allCars,
-          total: allCars.length
+          total: allCars.length,
+          logs
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -75,44 +82,71 @@ serve(async (req) => {
     
     console.log(`Отправка запроса к: ${targetUrl}`);
     
-    // Выполняем запрос к сайту catalog.tmcavto.ru
+    // Выполняем запрос к сайту catalog.tmcavto.ru с улучшенным обнаружением блокировки
     const response = await fetch(targetUrl, {
       method: 'GET',
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3',
+        'Referer': 'https://catalog.tmcavto.ru/',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Cache-Control': 'max-age=0',
       },
     });
-
-    // Проверяем статус ответа
-    if (!response.ok) {
-      console.error(`Ошибка при запросе к ${targetUrl}: ${response.status} ${response.statusText}`);
-      return new Response(
-        JSON.stringify({ 
-          error: `Ошибка при запросе: ${response.status} ${response.statusText}` 
-        }),
-        { 
-          status: response.status, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
-    }
 
     // Получаем HTML ответа
     const html = await response.text();
     
+    // Проверяем на признаки блокировки или ошибки доступа
+    if (html.includes("Sorry, your request has been denied") || 
+        html.includes("Access Denied") || 
+        html.includes("Доступ запрещен") ||
+        !response.ok) {
+      console.error(`Доступ запрещен или сайт блокирует запросы: ${targetUrl}`);
+      return new Response(
+        JSON.stringify({ 
+          error: "Сайт блокирует доступ к данным. Возможно, требуется изменить метод запроса или использовать прокси.",
+          html: html,
+          logs: [`Ошибка доступа: ${response.status} ${response.statusText}`, 
+                 `URL: ${targetUrl}`,
+                 `HTML содержит блокировку: ${html.includes("Sorry, your request has been denied")}`]
+        }),
+        { 
+          status: 403, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+    
     // Если запрос был на страницу с автомобилями, парсим данные
     if (url.includes('/cars/')) {
-      const cars = parseCarsFromHTML(html, url.includes('/japan') ? 'Япония' : url.includes('/korea') ? 'Корея' : 'Китай');
+      const country = url.includes('/japan') 
+                    ? 'Япония' 
+                    : url.includes('/korea') 
+                    ? 'Корея' 
+                    : url.includes('/china') 
+                    ? 'Китай' 
+                    : 'Неизвестно';
+      
+      const cars = parseCarsFromHTML(html, country);
       
       return new Response(
-        JSON.stringify({ data: cars }),
+        JSON.stringify({ 
+          data: cars,
+          logs: [`Получено ${cars.length} автомобилей из ${country}`]
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
-    // Возвращаем успешный ответ
+    // Возвращаем успешный ответ с логами
     return new Response(
-      JSON.stringify({ data: html }),
+      JSON.stringify({ 
+        data: html,
+        logs: ["Получены данные с сайта успешно"]
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
     
@@ -120,7 +154,11 @@ serve(async (req) => {
     console.error('Произошла ошибка:', error);
     
     return new Response(
-      JSON.stringify({ error: error.message || 'Произошла неизвестная ошибка' }),
+      JSON.stringify({ 
+        error: error.message || 'Произошла неизвестная ошибка',
+        stack: error.stack,
+        logs: [`Ошибка: ${error.message}`, `Стек: ${error.stack}`]
+      }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -139,19 +177,26 @@ async function importCarsFromCountry(country: string, countryUrl: string): Promi
       method: 'GET',
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3',
+        'Referer': 'https://catalog.tmcavto.ru/',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Cache-Control': 'max-age=0',
       },
     });
     
-    if (!response.ok) {
-      console.error(`Ошибка при запросе к ${targetUrl}: ${response.status} ${response.statusText}`);
-      return [];
+    const html = await response.text();
+    
+    // Проверяем на признаки блокировки
+    if (html.includes("Sorry, your request has been denied") || 
+        html.includes("Access Denied") || 
+        html.includes("Доступ запрещен") ||
+        !response.ok) {
+      throw new Error(`Доступ запрещен для страны ${country}. Сайт блокирует запросы.`);
     }
     
-    const html = await response.text();
     console.log(`Получен HTML (${html.length} символов) для ${country}`);
-    
-    // Для отладки - сохраняем первые 200 символов HTML
-    console.log(`Начало HTML: ${html.substring(0, 200)}...`);
     
     const cars = parseCarsFromHTML(html, country);
     console.log(`Распарсено ${cars.length} автомобилей из ${country}`);
@@ -159,7 +204,7 @@ async function importCarsFromCountry(country: string, countryUrl: string): Promi
     return cars;
   } catch (error) {
     console.error(`Ошибка при импорте автомобилей из ${country}:`, error);
-    return [];
+    throw error; // Пробрасываем ошибку выше для логирования
   }
 }
 

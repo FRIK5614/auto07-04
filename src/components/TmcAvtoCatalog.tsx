@@ -8,14 +8,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import ErrorState from '@/components/ErrorState';
-import { Loader2, Download, RefreshCw, Search, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Loader2, Download, RefreshCw, Search, AlertTriangle, CheckCircle, ShieldAlert } from 'lucide-react';
 import { useAdmin } from '@/contexts/AdminContext';
 import { useLocation } from 'react-router-dom';
 
 const TmcAvtoCatalog = () => {
   const [url, setUrl] = useState('/cars/japan');
   const [responseData, setResponseData] = useState<string | null>(null);
-  const { fetchCatalogData, importAllCars, loading, error, cars, logs } = useTmcAvtoCatalog();
+  const { fetchCatalogData, importAllCars, loading, error, cars, logs, blockedSources } = useTmcAvtoCatalog();
   const [activeTab, setActiveTab] = useState('catalog');
   const [showLogs, setShowLogs] = useState(false);
   const { isAdmin } = useAdmin();
@@ -47,6 +47,30 @@ const TmcAvtoCatalog = () => {
   const koreaCars = getCountryFilter('Корея');
   const chinaCars = getCountryFilter('Китай');
 
+  // Показать заблокированные источники
+  const renderBlockedSourcesAlert = () => {
+    if (blockedSources.length === 0) return null;
+    
+    const sourcesMap: Record<string, string> = {
+      'china': 'Китай',
+      'japan': 'Япония',
+      'korea': 'Корея'
+    };
+    
+    const blockedCountries = blockedSources.map(source => sourcesMap[source] || source).join(', ');
+    
+    return (
+      <Alert className="bg-amber-50 border-amber-200 my-4">
+        <ShieldAlert className="h-4 w-4 text-amber-500 mr-2" />
+        <AlertTitle>Обнаружены заблокированные источники</AlertTitle>
+        <AlertDescription>
+          Сайт блокирует парсинг данных из следующих стран: {blockedCountries}. 
+          Это может быть временная блокировка или ограничение со стороны сайта.
+        </AlertDescription>
+      </Alert>
+    );
+  };
+
   return (
     <div className="container mx-auto py-6 space-y-6">
       <Card>
@@ -59,6 +83,8 @@ const TmcAvtoCatalog = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {renderBlockedSourcesAlert()}
+          
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className={`grid w-full grid-cols-${showImportTab ? '2' : '1'}`}>
               <TabsTrigger value="catalog">Каталог</TabsTrigger>
@@ -89,9 +115,18 @@ const TmcAvtoCatalog = () => {
                   <Tabs defaultValue="all">
                     <TabsList>
                       <TabsTrigger value="all">Все ({cars.length})</TabsTrigger>
-                      <TabsTrigger value="japan">Япония ({japanCars.length})</TabsTrigger>
-                      <TabsTrigger value="korea">Корея ({koreaCars.length})</TabsTrigger>
-                      <TabsTrigger value="china">Китай ({chinaCars.length})</TabsTrigger>
+                      <TabsTrigger value="japan" disabled={blockedSources.includes('japan')}>
+                        Япония ({japanCars.length})
+                        {blockedSources.includes('japan') && <ShieldAlert className="ml-1 h-3 w-3" />}
+                      </TabsTrigger>
+                      <TabsTrigger value="korea" disabled={blockedSources.includes('korea')}>
+                        Корея ({koreaCars.length})
+                        {blockedSources.includes('korea') && <ShieldAlert className="ml-1 h-3 w-3" />}
+                      </TabsTrigger>
+                      <TabsTrigger value="china" disabled={blockedSources.includes('china')}>
+                        Китай ({chinaCars.length})
+                        {blockedSources.includes('china') && <ShieldAlert className="ml-1 h-3 w-3" />}
+                      </TabsTrigger>
                     </TabsList>
                     
                     <TabsContent value="all">
@@ -99,15 +134,45 @@ const TmcAvtoCatalog = () => {
                     </TabsContent>
                     
                     <TabsContent value="japan">
-                      <CarTable cars={japanCars} />
+                      {blockedSources.includes('japan') ? (
+                        <Alert variant="destructive" className="mt-4">
+                          <AlertTriangle className="h-4 w-4" />
+                          <AlertTitle>Источник заблокирован</AlertTitle>
+                          <AlertDescription>
+                            Сайт блокирует доступ к автомобилям из Японии. Попробуйте позже.
+                          </AlertDescription>
+                        </Alert>
+                      ) : (
+                        <CarTable cars={japanCars} />
+                      )}
                     </TabsContent>
                     
                     <TabsContent value="korea">
-                      <CarTable cars={koreaCars} />
+                      {blockedSources.includes('korea') ? (
+                        <Alert variant="destructive" className="mt-4">
+                          <AlertTriangle className="h-4 w-4" />
+                          <AlertTitle>Источник заблокирован</AlertTitle>
+                          <AlertDescription>
+                            Сайт блокирует доступ к автомобилям из Кореи. Попробуйте позже.
+                          </AlertDescription>
+                        </Alert>
+                      ) : (
+                        <CarTable cars={koreaCars} />
+                      )}
                     </TabsContent>
                     
                     <TabsContent value="china">
-                      <CarTable cars={chinaCars} />
+                      {blockedSources.includes('china') ? (
+                        <Alert variant="destructive" className="mt-4">
+                          <AlertTriangle className="h-4 w-4" />
+                          <AlertTitle>Источник заблокирован</AlertTitle>
+                          <AlertDescription>
+                            Сайт блокирует доступ к автомобилям из Китая. Попробуйте позже.
+                          </AlertDescription>
+                        </Alert>
+                      ) : (
+                        <CarTable cars={chinaCars} />
+                      )}
                     </TabsContent>
                   </Tabs>
                 </div>
@@ -224,7 +289,18 @@ const TmcAvtoCatalog = () => {
                     </Alert>
                   )}
 
-                  {showLogs && (
+                  {blockedSources.length > 0 && (
+                    <Alert className="bg-amber-50 border-amber-200 my-4">
+                      <ShieldAlert className="h-4 w-4 text-amber-500 mr-2" />
+                      <AlertTitle>Некоторые источники недоступны</AlertTitle>
+                      <AlertDescription>
+                        Сайт блокирует доступ к некоторым данным. Это может быть временно.
+                        Попробуйте использовать другие источники или повторите попытку позже.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {(showLogs || logs.length > 0) && (
                     <div className="mt-4">
                       <div className="flex justify-between items-center mb-2">
                         <h3 className="font-medium">Логи парсинга:</h3>
@@ -236,19 +312,21 @@ const TmcAvtoCatalog = () => {
                           {showLogs ? 'Скрыть логи' : 'Показать логи'}
                         </Button>
                       </div>
-                      <div className="bg-gray-100 p-4 rounded-md max-h-96 overflow-auto">
-                        <pre className="text-xs whitespace-pre-wrap break-words">
-                          {logs && logs.length > 0 ? (
-                            logs.map((log, index) => (
-                              <div key={index}>{log}</div>
-                            ))
-                          ) : responseData ? (
-                            responseData
-                          ) : (
-                            "Нет доступных логов"
-                          )}
-                        </pre>
-                      </div>
+                      {showLogs && (
+                        <div className="bg-gray-100 p-4 rounded-md max-h-96 overflow-auto">
+                          <pre className="text-xs whitespace-pre-wrap break-words">
+                            {logs && logs.length > 0 ? (
+                              logs.map((log, index) => (
+                                <div key={index}>{log}</div>
+                              ))
+                            ) : responseData ? (
+                              responseData
+                            ) : (
+                              "Нет доступных логов"
+                            )}
+                          </pre>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
