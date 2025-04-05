@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Navigate, Outlet, useNavigate } from 'react-router-dom';
+import { Navigate, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAdmin } from '@/contexts/AdminContext';
 import { Button } from '@/components/ui/button';
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
@@ -11,17 +11,22 @@ import {
   ShoppingCart, 
   BarChart3, 
   FileArchive, 
-  Package
+  Package,
+  MessageCircle
 } from 'lucide-react';
 import { useCars } from '@/hooks/useCars';
+import { useChat } from '@/contexts/ChatContext';
 import { useToast } from '@/hooks/use-toast';
 
 const AdminLayout = () => {
   const { isAdmin, logout } = useAdmin();
   const { orders } = useCars();
+  const { chatState } = useChat();
   const [newOrdersCount, setNewOrdersCount] = useState(0);
+  const [newMessagesCount, setNewMessagesCount] = useState(0);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const location = useLocation();
 
   // Count new orders for the badge
   useEffect(() => {
@@ -30,6 +35,12 @@ const AdminLayout = () => {
       setNewOrdersCount(count);
     }
   }, [orders]);
+
+  // Count unread messages for the badge
+  useEffect(() => {
+    const totalUnread = chatState.sessions.reduce((total, session) => total + session.unreadCount, 0);
+    setNewMessagesCount(totalUnread);
+  }, [chatState.sessions]);
 
   useEffect(() => {
     if (!isAdmin) {
@@ -52,6 +63,12 @@ const AdminLayout = () => {
     navigate(path);
   };
 
+  // Check if the current path matches the menu item
+  const isActive = (path: string) => {
+    return location.pathname === path || 
+           (path !== '/admin' && location.pathname.startsWith(path));
+  };
+
   return (
     <SidebarProvider>
       <div className="flex w-full min-h-screen">
@@ -65,7 +82,10 @@ const AdminLayout = () => {
               <SidebarGroupContent>
                 <SidebarMenu>
                   <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
+                    <SidebarMenuButton 
+                      asChild 
+                      className={isActive('/admin') || isActive('/admin/dashboard') ? 'bg-accent text-accent-foreground' : ''}
+                    >
                       <a href="#" onClick={(e) => handleMenuItemClick(e, "/admin")}>
                         <BarChart3 className="h-5 w-5" />
                         <span>Главная</span>
@@ -73,7 +93,10 @@ const AdminLayout = () => {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
+                    <SidebarMenuButton 
+                      asChild
+                      className={isActive('/admin/cars') ? 'bg-accent text-accent-foreground' : ''}
+                    >
                       <a href="#" onClick={(e) => handleMenuItemClick(e, "/admin/cars")}>
                         <CarFront className="h-5 w-5" />
                         <span>Автомобили</span>
@@ -81,13 +104,32 @@ const AdminLayout = () => {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
+                    <SidebarMenuButton 
+                      asChild
+                      className={isActive('/admin/orders') ? 'bg-accent text-accent-foreground' : ''}
+                    >
                       <a href="#" onClick={(e) => handleMenuItemClick(e, "/admin/orders")}>
                         <ShoppingCart className="h-5 w-5" />
                         <span>Заказы</span>
                         {newOrdersCount > 0 && (
                           <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
                             {newOrdersCount}
+                          </span>
+                        )}
+                      </a>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton 
+                      asChild
+                      className={isActive('/admin/chat') ? 'bg-accent text-accent-foreground' : ''}
+                    >
+                      <a href="#" onClick={(e) => handleMenuItemClick(e, "/admin/chat")}>
+                        <MessageCircle className="h-5 w-5" />
+                        <span>Чат</span>
+                        {newMessagesCount > 0 && (
+                          <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
+                            {newMessagesCount}
                           </span>
                         )}
                       </a>
@@ -102,7 +144,10 @@ const AdminLayout = () => {
               <SidebarGroupContent>
                 <SidebarMenu>
                   <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
+                    <SidebarMenuButton 
+                      asChild
+                      className={isActive('/admin/import') ? 'bg-accent text-accent-foreground' : ''}
+                    >
                       <a href="#" onClick={(e) => handleMenuItemClick(e, "/admin/import")}>
                         <FileArchive className="h-5 w-5" />
                         <span>Импорт данных</span>
@@ -110,7 +155,10 @@ const AdminLayout = () => {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
+                    <SidebarMenuButton 
+                      asChild
+                      className={isActive('/admin/tmcavto-catalog') ? 'bg-accent text-accent-foreground' : ''}
+                    >
                       <a href="#" onClick={(e) => handleMenuItemClick(e, "/admin/tmcavto-catalog")}>
                         <Package className="h-5 w-5" />
                         <span>Каталог TMC Авто</span>
@@ -126,7 +174,10 @@ const AdminLayout = () => {
               <SidebarGroupContent>
                 <SidebarMenu>
                   <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
+                    <SidebarMenuButton 
+                      asChild
+                      className={isActive('/admin/settings') ? 'bg-accent text-accent-foreground' : ''}
+                    >
                       <a href="#" onClick={(e) => handleMenuItemClick(e, "/admin/settings")}>
                         <Cog className="h-5 w-5" />
                         <span>Настройки</span>

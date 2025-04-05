@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 
 const AdminDashboard: React.FC = () => {
-  const { cars, orders } = useCars();
+  const { cars, orders, loading } = useCars();
   const { isAdmin } = useAdmin();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -26,16 +26,28 @@ const AdminDashboard: React.FC = () => {
   
   useEffect(() => {
     // Log data to debug
-    console.log('Admin Dashboard Data:', { cars: safeCars, orders: safeOrders });
+    console.log('Admin Dashboard Data:', { cars: safeCars, orders: safeOrders, loading });
     
-    if (safeCars.length === 0 && isAdmin) {
+    if (safeCars.length === 0 && !loading && isAdmin) {
       toast({
         title: "Нет данных об автомобилях",
         description: "Каталог автомобилей пуст",
         variant: "destructive"
       });
     }
-  }, [safeCars, safeOrders, isAdmin, toast]);
+  }, [safeCars, safeOrders, isAdmin, toast, loading]);
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="container mx-auto p-6">
+        <h1 className="text-2xl font-bold mb-6">Загрузка данных...</h1>
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    );
+  }
 
   const salesData = [
     { name: 'Новые', value: safeCars.filter(car => car.isNew).length },
