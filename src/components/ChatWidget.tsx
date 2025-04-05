@@ -113,7 +113,12 @@ const ChatWidget: React.FC = () => {
               <Minimize2 className="h-4 w-4" />
             </Button>
           )}
-          <Button variant="ghost" size="icon" onClick={closeChat} className="h-6 w-6 p-0 text-primary-foreground hover:bg-primary/90">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={closeChat} 
+            className="h-6 w-6 p-0 text-primary-foreground hover:bg-primary/90 relative z-10"
+          >
             <X className="h-4 w-4" />
           </Button>
         </div>

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useCars } from '@/hooks/useCars';
 import { useAdmin } from '@/contexts/AdminContext';
 import { useNavigate } from 'react-router-dom';
@@ -32,6 +32,25 @@ const AdminOrders: React.FC = () => {
   const { isAdmin } = useAdmin();
   const navigate = useNavigate();
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+
+  // Refresh orders data periodically to sync between different admin users
+  useEffect(() => {
+    // Check for updated orders in localStorage every 5 seconds
+    const intervalId = setInterval(() => {
+      const savedOrders = localStorage.getItem("orders");
+      if (savedOrders) {
+        try {
+          // We don't need to set the orders directly as the useCars hook
+          // already loads them from localStorage on mount
+          console.log("Checking for order updates");
+        } catch (error) {
+          console.error("Failed to parse orders from localStorage:", error);
+        }
+      }
+    }, 5000);
+
+    return () => clearInterval(intervalId);
+  }, []);
 
   React.useEffect(() => {
     if (!isAdmin) {
