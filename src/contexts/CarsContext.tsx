@@ -26,6 +26,8 @@ interface CarsContextType {
   addCar: (car: Car) => void;
   processOrder: (orderId: string, status: Order['status']) => void;
   getOrders: () => Order[];
+  exportCarsData: () => string;
+  importCarsData: (data: string) => boolean;
 }
 
 const CarsContext = createContext<CarsContextType | undefined>(undefined);
@@ -62,10 +64,49 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
     try {
       setLoading(true);
       setError(null);
+      
+      const savedCars = localStorage.getItem("carsCatalog");
+      if (savedCars) {
+        try {
+          const parsedCars = JSON.parse(savedCars);
+          console.log("Loaded cars from localStorage:", parsedCars.length);
+          setCars(parsedCars);
+          setFilteredCars(parsedCars);
+          setLoading(false);
+          
+          const savedOrders = localStorage.getItem("orders");
+          if (savedOrders) {
+            try {
+              setOrders(JSON.parse(savedOrders));
+            } catch (err) {
+              console.error("Failed to parse saved orders:", err);
+              createSampleOrders(parsedCars);
+            }
+          } else {
+            createSampleOrders(parsedCars);
+          }
+          
+          fetchAllCars().then(apiCars => {
+            if (apiCars && apiCars.length > 0) {
+              setCars(apiCars);
+              setFilteredCars(apiCars);
+              localStorage.setItem("carsCatalog", JSON.stringify(apiCars));
+            }
+          }).catch(err => {
+            console.error("Background refresh of cars failed:", err);
+          });
+          
+          return;
+        } catch (err) {
+          console.error("Failed to parse saved cars, will load from API:", err);
+        }
+      }
+      
       const data = await fetchAllCars();
-      console.log("Loaded cars:", data);
+      console.log("Loaded cars from API:", data.length);
       setCars(data);
       setFilteredCars(data);
+      localStorage.setItem("carsCatalog", JSON.stringify(data));
       
       const savedOrders = localStorage.getItem("orders");
       if (savedOrders) {
@@ -313,6 +354,47 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
     return orders;
   };
 
+  const exportCarsData = (): string => {
+    return JSON.stringify(cars, null, 2);
+  };
+
+  const importCarsData = (data: string): boolean => {
+    try {
+      const parsedData = JSON.parse(data);
+      if (Array.isArray(parsedData) && parsedData.length > 0) {
+        setCars(parsedData);
+        setFilteredCars(parsedData);
+        localStorage.setItem("carsCatalog", data);
+        toast({
+          title: "Импорт завершен",
+          description: `Импортировано ${parsedData.length} автомобилей`
+        });
+        return true;
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Ошибка импорта",
+          description: "Данные не содержат автомобилей или имеют неверный формат"
+        });
+        return false;
+      }
+    } catch (error) {
+      console.error("Import error:", error);
+      toast({
+        variant: "destructive",
+        title: "Ошибка импорта",
+        description: "Не удалось разобрать JSON данные"
+      });
+      return false;
+    }
+  };
+
+  useEffect(() => {
+    if (cars.length > 0) {
+      localStorage.setItem("carsCatalog", JSON.stringify(cars));
+    }
+  }, [cars]);
+
   return (
     <CarsContext.Provider
       value={{
@@ -337,7 +419,9 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
         updateCar,
         addCar,
         processOrder,
-        getOrders
+        getOrders,
+        exportCarsData,
+        importCarsData
       }}
     >
       {children}

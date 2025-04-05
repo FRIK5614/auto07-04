@@ -25,7 +25,9 @@ export const useCars = () => {
     updateCar,
     addCar,
     processOrder,
-    getOrders
+    getOrders,
+    exportCarsData,
+    importCarsData
   } = useGlobalCars();
 
   const favoriteCars = cars.filter(car => favorites.includes(car.id));
@@ -87,6 +89,8 @@ export const useCars = () => {
     processOrder,
     getOrders,
     getMostViewedCars,
+    exportCarsData,
+    importCarsData,
     // Export these functions to fix the build errors
     addToFavorites,
     removeFromFavorites,
