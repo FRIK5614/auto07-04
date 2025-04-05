@@ -84,4 +84,5 @@ export interface CarFilter {
   engineTypes?: string[];
   drivetrains?: string[];
   isNew?: boolean;
+  countries?: string[]; // Add countries filter
 }

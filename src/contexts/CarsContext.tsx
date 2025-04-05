@@ -137,6 +137,11 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
     if (filter.isNew !== undefined) {
       result = result.filter(car => car.isNew === filter.isNew);
     }
+    
+    // Country filter
+    if (filter.countries && filter.countries.length > 0) {
+      result = result.filter(car => car.country && filter.countries?.includes(car.country));
+    }
 
     setFilteredCars(result);
   }, [cars, filter]);

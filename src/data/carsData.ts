@@ -344,6 +344,17 @@ export const carsData: Car[] = [
   }
 ];
 
+/**
+ * Получение уникальных стран происхождения автомобилей
+ */
+export const getCountries = (): string[] => {
+  const countries = carsData
+    .map(car => car.country)
+    .filter((country): country is string => country !== undefined);
+  
+  return [...new Set(countries)].sort();
+};
+
 // Helper functions for filtering cars
 export const getAllBrands = (): string[] => {
   return [...new Set(carsData.map(car => car.brand))].sort();

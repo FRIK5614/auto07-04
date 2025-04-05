@@ -20,7 +20,8 @@ import {
   getAllModels,
   getPriceRange,
   getEngineTypes,
-  getDrivetrains
+  getDrivetrains,
+  getCountries
 } from "@/data/carsData";
 
 const SearchFilters = () => {
@@ -36,6 +37,7 @@ const SearchFilters = () => {
   const bodyTypes = getAllBodyTypes();
   const engineTypes = getEngineTypes();
   const drivetrains = getDrivetrains();
+  const countries = getCountries();
   const { min: minPriceData, max: maxPriceData } = getPriceRange();
 
   // Initialize price range from data
@@ -145,7 +147,7 @@ const SearchFilters = () => {
         </div>
 
         <div className="space-y-6">
-          <Accordion type="multiple" defaultValue={["brand", "price", "body"]}>
+          <Accordion type="multiple" defaultValue={["brand", "price", "body", "country"]}>
             {/* Brand Filter */}
             <AccordionItem value="brand">
               <AccordionTrigger className="text-base font-medium">Марка</AccordionTrigger>
@@ -187,6 +189,30 @@ const SearchFilters = () => {
                         className="cursor-pointer"
                       >
                         {bodyType}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* Country Filter */}
+            <AccordionItem value="country">
+              <AccordionTrigger className="text-base font-medium">Страна происхождения</AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-2">
+                  {countries.map(country => (
+                    <div key={country} className="flex items-center space-x-2">
+                      <Checkbox 
+                        id={`country-${country}`} 
+                        checked={(localFilter.countries || []).includes(country)}
+                        onCheckedChange={() => toggleFilter('countries', country)}
+                      />
+                      <Label 
+                        htmlFor={`country-${country}`}
+                        className="cursor-pointer"
+                      >
+                        {country}
                       </Label>
                     </div>
                   ))}
