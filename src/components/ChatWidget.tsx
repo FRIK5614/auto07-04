@@ -9,7 +9,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { ChatMessage } from '@/types/chat';
-import { MessageCircle, X, Minimize2, Maximize2, Send, PaperclipIcon, UserCircle, Phone } from 'lucide-react';
+import { MessageCircle, X, Minimize2, Maximize2, Send, PaperclipIcon, UserCircle, Phone, Maximize } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose } from '@/components/ui/sheet';
 
 const ChatWidget: React.FC = () => {
   const { 
@@ -25,6 +26,7 @@ const ChatWidget: React.FC = () => {
   } = useChat();
   const [messageText, setMessageText] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const messageInputRef = useRef<HTMLInputElement>(null);
   const phoneInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -38,18 +40,18 @@ const ChatWidget: React.FC = () => {
     if (messagesEndRef.current && isOpen && !isMinimized) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [activeSession?.messages, isOpen, isMinimized]);
+  }, [activeSession?.messages, isOpen, isMinimized, isFullscreen]);
   
   // Focus input when chat opens
   useEffect(() => {
-    if (isOpen && !isMinimized) {
+    if ((isOpen && !isMinimized) || isFullscreen) {
       if (isAwaitingPhoneNumber && phoneInputRef.current) {
         phoneInputRef.current.focus();
       } else if (messageInputRef.current) {
         messageInputRef.current.focus();
       }
     }
-  }, [isOpen, isMinimized, activeSessionId, isAwaitingPhoneNumber]);
+  }, [isOpen, isMinimized, activeSessionId, isAwaitingPhoneNumber, isFullscreen]);
   
   const handleSendMessage = () => {
     if (messageText.trim()) {
@@ -74,6 +76,14 @@ const ChatWidget: React.FC = () => {
       }
     }
   };
+
+  const toggleFullscreen = () => {
+    setIsFullscreen(!isFullscreen);
+  };
+
+  const handleCloseFullscreen = () => {
+    setIsFullscreen(false);
+  };
   
   if (!isOpen) {
     return (
@@ -94,6 +104,85 @@ const ChatWidget: React.FC = () => {
       </TooltipProvider>
     );
   }
+
+  // Render fullscreen chat using Sheet component
+  if (isFullscreen) {
+    return (
+      <Sheet open={isFullscreen} onOpenChange={setIsFullscreen}>
+        <SheetContent side="bottom" className="h-[100svh] p-0 max-w-full">
+          <div className="flex flex-col h-full">
+            <div className="bg-primary text-primary-foreground p-4 flex justify-between items-center">
+              <div className="flex items-center">
+                <MessageCircle className="h-5 w-5 mr-2" />
+                <h3 className="font-medium">Чат с консультантом</h3>
+              </div>
+              <SheetClose asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 p-0 text-primary-foreground">
+                  <X className="h-5 w-5" />
+                </Button>
+              </SheetClose>
+            </div>
+            
+            <ScrollArea className="flex-1 px-4 py-2">
+              {activeSession ? (
+                activeSession.messages.length > 0 ? (
+                  <div className="flex flex-col space-y-3">
+                    {activeSession.messages.map((message: ChatMessage) => (
+                      <MessageBubble key={message.id} message={message} />
+                    ))}
+                    <div ref={messagesEndRef} />
+                  </div>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-muted-foreground">
+                    <p>Начните диалог с нашим консультантом</p>
+                  </div>
+                )
+              ) : (
+                <div className="h-full flex items-center justify-center text-muted-foreground">
+                  <p>Не удалось загрузить чат</p>
+                </div>
+              )}
+            </ScrollArea>
+            
+            <div className="p-4 border-t">
+              {isAwaitingPhoneNumber ? (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">Введите ваш номер телефона:</p>
+                  <div className="flex space-x-2">
+                    <Input
+                      ref={phoneInputRef}
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      onKeyPress={(e) => handleKeyPress(e, 'phone')}
+                      placeholder="+7 (999) 123-45-67"
+                      className="flex-1"
+                    />
+                    <Button size="icon" onClick={handleSubmitPhoneNumber} disabled={!phoneNumber.trim() || phoneNumber.length < 5}>
+                      <Phone className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex space-x-2">
+                  <Input
+                    ref={messageInputRef}
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    onKeyPress={(e) => handleKeyPress(e, 'message')}
+                    placeholder="Введите сообщение..."
+                    className="flex-1"
+                  />
+                  <Button size="icon" onClick={handleSendMessage} disabled={!messageText.trim()}>
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+    );
+  }
   
   return (
     <div className={`fixed bottom-0 right-0 sm:bottom-6 sm:right-6 z-50 bg-white rounded-t-lg sm:rounded-lg shadow-xl overflow-hidden transition-all duration-200 border ${isMinimized ? 'w-full sm:w-72 h-14' : 'w-full sm:w-80 md:w-96 h-[80vh] sm:h-[500px]'}`}>
@@ -104,6 +193,15 @@ const ChatWidget: React.FC = () => {
           <h3 className="font-medium">Чат с консультантом</h3>
         </div>
         <div className="flex items-center space-x-2">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={toggleFullscreen} 
+            className="h-6 w-6 p-0 text-primary-foreground hover:bg-primary/90"
+            title="На весь экран"
+          >
+            <Maximize className="h-4 w-4" />
+          </Button>
           {isMinimized ? (
             <Button variant="ghost" size="icon" onClick={maximizeChat} className="h-6 w-6 p-0 text-primary-foreground hover:bg-primary/90">
               <Maximize2 className="h-4 w-4" />

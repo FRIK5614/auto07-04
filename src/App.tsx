@@ -22,6 +22,7 @@ import AdminImport from "./pages/AdminImport";
 import AdminChat from "./pages/AdminChat";
 import AdminCars from "./pages/AdminCars";
 import ChatWidget from "./components/ChatWidget";
+import { useLocation } from "react-router-dom";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -32,6 +33,46 @@ const queryClient = new QueryClient({
   },
 });
 
+const AppContent = () => {
+  const location = useLocation();
+  const isAdminRoute = location.pathname.startsWith('/admin');
+
+  return (
+    <>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/car/:id" element={<CarDetails />} />
+          <Route path="/compare" element={<CompareCars />} />
+          <Route path="/favorites" element={<Favorites />} />
+          
+          {/* Admin routes */}
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<AdminDashboard />} />
+            <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="tmcavto-catalog" element={<TmcAvtoCatalog />} />
+            <Route path="cars" element={<AdminCars />} />
+            <Route path="orders" element={<AdminOrders />} />
+            <Route path="import" element={<AdminImport />} />
+            <Route path="settings" element={<AdminDashboard />} />
+            <Route path="chat" element={<AdminChat />} />
+          </Route>
+          
+          {/* Redirect old route to admin panel */}
+          <Route path="/tmcavto-catalog" element={<AdminLogin />} />
+          
+          {/* Catch-all route */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+        {!isAdminRoute && <ChatWidget />}
+      </TooltipProvider>
+    </>
+  );
+};
+
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
@@ -39,36 +80,7 @@ const App = () => {
         <CarsProvider>
           <ChatProvider>
             <BrowserRouter>
-              <TooltipProvider>
-                <Toaster />
-                <Sonner />
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/car/:id" element={<CarDetails />} />
-                  <Route path="/compare" element={<CompareCars />} />
-                  <Route path="/favorites" element={<Favorites />} />
-                  
-                  {/* Admin routes */}
-                  <Route path="/admin/login" element={<AdminLogin />} />
-                  <Route path="/admin" element={<AdminLayout />}>
-                    <Route index element={<AdminDashboard />} />
-                    <Route path="dashboard" element={<AdminDashboard />} />
-                    <Route path="tmcavto-catalog" element={<TmcAvtoCatalog />} />
-                    <Route path="cars" element={<AdminCars />} />
-                    <Route path="orders" element={<AdminOrders />} />
-                    <Route path="import" element={<AdminImport />} />
-                    <Route path="settings" element={<AdminDashboard />} />
-                    <Route path="chat" element={<AdminChat />} />
-                  </Route>
-                  
-                  {/* Redirect old route to admin panel */}
-                  <Route path="/tmcavto-catalog" element={<AdminLogin />} />
-                  
-                  {/* Catch-all route */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-                <ChatWidget />
-              </TooltipProvider>
+              <AppContent />
             </BrowserRouter>
           </ChatProvider>
         </CarsProvider>

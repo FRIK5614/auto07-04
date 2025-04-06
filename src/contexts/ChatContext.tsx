@@ -3,6 +3,8 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { v4 as uuidv4 } from 'uuid';
 import { ChatSession, ChatMessage, ChatState } from '@/types/chat';
 import { useToast } from '@/hooks/use-toast';
+import { useAdmin } from '@/contexts/AdminContext';
+import { useLocation } from 'react-router-dom';
 
 interface ChatContextType {
   chatState: ChatState;
@@ -31,6 +33,8 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [responseTimeoutId, setResponseTimeoutId] = useState<number | null>(null);
   const [hasRequestedContact, setHasRequestedContact] = useState(false);
   const { toast } = useToast();
+  const { isAdmin } = useAdmin();
+  const location = useLocation();
 
   // Load chat sessions from localStorage on mount
   useEffect(() => {
@@ -52,6 +56,13 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     localStorage.setItem('chatSessions', JSON.stringify(chatState.sessions));
   }, [chatState.sessions]);
+
+  // Don't show chat widget on admin pages
+  useEffect(() => {
+    if (isAdmin && isOpen && location.pathname.startsWith('/admin')) {
+      setIsOpen(false);
+    }
+  }, [isAdmin, isOpen, location]);
 
   // Add a system message to welcome the user when they start a new session
   const addSystemMessage = (sessionId: string, content: string = 'Здравствуйте! Чем мы можем вам помочь?') => {
@@ -76,6 +87,11 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const openChat = () => {
+    // Don't open chat on admin pages
+    if (isAdmin && location.pathname.startsWith('/admin')) {
+      return;
+    }
+
     setIsOpen(true);
     setChatState(prev => ({ ...prev, isMinimized: false }));
     setHasRequestedContact(false);
