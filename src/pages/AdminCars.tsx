@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useCars } from '@/hooks/useCars';
 import { Button } from '@/components/ui/button';
@@ -13,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Car } from '@/types/car';
-import { Plus, Pencil, Trash2, Search, Car as CarIcon } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Car as CarIcon, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const AdminCars = () => {
@@ -24,6 +23,9 @@ const AdminCars = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const { toast } = useToast();
   
+  const [uploadedImages, setUploadedImages] = useState<File[]>([]);
+  const [previewImages, setPreviewImages] = useState<string[]>([]);
+
   const filteredCars = cars
     .filter(car => 
       car.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -114,7 +116,26 @@ const AdminCars = () => {
     }
 
     try {
-      // Ensure all required fields are present
+      const carImages = [...(editingCar.images || [])];
+      
+      if (previewImages.length > 0) {
+        previewImages.forEach((url, index) => {
+          carImages.push({
+            id: `img-${Date.now()}-${index}`,
+            url: url,
+            alt: `${editingCar.brand} ${editingCar.model}`
+          });
+        });
+      }
+
+      if (carImages.length === 0) {
+        carImages.push({
+          id: `img-${Date.now()}`,
+          url: '/placeholder.svg',
+          alt: 'Car Image'
+        });
+      }
+
       const completeCar: Car = {
         id: editingCar.id || `car-${Date.now()}`,
         brand: editingCar.brand,
@@ -153,13 +174,7 @@ const AdminCars = () => {
           }
         },
         features: editingCar.features || [],
-        images: editingCar.images || [
-          {
-            id: `img-${Date.now()}`,
-            url: '/placeholder.svg',
-            alt: 'Car Image'
-          }
-        ],
+        images: carImages,
         description: editingCar.description || '',
         isNew: editingCar.isNew || true,
         country: editingCar.country || 'Россия'
@@ -181,6 +196,8 @@ const AdminCars = () => {
       
       setDialogOpen(false);
       setEditingCar(null);
+      setUploadedImages([]);
+      setPreviewImages([]);
     } catch (error) {
       console.error('Error saving car:', error);
       toast({
@@ -211,6 +228,45 @@ const AdminCars = () => {
       const updatedColors = [...editingCar.colors];
       updatedColors.splice(index, 1);
       setEditingCar({ ...editingCar, colors: updatedColors });
+    }
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    
+    const newUploadedImages: File[] = [];
+    const newPreviewImages: string[] = [];
+    
+    Array.from(files).forEach(file => {
+      newUploadedImages.push(file);
+      
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          newPreviewImages.push(event.target.result as string);
+          if (newPreviewImages.length === files.length) {
+            setPreviewImages(prev => [...prev, ...newPreviewImages]);
+          }
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+    
+    setUploadedImages(prev => [...prev, ...newUploadedImages]);
+    
+    e.target.value = '';
+  };
+
+  const removePreviewImage = (index: number) => {
+    setPreviewImages(prev => prev.filter((_, i) => i !== index));
+    setUploadedImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const removeCarImage = (imageId: string) => {
+    if (editingCar && editingCar.images) {
+      const updatedImages = editingCar.images.filter(img => img.id !== imageId);
+      setEditingCar({...editingCar, images: updatedImages});
     }
   };
 
@@ -583,26 +639,81 @@ const AdminCars = () => {
               </TabsContent>
               
               <TabsContent value="additional" className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="mainImage">Ссылка на основное изображение</Label>
-                  <Input
-                    id="mainImage"
-                    value={editingCar.images && editingCar.images[0] ? editingCar.images[0].url : ''}
-                    onChange={(e) => {
-                      const currentImages = editingCar.images || [];
-                      if (currentImages.length === 0) {
-                        setEditingCar({
-                          ...editingCar,
-                          images: [{ id: `img-${Date.now()}`, url: e.target.value, alt: `${editingCar.brand} ${editingCar.model}` }]
-                        });
-                      } else {
-                        const updatedImages = [...currentImages];
-                        updatedImages[0] = { ...updatedImages[0], url: e.target.value };
-                        setEditingCar({ ...editingCar, images: updatedImages });
-                      }
-                    }}
-                    placeholder="https://example.com/image.jpg"
-                  />
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <Label>Фотографии автомобиля</Label>
+                    <div className="relative">
+                      <Input
+                        id="image-upload"
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleImageUpload}
+                      />
+                      <Label 
+                        htmlFor="image-upload" 
+                        className="inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 cursor-pointer"
+                      >
+                        <Upload className="h-4 w-4" />
+                        Загрузить фотографии
+                      </Label>
+                    </div>
+                  </div>
+                  
+                  {editingCar.images && editingCar.images.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-medium mb-2">Текущие фотографии</h4>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                        {editingCar.images.map((image) => (
+                          <div key={image.id} className="relative group">
+                            <img 
+                              src={image.url} 
+                              alt={image.alt} 
+                              className="w-full h-32 object-cover rounded-md border border-border"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.src = '/placeholder.svg';
+                              }}
+                            />
+                            <Button 
+                              variant="destructive" 
+                              size="icon"
+                              className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={() => removeCarImage(image.id)}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {previewImages.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-medium mb-2">Новые фотографии</h4>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                        {previewImages.map((src, index) => (
+                          <div key={index} className="relative group">
+                            <img 
+                              src={src} 
+                              alt={`New upload ${index + 1}`} 
+                              className="w-full h-32 object-cover rounded-md border border-border"
+                            />
+                            <Button 
+                              variant="destructive" 
+                              size="icon"
+                              className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={() => removePreviewImage(index)}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   
                   {editingCar.images && editingCar.images[0] && editingCar.images[0].url && (
                     <div className="mt-2 rounded-md overflow-hidden border border-border">
@@ -617,6 +728,28 @@ const AdminCars = () => {
                       />
                     </div>
                   )}
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="mainImage">Ссылка на основное изображение</Label>
+                    <Input
+                      id="mainImage"
+                      value={editingCar.images && editingCar.images[0] ? editingCar.images[0].url : ''}
+                      onChange={(e) => {
+                        const currentImages = editingCar.images || [];
+                        if (currentImages.length === 0) {
+                          setEditingCar({
+                            ...editingCar,
+                            images: [{ id: `img-${Date.now()}`, url: e.target.value, alt: `${editingCar.brand} ${editingCar.model}` }]
+                          });
+                        } else {
+                          const updatedImages = [...currentImages];
+                          updatedImages[0] = { ...updatedImages[0], url: e.target.value };
+                          setEditingCar({ ...editingCar, images: updatedImages });
+                        }
+                      }}
+                      placeholder="https://example.com/image.jpg"
+                    />
+                  </div>
                 </div>
               </TabsContent>
             </Tabs>
