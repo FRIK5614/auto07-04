@@ -76,15 +76,15 @@ const AppContent = () => {
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <AdminProvider>
-        <CarsProvider>
-          <ChatProvider>
-            <BrowserRouter>
+      <BrowserRouter>
+        <AdminProvider>
+          <CarsProvider>
+            <ChatProvider>
               <AppContent />
-            </BrowserRouter>
-          </ChatProvider>
-        </CarsProvider>
-      </AdminProvider>
+            </ChatProvider>
+          </CarsProvider>
+        </AdminProvider>
+      </BrowserRouter>
     </QueryClientProvider>
   );
 };
