@@ -20,6 +20,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AdminOrders from "./pages/AdminOrders";
 import AdminImport from "./pages/AdminImport";
 import AdminChat from "./pages/AdminChat";
+import AdminCars from "./pages/AdminCars";
 import ChatWidget from "./components/ChatWidget";
 
 const queryClient = new QueryClient({
@@ -53,7 +54,7 @@ const App = () => {
                     <Route index element={<AdminDashboard />} />
                     <Route path="dashboard" element={<AdminDashboard />} />
                     <Route path="tmcavto-catalog" element={<TmcAvtoCatalog />} />
-                    <Route path="cars" element={<AdminDashboard />} />
+                    <Route path="cars" element={<AdminCars />} />
                     <Route path="orders" element={<AdminOrders />} />
                     <Route path="import" element={<AdminImport />} />
                     <Route path="settings" element={<AdminDashboard />} />

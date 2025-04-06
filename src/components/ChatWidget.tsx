@@ -96,7 +96,7 @@ const ChatWidget: React.FC = () => {
   }
   
   return (
-    <div className={`fixed bottom-6 right-6 z-50 bg-white rounded-lg shadow-xl overflow-hidden transition-all duration-200 border ${isMinimized ? 'w-72 h-14' : 'w-80 sm:w-96 h-[500px]'}`}>
+    <div className={`fixed bottom-0 right-0 sm:bottom-6 sm:right-6 z-50 bg-white rounded-t-lg sm:rounded-lg shadow-xl overflow-hidden transition-all duration-200 border ${isMinimized ? 'w-full sm:w-72 h-14' : 'w-full sm:w-80 md:w-96 h-[80vh] sm:h-[500px]'}`}>
       {/* Chat header */}
       <div className="bg-primary text-primary-foreground p-3 flex justify-between items-center">
         <div className="flex items-center">
@@ -127,7 +127,7 @@ const ChatWidget: React.FC = () => {
       {!isMinimized && (
         <>
           {/* Chat messages */}
-          <ScrollArea className="h-[400px] p-3">
+          <ScrollArea className="h-[calc(100%-110px)] sm:h-[400px] p-3">
             {activeSession ? (
               activeSession.messages.length > 0 ? (
                 <div className="flex flex-col space-y-3">

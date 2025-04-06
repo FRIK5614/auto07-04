@@ -206,9 +206,9 @@ const AdminLayout = () => {
             </Button>
           </SidebarFooter>
         </Sidebar>
-        <SidebarInset className="bg-background flex-1 p-6">
+        <SidebarInset className="bg-background flex-1 p-0 md:p-6">
           <div className="container mx-auto">
-            <SidebarTrigger className="mb-4" />
+            <SidebarTrigger className="mb-4 hidden md:flex" />
             <Outlet />
           </div>
         </SidebarInset>
