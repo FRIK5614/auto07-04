@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import LoadingState from "./LoadingState";
 import ErrorState from "./ErrorState";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface FeaturedCarsProps {
   cars: Car[];
@@ -26,6 +27,7 @@ const FeaturedCars = ({
 }: FeaturedCarsProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [visibleCount, setVisibleCount] = useState(4);
+  const isMobile = useIsMobile();
 
   // Determine how many cards to show based on viewport
   useEffect(() => {
@@ -47,14 +49,13 @@ const FeaturedCars = ({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const totalSlides = Math.max(0, cars.length - visibleCount + 1);
-  
+  // Всегда двигаемся на один автомобиль за раз
   const handlePrevious = () => {
     setCurrentIndex((prev) => Math.max(0, prev - 1));
   };
 
   const handleNext = () => {
-    setCurrentIndex((prev) => Math.min(totalSlides - 1, prev + 1));
+    setCurrentIndex((prev) => Math.min(cars.length - 1, prev + 1));
   };
 
   return (
@@ -73,18 +74,18 @@ const FeaturedCars = ({
                 size="icon"
                 onClick={handlePrevious}
                 disabled={currentIndex === 0}
-                className="rounded-full h-10 w-10"
+                className="rounded-full h-10 w-10 bg-blue-600 hover:bg-blue-700 text-white border-none"
               >
-                <ChevronLeft className="h-5 w-5" />
+                <ChevronLeft className="h-5 w-5 text-white" />
               </Button>
               <Button
                 variant="outline"
                 size="icon"
                 onClick={handleNext}
-                disabled={currentIndex >= totalSlides - 1}
-                className="rounded-full h-10 w-10"
+                disabled={currentIndex >= cars.length - visibleCount}
+                className="rounded-full h-10 w-10 bg-blue-600 hover:bg-blue-700 text-white border-none"
               >
-                <ChevronRight className="h-5 w-5" />
+                <ChevronRight className="h-5 w-5 text-white" />
               </Button>
             </div>
           )}
@@ -103,7 +104,7 @@ const FeaturedCars = ({
             <div
               className="flex transition-transform duration-500 ease-in-out"
               style={{
-                transform: `translateX(-${(currentIndex * 100) / visibleCount}%)`,
+                transform: `translateX(-${currentIndex * (100 / visibleCount)}%)`,
                 width: `${(cars.length * 100) / visibleCount}%`,
               }}
             >
