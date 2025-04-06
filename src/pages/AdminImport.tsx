@@ -22,8 +22,8 @@ import {
   Upload,
   Save,
   ArrowUpDown,
-  Import,
-  Export
+  FileUp,
+  FileDown
 } from 'lucide-react';
 import { Car } from '@/types/car';
 
@@ -333,8 +333,8 @@ const AdminImport: React.FC = () => {
           
           <Tabs defaultValue="export">
             <TabsList className="mb-4">
-              <TabsTrigger value="export"><Export className="mr-2 h-4 w-4" />Экспорт</TabsTrigger>
-              <TabsTrigger value="import"><Import className="mr-2 h-4 w-4" />Импорт</TabsTrigger>
+              <TabsTrigger value="export"><FileDown className="mr-2 h-4 w-4" />Экспорт</TabsTrigger>
+              <TabsTrigger value="import"><FileUp className="mr-2 h-4 w-4" />Импорт</TabsTrigger>
               <TabsTrigger value="tmcavto">TMC Авто</TabsTrigger>
             </TabsList>
             
