@@ -1,3 +1,4 @@
+
 import { useCars as useGlobalCars } from "../contexts/CarsContext";
 import { Car, Order } from "../types/car";
 import { useToast } from "@/hooks/use-toast";
@@ -168,6 +169,78 @@ export const useCars = () => {
     }
   };
 
+  // Adding functions to handle uploaded images in localStorage
+  const saveUploadedImages = (images: {name: string, url: string}[]): void => {
+    try {
+      const existingImagesData = localStorage.getItem('carImages');
+      let existingImages: {name: string, url: string}[] = [];
+      
+      if (existingImagesData) {
+        existingImages = JSON.parse(existingImagesData);
+      }
+      
+      // Combine existing and new images, avoiding duplicates by name
+      const combinedImages = [...existingImages];
+      
+      for (const newImage of images) {
+        if (!existingImages.some(img => img.name === newImage.name)) {
+          combinedImages.push(newImage);
+        }
+      }
+      
+      localStorage.setItem('carImages', JSON.stringify(combinedImages));
+      console.log(`Saved ${images.length} images to localStorage`);
+    } catch (error) {
+      console.error('Error saving uploaded images to localStorage:', error);
+    }
+  };
+  
+  const getUploadedImages = (): {name: string, url: string}[] => {
+    try {
+      const imagesData = localStorage.getItem('carImages');
+      if (!imagesData) return [];
+      
+      return JSON.parse(imagesData);
+    } catch (error) {
+      console.error('Error getting uploaded images from localStorage:', error);
+      return [];
+    }
+  };
+  
+  // Function to save image by URL
+  const saveImageByUrl = async (imageUrl: string): Promise<boolean> => {
+    try {
+      // Extract filename from URL or generate one
+      const filename = imageUrl.split('/').pop() || `image-${Date.now()}.jpg`;
+      
+      // Save to localStorage
+      saveUploadedImages([{
+        name: filename,
+        url: imageUrl
+      }]);
+      
+      return true;
+    } catch (error) {
+      console.error('Error saving image by URL:', error);
+      return false;
+    }
+  };
+  
+  // Function to validate image URL
+  const isValidImageUrl = async (url: string): Promise<boolean> => {
+    try {
+      // In a real implementation, this would make a HEAD request to check the content type
+      // For the simulation, we'll just check if the URL might be an image based on extension
+      const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
+      const hasImageExtension = imageExtensions.some(ext => url.toLowerCase().includes(ext));
+      
+      return url.startsWith('http') && hasImageExtension;
+    } catch (error) {
+      console.error('Error validating image URL:', error);
+      return false;
+    }
+  };
+
   const getCarServerImage = (carId: string): { id: string, url: string, alt: string } | null => {
     try {
       const carImageMapping = localStorage.getItem('carImageMapping');
@@ -217,6 +290,16 @@ export const useCars = () => {
   const carsWithImages = cars.map(car => applySavedImagesToCar(car));
   const filteredCarsWithImages = filteredCars.map(car => applySavedImagesToCar(car));
   
+  // Helper function for formatting order date
+  const getOrderCreationDate = (order: Order) => {
+    try {
+      return new Date(order.createdAt).toISOString().slice(0, 19).replace('T', ' ');
+    } catch (error) {
+      console.error('Error formatting order date:', error);
+      return 'Неизвестно';
+    }
+  };
+  
   return {
     cars: carsWithImages,
     filteredCars: filteredCarsWithImages,
@@ -265,6 +348,10 @@ export const useCars = () => {
     updateCarImage,
     applySavedImagesToCar,
     getCarServerImage,
+    saveUploadedImages,
+    getUploadedImages,
+    saveImageByUrl,
+    isValidImageUrl,
     exportOrdersToCsv: () => {
       if (!orders || orders.length === 0) {
         return '';
@@ -304,14 +391,7 @@ export const useCars = () => {
       
       return csvRows.join('\n');
     },
-    getOrderCreationDate: (order: Order) => {
-      try {
-        return new Date(order.createdAt).toISOString().slice(0, 19).replace('T', ' ');
-      } catch (error) {
-        console.error('Error formatting order date:', error);
-        return 'Неизвестно';
-      }
-    },
+    getOrderCreationDate,
     addToFavorites,
     removeFromFavorites,
     addToCompare,
