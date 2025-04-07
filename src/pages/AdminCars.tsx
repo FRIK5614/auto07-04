@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useCars } from '@/hooks/useCars';
 import { Button } from '@/components/ui/button';
@@ -936,4 +937,182 @@ const AdminCars = () => {
                                   placeholder="https://example.com/image.jpg"
                                 />
                               </div>
-                              <Button onClick={handleImageUrlAdd}>Добавить</
+                              <Button onClick={handleImageUrlAdd}>Добавить</Button>
+                            </div>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-4 space-y-4">
+                    <div className="space-y-4">
+                      {editingCar.images && editingCar.images.length > 0 && (
+                        <div>
+                          <h4 className="font-medium mb-3">Текущие изображения автомобиля</h4>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                            {editingCar.images.map((image, idx) => (
+                              <div key={image.id} className="relative group aspect-square">
+                                <img 
+                                  src={image.url} 
+                                  alt={image.alt}
+                                  className="w-full h-full object-cover rounded-md"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.src = '/placeholder.svg';
+                                  }}
+                                />
+                                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 flex flex-col justify-between p-2 transition-all">
+                                  <Button 
+                                    variant="destructive" 
+                                    size="sm" 
+                                    className="self-end opacity-0 group-hover:opacity-100"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      removeCarImage(image.id);
+                                    }}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                  
+                                  <Button 
+                                    variant="secondary"
+                                    size="sm"
+                                    className={`mt-auto w-full opacity-0 group-hover:opacity-100 ${mainImageIndex === idx ? 'bg-green-500 hover:bg-green-600' : ''}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setAsMainImage(idx);
+                                    }}
+                                  >
+                                    {mainImageIndex === idx ? (
+                                      <>
+                                        <CheckCircle2 className="h-4 w-4 mr-1" />
+                                        Основное
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Star className="h-4 w-4 mr-1" />
+                                        Сделать основным
+                                      </>
+                                    )}
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {previewImages.length > 0 && (
+                        <div>
+                          <h4 className="font-medium mb-3">Новые загруженные изображения</h4>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                            {previewImages.map((url, idx) => (
+                              <div key={`preview-${idx}`} className="relative group aspect-square">
+                                <img 
+                                  src={url} 
+                                  alt="Preview" 
+                                  className="w-full h-full object-cover rounded-md"
+                                />
+                                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 flex flex-col justify-between p-2 transition-all">
+                                  <Button 
+                                    variant="destructive" 
+                                    size="sm" 
+                                    className="self-end opacity-0 group-hover:opacity-100"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      removePreviewImage(idx);
+                                    }}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                  
+                                  <Button 
+                                    variant="secondary"
+                                    size="sm"
+                                    className="mt-auto w-full opacity-0 group-hover:opacity-100"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setAsMainImage(idx, 'preview');
+                                    }}
+                                  >
+                                    <Star className="h-4 w-4 mr-1" />
+                                    Сделать основным
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {savedImages.length > 0 && (
+                        <div>
+                          <h4 className="font-medium mb-3">Сохраненные изображения в галерее</h4>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                            {savedImages.map((savedImage, idx) => (
+                              <div key={`saved-${idx}`} className="relative group aspect-square">
+                                <img 
+                                  src={savedImage.url} 
+                                  alt={savedImage.name || 'Saved image'} 
+                                  className="w-full h-full object-cover rounded-md"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.src = '/placeholder.svg';
+                                  }}
+                                />
+                                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 flex justify-center items-center transition-all">
+                                  <Button 
+                                    variant="secondary"
+                                    size="sm"
+                                    className="opacity-0 group-hover:opacity-100"
+                                    onClick={() => addSavedImageToCar(savedImage.url)}
+                                  >
+                                    <Plus className="h-4 w-4 mr-1" />
+                                    Добавить к автомобилю
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
+                {isMobile && (
+                  <div className="flex justify-between mt-4">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setActiveTab('technical')}
+                      className="flex-1 mr-2"
+                    >
+                      Назад
+                    </Button>
+                    <Button onClick={handleSave} className="flex-1 ml-2">Сохранить</Button>
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          )}
+          
+          <DialogFooter className="mt-4">
+            {!isMobile && (
+              <>
+                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                  Отмена
+                </Button>
+                <Button type="button" onClick={handleSave}>
+                  Сохранить
+                </Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+export default AdminCars;
