@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useCars } from '@/hooks/useCars';
 import { useAdmin } from '@/contexts/AdminContext';
@@ -14,7 +15,6 @@ import {
   Clock, 
   XCircle, 
   AlertCircle, 
-  FileDown, 
   RefreshCw,
   Phone,
   Mail,
@@ -135,7 +135,7 @@ const OrderCard = ({ order, car, onStatusChange }: {
 };
 
 const AdminOrders: React.FC = () => {
-  const { orders, getCarById, processOrder, loading, exportOrdersToCsv, syncOrders } = useCars();
+  const { orders, getCarById, processOrder, syncOrders } = useCars();
   const { isAdmin } = useAdmin();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -163,7 +163,7 @@ const AdminOrders: React.FC = () => {
     const loadOrders = async () => {
       setIsSyncing(true);
       try {
-        await syncOrders();
+        await syncOrders(false); // Загружаем заказы без уведомления
       } catch (error) {
         console.error("Failed to load orders:", error);
       } finally {
@@ -171,50 +171,19 @@ const AdminOrders: React.FC = () => {
       }
     };
     
-    loadOrders();
+    loadOrders(); // Загружаем заказы при первой загрузке страницы
     
-    const intervalId = setInterval(() => {
-      syncOrders().catch(error => {
-        console.error("Auto-sync failed:", error);
-      });
-    }, 30000);
-
-    return () => clearInterval(intervalId);
+    // Удаляем автоматическую синхронизацию каждые 30 секунд
   }, [isAdmin, navigate, syncOrders]);
 
-  const exportOrdersToCSV = () => {
-    if (!orders || orders.length === 0) {
-      toast({
-        title: "Нет данных для экспорта",
-        description: "Список заказов пуст",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const csvContent = exportOrdersToCsv();
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const filename = `orders_export_${format(new Date(), 'yyyy-MM-dd')}.csv`;
-    
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', filename);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    toast({
-      title: "Экспорт завершен",
-      description: `Заказы экспортированы в файл ${filename}`
-    });
-  };
+  if (!isAdmin) {
+    return null;
+  }
 
   const handleSyncOrders = async () => {
     setIsSyncing(true);
     try {
-      await syncOrders();
+      await syncOrders(true); // Явный запрос с уведомлением
       toast({
         title: "Синхронизация завершена",
         description: "Заказы успешно обновлены"
@@ -231,20 +200,9 @@ const AdminOrders: React.FC = () => {
     }
   };
 
-  if (!isAdmin) {
-    return null;
-  }
-
-  if (loading) {
-    return (
-      <div className="container mx-auto p-4">
-        <h1 className="text-2xl font-bold mb-4">Загрузка заказов...</h1>
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        </div>
-      </div>
-    );
-  }
+  const handleStatusChange = (orderId: string, newStatus: Order['status']) => {
+    processOrder(orderId, newStatus);
+  };
 
   if (!orders || orders.length === 0) {
     return (
@@ -273,10 +231,6 @@ const AdminOrders: React.FC = () => {
       </div>
     );
   }
-
-  const handleStatusChange = (orderId: string, newStatus: Order['status']) => {
-    processOrder(orderId, newStatus);
-  };
 
   return (
     <div className="container mx-auto p-4">
@@ -321,17 +275,6 @@ const AdminOrders: React.FC = () => {
                 <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
                 <span className="hidden sm:inline">Обновить</span>
                 <span className="inline sm:hidden">Обн.</span>
-              </Button>
-              
-              <Button 
-                onClick={exportOrdersToCSV}
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-1.5 ml-auto sm:ml-2"
-              >
-                <FileDown className="h-4 w-4" />
-                <span className="hidden sm:inline">Экспорт в CSV</span>
-                <span className="inline sm:hidden">Экспорт</span>
               </Button>
             </div>
           </CardHeader>

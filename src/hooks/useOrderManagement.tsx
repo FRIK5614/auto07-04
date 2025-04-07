@@ -46,33 +46,33 @@ export const useOrderManagement = () => {
     }
   };
 
-  // Синхронизация заказов с сервером
-  const syncOrders = async (): Promise<boolean> => {
+  // Синхронизация заказов с сервером - теперь без автоматического уведомления
+  const syncOrders = async (showToast = false): Promise<boolean> => {
     try {
-      console.log('Получение заказов с сервера');
-      
       const serverOrders = await fetchOrdersFromServer();
-      console.log(`Получено ${serverOrders.length} заказов с сервера`);
       
       if (serverOrders.length > 0) {
         setOrders(serverOrders);
-        console.log('Заказы успешно обновлены из базы данных');
         
-        toast({
-          title: "Заказы обновлены",
-          description: `Получено ${serverOrders.length} заказов из базы данных`
-        });
+        if (showToast) {
+          toast({
+            title: "Заказы обновлены",
+            description: `Получено ${serverOrders.length} заказов из базы данных`
+          });
+        }
       }
       
       return true;
     } catch (error) {
       console.error('Ошибка получения заказов из базы данных:', error);
       
-      toast({
-        variant: "destructive",
-        title: "Ошибка обновления",
-        description: "Не удалось получить заказы из базы данных"
-      });
+      if (showToast) {
+        toast({
+          variant: "destructive",
+          title: "Ошибка обновления",
+          description: "Не удалось получить заказы из базы данных"
+        });
+      }
       
       return false;
     }
@@ -138,7 +138,7 @@ export const useOrderManagement = () => {
         console.log(`Заказ ${order.id} успешно создан на сервере`);
         
         // После успешного создания заказа на сервере, синхронизируем заказы
-        await syncOrders();
+        await syncOrders(true);
         
         return true;
       } else {
@@ -164,7 +164,14 @@ export const useOrderManagement = () => {
       
       if (serverUpdateSuccess) {
         // Обновляем заказы после успешного обновления на сервере
-        await syncOrders();
+        await syncOrders(true);
+        
+        // Также обновляем локальный заказ для мгновенного обновления UI
+        setOrders(prevOrders => 
+          prevOrders.map(order => 
+            order.id === orderId ? { ...order, status: newStatus } : order
+          )
+        );
         
         toast({
           title: "Статус заказа обновлен",
