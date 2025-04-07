@@ -1,12 +1,11 @@
-
 import { useCars as useGlobalCars } from "../contexts/CarsContext";
 import { Order } from "../types/car";
 import { useToast } from "@/hooks/use-toast";
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
-// Определяем базовый URL для API
-const API_BASE_URL = '/api';
+// Определяем базовый URL для API - теперь это внешний домен
+const API_BASE_URL = 'https://metallika29.ru/public/api';
 
 export const useOrderManagement = () => {
   const {

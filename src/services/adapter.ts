@@ -1,9 +1,7 @@
-
 import { Car, Order } from "../types/car";
 
-const API_BASE_URL = '/api';
+const API_BASE_URL = 'https://metallika29.ru/public/api';
 
-// Интерфейс для адаптера API
 interface ApiAdapter {
   // Автомобили
   getCars: () => Promise<Car[]>;
@@ -32,7 +30,6 @@ interface ApiAdapter {
   importCarsFromTmcAvto: (cars: any[]) => Promise<{ imported: number, errors: string[] }>;
 }
 
-// Реализация адаптера для PHP API
 const phpApiAdapter: ApiAdapter = {
   // ===== Автомобили =====
   getCars: async () => {
@@ -401,5 +398,4 @@ const phpApiAdapter: ApiAdapter = {
   },
 };
 
-// По умолчанию используем PHP API адаптер
 export const apiAdapter: ApiAdapter = phpApiAdapter;

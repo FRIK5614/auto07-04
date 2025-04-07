@@ -10,6 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { RefreshCw, Database, CloudUpload, Activity } from 'lucide-react';
 import { checkJsonFilesAvailability } from '@/services/api';
 
+const API_BASE_URL = 'https://metallika29.ru/public/api';
+
 const AdminDashboard: React.FC = () => {
   const { cars, orders, loading, syncOrders } = useCars();
   const { isAdmin } = useAdmin();
@@ -74,7 +76,7 @@ const AdminDashboard: React.FC = () => {
   const testDirectMysqlConnection = async () => {
     try {
       setMysqlStatus('checking');
-      const response = await fetch('/api/direct_mysql_test.php');
+      const response = await fetch(`${API_BASE_URL}/direct_mysql_test.php`);
       const result = await response.json();
       
       if (result.success) {
@@ -228,7 +230,7 @@ const AdminDashboard: React.FC = () => {
               variant="outline" 
               size="sm" 
               onClick={() => {
-                window.location.href = '/api/test_connection.php';
+                window.location.href = `${API_BASE_URL}/test_connection.php`;
               }}
             >
               Тест соединения
@@ -237,7 +239,7 @@ const AdminDashboard: React.FC = () => {
               variant="outline" 
               size="sm" 
               onClick={() => {
-                window.location.href = '/api/check_tables.php';
+                window.location.href = `${API_BASE_URL}/check_tables.php`;
               }}
             >
               Проверить таблицы
@@ -246,7 +248,7 @@ const AdminDashboard: React.FC = () => {
               variant="outline" 
               size="sm" 
               onClick={() => {
-                window.location.href = '/api/install.php';
+                window.location.href = `${API_BASE_URL}/install.php`;
               }}
             >
               Создать таблицы
