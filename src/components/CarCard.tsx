@@ -28,8 +28,8 @@ const CarCard = ({ car, className }: CarCardProps) => {
   const { toggleFavorite, toggleCompare, isFavorite, isInCompare } = useCars();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   
-  // Use Embla carousel for image swiping
-  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, draggable: true });
+  // Use Embla carousel for image swiping - fix the type error by removing draggable
+  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true });
   
   const handlePrev = () => {
     emblaApi?.scrollPrev();

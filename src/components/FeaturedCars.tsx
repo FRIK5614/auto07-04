@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Car } from "@/types/car";
 import CarCard from "@/components/CarCard";
@@ -30,14 +29,13 @@ const FeaturedCars = ({
   const isMobile = useIsMobile();
   
   const options = {
-    align: "start",
+    align: "start" as const,
     loop: false,
     slidesToScroll: isMobile ? 1 : visibleCount,
   };
   
   const [emblaRef, emblaApi] = useEmblaCarousel(options);
   
-  // Determine how many cards to show based on viewport
   useEffect(() => {
     const handleResize = () => {
       const width = window.innerWidth;
@@ -57,7 +55,6 @@ const FeaturedCars = ({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Update carousel options when visibleCount changes
   useEffect(() => {
     if (emblaApi) {
       emblaApi.reInit({
