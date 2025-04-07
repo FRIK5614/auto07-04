@@ -8,13 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Heart, BarChart2, Info } from "lucide-react";
 import { useCars } from "@/hooks/useCars";
 import { cn } from "@/lib/utils";
-import { 
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious
-} from "@/components/ui/carousel";
+import useEmblaCarousel from "embla-carousel-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface CarCardProps {
   car: Car;
@@ -31,14 +26,39 @@ const formatPrice = (price: number) => {
 
 const CarCard = ({ car, className }: CarCardProps) => {
   const { toggleFavorite, toggleCompare, isFavorite, isInCompare } = useCars();
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  
+  // Use Embla carousel for image swiping
+  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, draggable: true });
+  
+  const handlePrev = () => {
+    emblaApi?.scrollPrev();
+    // Update current image index after scrolling
+    if (emblaApi) {
+      const index = emblaApi.selectedScrollSnap();
+      setCurrentImageIndex(index);
+    }
+  };
+  
+  const handleNext = () => {
+    emblaApi?.scrollNext();
+    // Update current image index after scrolling
+    if (emblaApi) {
+      const index = emblaApi.selectedScrollSnap();
+      setCurrentImageIndex(index);
+    }
+  };
   
   return (
     <Card className={cn("overflow-hidden group h-full flex flex-col", className)}>
       <div className="relative overflow-hidden h-48">
-        <Carousel className="w-full h-full">
-          <CarouselContent className="h-full">
+        <div className="h-full w-full" ref={emblaRef}>
+          <div className="flex h-full">
             {car.images.map((image, idx) => (
-              <CarouselItem key={idx} className="h-full">
+              <div 
+                key={idx} 
+                className="relative flex-none w-full h-full min-w-0"
+              >
                 <Link to={`/car/${car.id}`}>
                   <img
                     src={image.url}
@@ -46,18 +66,38 @@ const CarCard = ({ car, className }: CarCardProps) => {
                     className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />
                 </Link>
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-          <div className="absolute bottom-2 left-0 w-full flex justify-center gap-1 z-10">
-            {car.images.map((_, idx) => (
-              <div 
-                key={idx} 
-                className="w-2 h-2 rounded-full bg-white/50"
-              />
+              </div>
             ))}
           </div>
-        </Carousel>
+        </div>
+        
+        {car.images.length > 1 && (
+          <>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-1/2 left-2 transform -translate-y-1/2 bg-white/80 hover:bg-white text-auto-gray-700 rounded-full z-10 w-8 h-8"
+              onClick={(e) => {
+                e.preventDefault();
+                handlePrev();
+              }}
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+            
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-1/2 right-2 transform -translate-y-1/2 bg-white/80 hover:bg-white text-auto-gray-700 rounded-full z-10 w-8 h-8"
+              onClick={(e) => {
+                e.preventDefault();
+                handleNext();
+              }}
+            >
+              <ChevronRight className="h-5 w-5" />
+            </Button>
+          </>
+        )}
         
         <div className="absolute top-3 left-3 flex flex-col gap-2">
           {car.isNew && (
@@ -73,6 +113,19 @@ const CarCard = ({ car, className }: CarCardProps) => {
           <Badge variant="outline" className="absolute top-3 right-3 bg-white text-red-600 border-red-600">
             Скидка {formatPrice(car.price.discount)}
           </Badge>
+        )}
+
+        {car.images.length > 1 && (
+          <div className="absolute bottom-2 left-0 w-full flex justify-center gap-1 z-10">
+            {car.images.map((_, idx) => (
+              <div 
+                key={idx} 
+                className={`w-2 h-2 rounded-full ${
+                  idx === currentImageIndex ? "bg-white" : "bg-white/50"
+                }`}
+              />
+            ))}
+          </div>
         )}
       </div>
       

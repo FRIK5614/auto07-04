@@ -64,6 +64,25 @@ export const useCars = () => {
       .slice(0, limit);
   };
   
+  // Get most popular car models
+  const getPopularCarModels = (limit = 5): { model: string, count: number }[] => {
+    const modelCounts: Record<string, number> = {};
+    cars.forEach(car => {
+      const model = `${car.brand} ${car.model}`;
+      modelCounts[model] = (modelCounts[model] || 0) + 1;
+    });
+    
+    return Object.entries(modelCounts)
+      .map(([model, count]) => ({ model, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, limit);
+  };
+  
+  // Get cars by body type
+  const getCarsByBodyType = (bodyType: string): Car[] => {
+    return cars.filter(car => car.bodyType === bodyType);
+  };
+  
   // Get uploaded images
   const getUploadedImages = (): { name: string, url: string }[] => {
     try {
@@ -78,6 +97,22 @@ export const useCars = () => {
     } catch (error) {
       console.error('Error getting uploaded images:', error);
       return [];
+    }
+  };
+  
+  // Sort cars by specific criteria
+  const sortCars = (carsToSort: Car[], criterion: string): Car[] => {
+    switch (criterion) {
+      case 'priceAsc':
+        return [...carsToSort].sort((a, b) => (a.price.base - (a.price.discount || 0)) - (b.price.base - (b.price.discount || 0)));
+      case 'priceDesc':
+        return [...carsToSort].sort((a, b) => (b.price.base - (b.price.discount || 0)) - (a.price.base - (a.price.discount || 0)));
+      case 'yearDesc':
+        return [...carsToSort].sort((a, b) => b.year - a.year);
+      case 'yearAsc':
+        return [...carsToSort].sort((a, b) => a.year - b.year);
+      default:
+        return carsToSort;
     }
   };
   
@@ -106,6 +141,9 @@ export const useCars = () => {
     processOrder,
     getOrders,
     getMostViewedCars,
+    getPopularCarModels,
+    getCarsByBodyType,
+    sortCars,
     exportCarsData,
     importCarsData,
     getUploadedImages,

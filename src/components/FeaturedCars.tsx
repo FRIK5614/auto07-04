@@ -7,13 +7,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import LoadingState from "./LoadingState";
 import ErrorState from "./ErrorState";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { 
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious
-} from "@/components/ui/carousel";
+import useEmblaCarousel from "embla-carousel-react";
 
 interface FeaturedCarsProps {
   cars: Car[];
@@ -35,6 +29,14 @@ const FeaturedCars = ({
   const [visibleCount, setVisibleCount] = useState(4);
   const isMobile = useIsMobile();
   
+  const options = {
+    align: "start",
+    loop: false,
+    slidesToScroll: isMobile ? 1 : visibleCount,
+  };
+  
+  const [emblaRef, emblaApi] = useEmblaCarousel(options);
+  
   // Determine how many cards to show based on viewport
   useEffect(() => {
     const handleResize = () => {
@@ -55,6 +57,16 @@ const FeaturedCars = ({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // Update carousel options when visibleCount changes
+  useEffect(() => {
+    if (emblaApi) {
+      emblaApi.reInit({
+        ...options,
+        slidesToScroll: isMobile ? 1 : visibleCount
+      });
+    }
+  }, [visibleCount, emblaApi, isMobile]);
+
   return (
     <div className="py-8">
       <div className="container mx-auto px-4">
@@ -74,25 +86,38 @@ const FeaturedCars = ({
             <p className="text-auto-gray-600">В этой категории нет автомобилей</p>
           </div>
         ) : !error && (
-          <Carousel 
-            opts={{
-              align: "start",
-              loop: false,
-            }}
-            className="w-full"
-          >
-            <CarouselContent className="-ml-4 md:-ml-6">
-              {cars.map((car) => (
-                <CarouselItem key={car.id} className={isMobile ? "pl-4 basis-full" : `pl-4 md:pl-6 ${visibleCount === 4 ? 'basis-1/4' : visibleCount === 3 ? 'basis-1/3' : visibleCount === 2 ? 'basis-1/2' : 'basis-full'}`}>
-                  <CarCard car={car} className="h-full" />
-                </CarouselItem>
-              ))}
-            </CarouselContent>
-            <div className="flex justify-end space-x-2 mt-4">
-              <CarouselPrevious className="static transform-none h-10 w-10 bg-blue-600 hover:bg-blue-700 text-white border-none rounded-full" />
-              <CarouselNext className="static transform-none h-10 w-10 bg-blue-600 hover:bg-blue-700 text-white border-none rounded-full" />
+          <div className="relative">
+            <div className="overflow-hidden" ref={emblaRef}>
+              <div className="flex">
+                {cars.map((car) => (
+                  <div 
+                    key={car.id} 
+                    className={isMobile ? "flex-[0_0_100%]" : `flex-[0_0_${100/visibleCount}%]`}
+                    style={{ 
+                      flex: isMobile ? "0 0 100%" : `0 0 calc(100% / ${visibleCount})`,
+                      padding: "0 8px" 
+                    }}
+                  >
+                    <CarCard car={car} className="h-full" />
+                  </div>
+                ))}
+              </div>
             </div>
-          </Carousel>
+            <div className="flex justify-end space-x-2 mt-4">
+              <Button 
+                onClick={() => emblaApi?.scrollPrev()}
+                className="static transform-none h-10 w-10 bg-blue-600 hover:bg-blue-700 text-white border-none rounded-full"
+              >
+                <ChevronLeft className="h-6 w-6" />
+              </Button>
+              <Button
+                onClick={() => emblaApi?.scrollNext()}
+                className="static transform-none h-10 w-10 bg-blue-600 hover:bg-blue-700 text-white border-none rounded-full"
+              >
+                <ChevronRight className="h-6 w-6" />
+              </Button>
+            </div>
+          </div>
         )}
       </div>
     </div>
