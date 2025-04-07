@@ -46,7 +46,7 @@ const PurchaseRequestForm = ({ car }: PurchaseRequestFormProps) => {
       customerEmail: formData.email,
       status: 'new',
       createdAt: new Date().toISOString(),
-      notes: formData.message
+      message: formData.message  // Changed from 'notes' to 'message' to match the Order type
     };
 
     // Добавляем заказ через существующую функцию
