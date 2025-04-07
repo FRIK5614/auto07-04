@@ -1,8 +1,11 @@
 
+import { useState } from "react";
 import { useCars as useGlobalCars } from "../contexts/CarsContext";
-import { Car } from "../types/car";
+import { Car, CarImage } from "../types/car";
 import { useToast } from "@/hooks/use-toast";
-import { uploadImage, assignImageToCar as apiAssignImageToCar } from "../services/api";
+
+// Определяем базовый URL для API
+const API_BASE_URL = 'https://metallika29.ru/public/api';
 
 export const useCarImages = () => {
   const {
@@ -11,211 +14,334 @@ export const useCarImages = () => {
   } = useGlobalCars();
   
   const { toast } = useToast();
+  const [isUploading, setIsUploading] = useState(false);
 
-  const uploadCarImage = async (file: File): Promise<string | null> => {
+  // Загрузка изображения на сервер
+  const uploadCarImage = async (file: File, carId?: string): Promise<CarImage | null> => {
     try {
+      setIsUploading(true);
+      
       if (!file) {
         console.error('No file provided for upload');
         return null;
       }
       
-      const serverPath = await uploadImage(file);
+      const formData = new FormData();
+      formData.append('image', file);
       
-      if (!serverPath) {
+      if (carId) {
+        formData.append('carId', carId);
+      }
+      
+      const response = await fetch(`${API_BASE_URL}/images/upload.php`, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        toast({
+          title: "Изображение загружено",
+          description: "Файл успешно загружен на сервер"
+        });
+        
+        return {
+          id: result.data.id || `img-${Date.now()}`,
+          url: result.data.url,
+          alt: `Изображение автомобиля${carId ? ` ${carId}` : ''}`
+        };
+      } else {
         toast({
           variant: "destructive",
           title: "Ошибка загрузки",
-          description: "Не удалось загрузить изображение на сервер"
+          description: result.message || "Не удалось загрузить изображение на сервер"
         });
+        
         return null;
       }
-      
-      toast({
-        title: "Изображение загружено",
-        description: "Файл успешно загружен на сервер"
-      });
-      
-      return serverPath;
     } catch (error) {
       console.error('Error uploading car image:', error);
+      
       toast({
         variant: "destructive",
         title: "Ошибка загрузки",
         description: "Произошла ошибка при загрузке изображения"
       });
+      
       return null;
+    } finally {
+      setIsUploading(false);
     }
   };
 
-  const assignImageToCar = async (carId: string, imagePath: string): Promise<boolean> => {
+  // Получение изображений автомобиля с сервера
+  const fetchCarImages = async (carId: string): Promise<CarImage[]> => {
     try {
-      const success = await apiAssignImageToCar(carId, imagePath);
+      const response = await fetch(`${API_BASE_URL}/images/get_car_images.php?carId=${encodeURIComponent(carId)}`);
+      const result = await response.json();
       
-      if (success) {
-        const car = getCarById(carId);
-        if (car) {
-          const updatedCar = {
-            ...car,
-            images: [
-              {
-                id: `server-${carId}`,
-                url: imagePath,
-                alt: `${car.brand} ${car.model}`
-              },
-              ...(car.images || [])
-            ]
-          };
-          updateCar(updatedCar);
-        }
+      if (result.success && Array.isArray(result.data)) {
+        return result.data.map((img: any) => ({
+          id: img.id,
+          url: img.url,
+          alt: img.alt || `Изображение автомобиля ${carId}`
+        }));
+      } else {
+        console.error('Ошибка получения изображений автомобиля:', result.message || 'Неизвестная ошибка');
+        return [];
+      }
+    } catch (error) {
+      console.error('Error fetching car images:', error);
+      return [];
+    }
+  };
+
+  // Обновление изображений автомобиля в контексте
+  const updateCarImagesInContext = async (carId: string): Promise<boolean> => {
+    try {
+      const car = getCarById(carId);
+      if (!car) return false;
+      
+      const images = await fetchCarImages(carId);
+      
+      if (images.length > 0) {
+        const updatedCar = {
+          ...car,
+          images: images
+        };
         
+        updateCar(updatedCar);
         return true;
       }
       
       return false;
     } catch (error) {
-      console.error('Error assigning image to car:', error);
+      console.error('Error updating car images in context:', error);
       return false;
     }
   };
 
+  // Установка главного изображения для автомобиля
+  const setMainImage = async (imageId: string, carId: string): Promise<boolean> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/images/set_main_image.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id: imageId, carId }),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        toast({
+          title: "Главное изображение установлено",
+          description: "Главное изображение автомобиля обновлено"
+        });
+        
+        // Обновляем изображения в контексте
+        await updateCarImagesInContext(carId);
+        
+        return true;
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Ошибка",
+          description: result.message || "Не удалось установить главное изображение"
+        });
+        
+        return false;
+      }
+    } catch (error) {
+      console.error('Error setting main image:', error);
+      
+      toast({
+        variant: "destructive",
+        title: "Ошибка",
+        description: "Произошла ошибка при установке главного изображения"
+      });
+      
+      return false;
+    }
+  };
+
+  // Удаление изображения
+  const deleteImage = async (imageId: string, carId: string): Promise<boolean> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/images/delete_image.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id: imageId }),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        toast({
+          title: "Изображение удалено",
+          description: "Изображение успешно удалено"
+        });
+        
+        // Обновляем изображения в контексте
+        await updateCarImagesInContext(carId);
+        
+        return true;
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Ошибка удаления",
+          description: result.message || "Не удалось удалить изображение"
+        });
+        
+        return false;
+      }
+    } catch (error) {
+      console.error('Error deleting image:', error);
+      
+      toast({
+        variant: "destructive",
+        title: "Ошибка удаления",
+        description: "Произошла ошибка при удалении изображения"
+      });
+      
+      return false;
+    }
+  };
+
+  // Добавление изображения по URL
+  const addImageByUrl = async (imageUrl: string, carId: string): Promise<boolean> => {
+    try {
+      // Проверяем доступность изображения
+      const checkImage = new Image();
+      checkImage.src = imageUrl;
+      
+      await new Promise<void>((resolve, reject) => {
+        checkImage.onload = () => resolve();
+        checkImage.onerror = () => reject(new Error('Изображение недоступно'));
+      });
+      
+      // Создаем новое изображение через API
+      const response = await fetch(`${API_BASE_URL}/images/add_by_url.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          url: imageUrl, 
+          carId: carId,
+          alt: `Изображение автомобиля ${carId}`
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        toast({
+          title: "Изображение добавлено",
+          description: "Изображение по URL успешно добавлено"
+        });
+        
+        // Обновляем изображения в контексте
+        await updateCarImagesInContext(carId);
+        
+        return true;
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Ошибка добавления",
+          description: result.message || "Не удалось добавить изображение по URL"
+        });
+        
+        return false;
+      }
+    } catch (error) {
+      console.error('Error adding image by URL:', error);
+      
+      toast({
+        variant: "destructive",
+        title: "Ошибка добавления",
+        description: "Произошла ошибка при добавлении изображения по URL"
+      });
+      
+      return false;
+    }
+  };
+
+  // Обновить изображение автомобиля (загрузка и установка)
   const updateCarImage = async (carId: string, file: File): Promise<boolean> => {
     try {
-      if (!carId || !file) {
-        console.error('Invalid parameters for updateCarImage');
-        return false;
+      const image = await uploadCarImage(file, carId);
+      
+      if (image) {
+        // Обновляем изображения в контексте
+        await updateCarImagesInContext(carId);
+        return true;
       }
       
-      const imagePath = await uploadCarImage(file);
-      if (!imagePath) {
-        return false;
-      }
-      
-      return await assignImageToCar(carId, imagePath);
+      return false;
     } catch (error) {
       console.error('Error updating car image:', error);
       return false;
     }
   };
 
-  const saveUploadedImages = (images: {name: string, url: string}[]): void => {
-    try {
-      const existingImagesData = localStorage.getItem('carImages');
-      let existingImages: {name: string, url: string}[] = [];
-      
-      if (existingImagesData) {
-        existingImages = JSON.parse(existingImagesData);
-      }
-      
-      const combinedImages = [...existingImages];
-      
-      for (const newImage of images) {
-        if (!existingImages.some(img => img.name === newImage.name)) {
-          combinedImages.push(newImage);
-        }
-      }
-      
-      localStorage.setItem('carImages', JSON.stringify(combinedImages));
-      console.log(`Saved ${images.length} images to localStorage`);
-    } catch (error) {
-      console.error('Error saving uploaded images to localStorage:', error);
+  // Получение главного изображения автомобиля
+  const getMainCarImage = (car: Car): string => {
+    if (!car || !car.images || car.images.length === 0) {
+      return '/placeholder.svg';
     }
-  };
-  
-  const getUploadedImages = (): {name: string, url: string}[] => {
-    try {
-      const imagesData = localStorage.getItem('carImages');
-      if (!imagesData) return [];
-      
-      return JSON.parse(imagesData);
-    } catch (error) {
-      console.error('Error getting uploaded images from localStorage:', error);
-      return [];
-    }
-  };
-  
-  const saveImageByUrl = async (imageUrl: string): Promise<boolean> => {
-    try {
-      const filename = imageUrl.split('/').pop() || `image-${Date.now()}.jpg`;
-      
-      saveUploadedImages([{
-        name: filename,
-        url: imageUrl
-      }]);
-      
-      return true;
-    } catch (error) {
-      console.error('Error saving image by URL:', error);
-      return false;
-    }
-  };
-  
-  const isValidImageUrl = async (url: string): Promise<boolean> => {
-    try {
-      const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
-      const hasImageExtension = imageExtensions.some(ext => url.toLowerCase().includes(ext));
-      
-      return url.startsWith('http') && hasImageExtension;
-    } catch (error) {
-      console.error('Error validating image URL:', error);
-      return false;
-    }
+    
+    // Ищем главное изображение (с флагом isMain)
+    const mainImage = car.images.find(img => img.isMain);
+    if (mainImage) return mainImage.url;
+    
+    // Если главное не найдено, берем первое
+    return car.images[0].url;
   };
 
-  const getCarServerImage = (carId: string): { id: string, url: string, alt: string } | null => {
-    try {
-      const carImageMapping = localStorage.getItem('carImageMapping');
-      if (!carImageMapping) return null;
-      
-      const mapping = JSON.parse(carImageMapping);
-      if (!mapping[carId]) return null;
-      
-      const car = getCarById(carId);
-      
-      return {
-        id: `server-${carId}`,
-        url: mapping[carId],
-        alt: car ? `${car.brand} ${car.model}` : `Car ${carId}`
-      };
-    } catch (error) {
-      console.error('Error getting car server image:', error);
-      return null;
-    }
-  };
-
+  // Применение изображений к автомобилю
   const applySavedImagesToCar = (car: Car): Car => {
     if (!car) return car;
     
     try {
-      if (car.images && car.images.length > 0 && 
-          car.images.some(img => img && img.url && img.url.startsWith('/car/image/'))) {
+      // Если у автомобиля уже есть изображения, оставляем их
+      if (car.images && car.images.length > 0) {
         return car;
       }
       
-      const serverImage = getCarServerImage(car.id);
-      
-      if (serverImage) {
-        return {
-          ...car,
-          images: [serverImage, ...(car.images || [])]
-        };
-      }
+      // Иначе запрашиваем с сервера
+      fetchCarImages(car.id)
+        .then(images => {
+          if (images.length > 0) {
+            const updatedCar = { ...car, images };
+            updateCar(updatedCar);
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching images for car:', error);
+        });
       
       return car;
     } catch (error) {
-      console.error('Error applying server images to car:', error);
+      console.error('Error applying saved images to car:', error);
       return car;
     }
   };
 
   return {
     uploadCarImage,
-    assignImageToCar,
+    fetchCarImages,
+    updateCarImagesInContext,
+    setMainImage,
+    deleteImage,
+    addImageByUrl,
     updateCarImage,
     applySavedImagesToCar,
-    getCarServerImage,
-    saveUploadedImages,
-    getUploadedImages,
-    saveImageByUrl,
-    isValidImageUrl
+    getMainCarImage,
+    isUploading
   };
 };

@@ -75,22 +75,33 @@ try {
     // Если задан идентификатор автомобиля, то добавляем изображение в базу данных
     if ($carId) {
         $stmt = $pdo->prepare('
-            INSERT INTO car_images (id, carId, url, alt) 
-            VALUES (:id, :carId, :url, :alt)
+            INSERT INTO car_images (id, carId, url, alt, isMain) 
+            VALUES (?, ?, ?, ?, ?)
         ');
         
+        $imageId = generateUUID();
+        $isMain = isset($_POST['isMain']) && $_POST['isMain'] === 'true';
+        
+        // Если это главное изображение, сначала сбросим флаг isMain у всех изображений этого автомобиля
+        if ($isMain) {
+            $resetStmt = $pdo->prepare('UPDATE car_images SET isMain = 0 WHERE carId = ?');
+            $resetStmt->execute([$carId]);
+        }
+        
         $stmt->execute([
-            'id' => generateUUID(),
-            'carId' => $carId,
-            'url' => $publicUrl,
-            'alt' => isset($_POST['alt']) ? $_POST['alt'] : "Изображение автомобиля"
+            $imageId,
+            $carId,
+            $publicUrl,
+            isset($_POST['alt']) ? $_POST['alt'] : "Изображение автомобиля",
+            $isMain ? 1 : 0
         ]);
     }
     
     echo json_encode(['success' => true, 'data' => [
         'url' => $publicUrl,
         'filename' => $fileName,
-        'carId' => $carId
+        'carId' => $carId,
+        'id' => $imageId ?? null
     ]]);
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'message' => 'Ошибка при загрузке изображения: ' . $e->getMessage()]);

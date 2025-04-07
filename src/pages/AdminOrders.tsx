@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useCars } from '@/hooks/useCars';
 import { useAdmin } from '@/contexts/AdminContext';
@@ -20,11 +21,9 @@ import {
   Mail,
   Car,
   Calendar,
-  User,
-  CloudUpload
+  User
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const OrderStatusBadge = ({ status }: { status: Order['status'] }) => {
   switch (status) {
@@ -38,19 +37,6 @@ const OrderStatusBadge = ({ status }: { status: Order['status'] }) => {
       return <Badge variant="destructive" className="whitespace-nowrap"><XCircle className="w-3 h-3 mr-1" /> Отменен</Badge>;
     default:
       return <Badge variant="outline">{status}</Badge>;
-  }
-};
-
-const SyncStatusBadge = ({ status }: { status?: string }) => {
-  switch (status) {
-    case 'synced':
-      return <Badge className="bg-green-500 whitespace-nowrap"><CheckCircle className="w-3 h-3 mr-1" /> Синхронизирован</Badge>;
-    case 'failed':
-      return <Badge variant="destructive" className="whitespace-nowrap"><XCircle className="w-3 h-3 mr-1" /> Ошибка</Badge>;
-    case 'pending':
-      return <Badge variant="secondary" className="whitespace-nowrap"><Clock className="w-3 h-3 mr-1" /> Ожидание</Badge>;
-    default:
-      return <Badge variant="outline">Неизвестно</Badge>;
   }
 };
 
@@ -104,17 +90,9 @@ const OrderCard = ({ order, car, onStatusChange }: {
             </span>
           </div>
           
-          <div className="flex items-center gap-1.5">
-            <CloudUpload className="h-4 w-4 text-muted-foreground" />
-            <div className="flex items-center gap-1">
-              <span className="text-sm">Синхронизация:</span>
-              <SyncStatusBadge status={order.syncStatus} />
-            </div>
-          </div>
-          
-          {order.jsonFilePath && (
-            <div className="text-xs text-muted-foreground truncate">
-              JSON: {order.jsonFilePath}
+          {order.message && (
+            <div className="text-sm border-t pt-2 mt-2 text-muted-foreground">
+              <p>{order.message}</p>
             </div>
           )}
         </div>
@@ -161,18 +139,9 @@ const AdminOrders: React.FC = () => {
   const { orders, getCarById, processOrder, loading, exportOrdersToCsv, syncOrders } = useCars();
   const { isAdmin } = useAdmin();
   const navigate = useNavigate();
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const { toast } = useToast();
-  const [lastBackupTime, setLastBackupTime] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
   const [isSyncing, setIsSyncing] = useState(false);
-
-  useEffect(() => {
-    const backupTime = localStorage.getItem("ordersCSVBackupTime");
-    if (backupTime) {
-      setLastBackupTime(backupTime);
-    }
-  }, []);
 
   useEffect(() => {
     const handleResize = () => {
@@ -188,27 +157,33 @@ const AdminOrders: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const intervalId = setInterval(() => {
-      const backupTime = localStorage.getItem("ordersCSVBackupTime");
-      if (backupTime) {
-        setLastBackupTime(backupTime);
-      }
-      
-      syncOrders().catch(error => {
-        console.error("Auto-sync failed:", error);
-      });
-    }, 5000);
-
-    return () => clearInterval(intervalId);
-  }, [syncOrders]);
-
-  React.useEffect(() => {
     if (!isAdmin) {
       navigate('/admin/login');
     }
     
-    console.log('Orders in AdminOrders:', orders);
-  }, [isAdmin, navigate, orders]);
+    // Загружаем заказы при загрузке страницы
+    const loadOrders = async () => {
+      setIsSyncing(true);
+      try {
+        await syncOrders();
+      } catch (error) {
+        console.error("Failed to load orders:", error);
+      } finally {
+        setIsSyncing(false);
+      }
+    };
+    
+    loadOrders();
+    
+    // Обновление заказов каждые 30 секунд
+    const intervalId = setInterval(() => {
+      syncOrders().catch(error => {
+        console.error("Auto-sync failed:", error);
+      });
+    }, 30000);
+
+    return () => clearInterval(intervalId);
+  }, [isAdmin, navigate, syncOrders]);
 
   const exportOrdersToCSV = () => {
     if (!orders || orders.length === 0) {
@@ -240,19 +215,19 @@ const AdminOrders: React.FC = () => {
   };
 
   const handleSyncOrders = async () => {
+    setIsSyncing(true);
     try {
-      setIsSyncing(true);
       await syncOrders();
       toast({
         title: "Синхронизация завершена",
-        description: "Заказы успешно синхронизированы с JSON-файлами"
+        description: "Заказы успешно обновлены"
       });
     } catch (error) {
       console.error("Sync error:", error);
       toast({
         variant: "destructive",
         title: "Ошибка синхронизации",
-        description: "Не удалось синхронизировать заказы"
+        description: "Не удалось обновить заказы"
       });
     } finally {
       setIsSyncing(false);
@@ -279,6 +254,19 @@ const AdminOrders: React.FC = () => {
       <div className="container mx-auto p-4">
         <h1 className="text-2xl font-bold mb-4">Управление заказами</h1>
         <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Список заказов</CardTitle>
+            <Button 
+              onClick={handleSyncOrders}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-1.5"
+              disabled={isSyncing}
+            >
+              <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+              <span>Обновить</span>
+            </Button>
+          </CardHeader>
           <CardContent className="pt-6">
             <div className="text-center py-8">
               <p className="text-muted-foreground">Нет заказов для отображения</p>
@@ -302,11 +290,9 @@ const AdminOrders: React.FC = () => {
           <CardHeader className="pb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
             <div>
               <CardTitle className="text-lg">Список заказов</CardTitle>
-              {lastBackupTime && (
-                <div className="text-xs text-muted-foreground">
-                  Автосохранение: {format(new Date(lastBackupTime), 'dd.MM.yyyy HH:mm')}
-                </div>
-              )}
+              <div className="text-xs text-muted-foreground">
+                Всего заказов: {orders.length}
+              </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <div className="hidden sm:flex">
@@ -335,9 +321,9 @@ const AdminOrders: React.FC = () => {
                 className="flex items-center gap-1.5"
                 disabled={isSyncing}
               >
-                <CloudUpload className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                <span className="hidden sm:inline">Синхронизировать</span>
-                <span className="inline sm:hidden">Синхр.</span>
+                <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">Обновить</span>
+                <span className="inline sm:hidden">Обн.</span>
               </Button>
               
               <Button 
@@ -378,7 +364,6 @@ const AdminOrders: React.FC = () => {
                       <TableHead className="hidden sm:table-cell">Контакты</TableHead>
                       <TableHead>Автомобиль</TableHead>
                       <TableHead>Статус</TableHead>
-                      <TableHead>Синхронизация</TableHead>
                       <TableHead className="text-right">Действия</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -388,7 +373,7 @@ const AdminOrders: React.FC = () => {
                       return (
                         <TableRow key={order.id}>
                           <TableCell className="whitespace-nowrap">
-                            {format(new Date(order.createdAt), 'dd MMM HH:mm', { locale: ru })}
+                            {format(new Date(order.createdAt), 'dd.MM.yy HH:mm', { locale: ru })}
                           </TableCell>
                           <TableCell>{order.customerName}</TableCell>
                           <TableCell className="hidden sm:table-cell">
@@ -400,9 +385,6 @@ const AdminOrders: React.FC = () => {
                           </TableCell>
                           <TableCell>
                             <OrderStatusBadge status={order.status} />
-                          </TableCell>
-                          <TableCell>
-                            <SyncStatusBadge status={order.syncStatus} />
                           </TableCell>
                           <TableCell>
                             <div className="flex justify-end flex-wrap gap-1">

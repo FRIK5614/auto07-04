@@ -1,321 +1,121 @@
 
-import React, { useState, useEffect } from 'react';
-import { Navigate, Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { useAdmin } from '@/contexts/AdminContext';
-import { Button } from '@/components/ui/button';
-import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
+import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
+import { useAdmin } from "@/contexts/AdminContext";
+import { useEffect } from "react";
 import { 
-  CarFront, 
-  LogOut, 
-  Cog, 
-  ShoppingCart, 
-  BarChart3, 
-  FileArchive, 
-  Package,
-  Menu,
-  X
-} from 'lucide-react';
-import { useCars } from '@/hooks/useCars';
-import { useToast } from '@/hooks/use-toast';
+  LayoutDashboard, 
+  Car,
+  ClipboardList,
+  Upload,
+  LogOut,
+  Settings
+} from "lucide-react";
 
 const AdminLayout = () => {
   const { isAdmin, logout } = useAdmin();
-  const { orders } = useCars();
-  const [newOrdersCount, setNewOrdersCount] = useState(0);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const navigate = useNavigate();
-  const { toast } = useToast();
   const location = useLocation();
+  const navigate = useNavigate();
 
-  // Count new orders for the badge
+  // Перенаправление неавторизованных пользователей
   useEffect(() => {
-    if (orders && orders.length > 0) {
-      const count = orders.filter(order => order.status === 'new').length;
-      setNewOrdersCount(count);
+    if (!isAdmin && location.pathname !== "/admin/login") {
+      navigate("/admin/login");
     }
-  }, [orders]);
+  }, [isAdmin, location.pathname, navigate]);
 
+  // Если путь /admin/login и пользователь авторизован, перенаправляем на дашборд
   useEffect(() => {
-    if (!isAdmin) {
-      navigate('/admin/login');
+    if (isAdmin && location.pathname === "/admin/login") {
+      navigate("/admin");
     }
-  }, [isAdmin, navigate]);
+  }, [isAdmin, location.pathname, navigate]);
 
-  // Redirect to login if not admin - early return
-  if (!isAdmin) {
-    return <Navigate to="/admin/login" />;
+  // Отображаем только компонент Outlet для страницы входа
+  if (location.pathname === "/admin/login") {
+    return <Outlet />;
   }
 
-  const handleMenuItemClick = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
-    e.preventDefault();
-    navigate(path);
-    setIsMobileMenuOpen(false); // Close mobile menu after navigation
+  const isActive = (path: string) => {
+    return location.pathname === path;
   };
 
-  // Check if the current path matches the menu item
-  const isActive = (path: string) => {
-    return location.pathname === path || 
-           (path !== '/admin' && location.pathname.startsWith(path));
-  };
+  const linkClass = "flex items-center py-2 px-3 text-gray-700 hover:bg-gray-100 rounded-md transition-colors";
+  const activeLinkClass = "flex items-center py-2 px-3 bg-gray-100 text-primary font-medium rounded-md";
 
   return (
-    <SidebarProvider>
-      <div className="flex w-full min-h-screen">
-        {/* Mobile header */}
-        <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-background border-b p-4 flex justify-between items-center">
-          <h2 className="text-lg font-semibold">Админ панель</h2>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Боковая панель */}
+      <aside className="w-64 bg-white border-r flex flex-col">
+        <div className="p-4 border-b">
+          <h1 className="text-xl font-bold">Админ панель</h1>
         </div>
-
-        {/* Mobile sidebar (conditionally rendered) */}
-        {isMobileMenuOpen && (
-          <div 
-            className="md:hidden fixed inset-0 bg-black/50 z-40"
-            onClick={() => setIsMobileMenuOpen(false)}
+        <nav className="py-4 flex-1">
+          <ul className="space-y-1 px-3">
+            <li>
+              <Link 
+                to="/admin" 
+                className={isActive("/admin") ? activeLinkClass : linkClass}
+              >
+                <LayoutDashboard size={18} className="mr-2" />
+                Дашборд
+              </Link>
+            </li>
+            <li>
+              <Link 
+                to="/admin/cars" 
+                className={isActive("/admin/cars") ? activeLinkClass : linkClass}
+              >
+                <Car size={18} className="mr-2" />
+                Автомобили
+              </Link>
+            </li>
+            <li>
+              <Link 
+                to="/admin/orders" 
+                className={isActive("/admin/orders") ? activeLinkClass : linkClass}
+              >
+                <ClipboardList size={18} className="mr-2" />
+                Заказы
+              </Link>
+            </li>
+            <li>
+              <Link 
+                to="/admin/import" 
+                className={isActive("/admin/import") ? activeLinkClass : linkClass}
+              >
+                <Upload size={18} className="mr-2" />
+                Импорт
+              </Link>
+            </li>
+            <li>
+              <Link 
+                to="/admin/settings" 
+                className={isActive("/admin/settings") ? activeLinkClass : linkClass}
+              >
+                <Settings size={18} className="mr-2" />
+                Настройки
+              </Link>
+            </li>
+          </ul>
+        </nav>
+        <div className="p-4 border-t">
+          <button 
+            onClick={logout}
+            className="flex items-center text-red-600 hover:text-red-800 transition-colors"
           >
-            <div 
-              className="bg-background h-full w-64 p-4 overflow-y-auto" 
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-lg font-semibold">Меню</h2>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  <X className="h-5 w-5" />
-                </Button>
-              </div>
-              
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-2">Управление</h3>
-                  <div className="space-y-1">
-                    <Button 
-                      variant={isActive('/admin') || isActive('/admin/dashboard') ? 'secondary' : 'ghost'} 
-                      className="w-full justify-start" 
-                      onClick={(e) => handleMenuItemClick(e as any, "/admin")}
-                    >
-                      <BarChart3 className="h-5 w-5 mr-2" />
-                      <span>Главная</span>
-                    </Button>
-                    <Button 
-                      variant={isActive('/admin/cars') ? 'secondary' : 'ghost'} 
-                      className="w-full justify-start" 
-                      onClick={(e) => handleMenuItemClick(e as any, "/admin/cars")}
-                    >
-                      <CarFront className="h-5 w-5 mr-2" />
-                      <span>Автомобили</span>
-                    </Button>
-                    <Button 
-                      variant={isActive('/admin/orders') ? 'secondary' : 'ghost'} 
-                      className="w-full justify-start" 
-                      onClick={(e) => handleMenuItemClick(e as any, "/admin/orders")}
-                    >
-                      <ShoppingCart className="h-5 w-5 mr-2" />
-                      <span>Заказы</span>
-                      {newOrdersCount > 0 && (
-                        <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
-                          {newOrdersCount}
-                        </span>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-                
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-2">Импорт/Экспорт</h3>
-                  <div className="space-y-1">
-                    <Button 
-                      variant={isActive('/admin/import') ? 'secondary' : 'ghost'} 
-                      className="w-full justify-start" 
-                      onClick={(e) => handleMenuItemClick(e as any, "/admin/import")}
-                    >
-                      <FileArchive className="h-5 w-5 mr-2" />
-                      <span>Импорт данных</span>
-                    </Button>
-                    <Button 
-                      variant={isActive('/admin/tmcavto-catalog') ? 'secondary' : 'ghost'} 
-                      className="w-full justify-start" 
-                      onClick={(e) => handleMenuItemClick(e as any, "/admin/tmcavto-catalog")}
-                    >
-                      <Package className="h-5 w-5 mr-2" />
-                      <span>Каталог TMC Авто</span>
-                    </Button>
-                  </div>
-                </div>
-                
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-2">Система</h3>
-                  <div className="space-y-1">
-                    <Button 
-                      variant={isActive('/admin/settings') ? 'secondary' : 'ghost'} 
-                      className="w-full justify-start" 
-                      onClick={(e) => handleMenuItemClick(e as any, "/admin/settings")}
-                    >
-                      <Cog className="h-5 w-5 mr-2" />
-                      <span>Настройки</span>
-                    </Button>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="mt-6">
-                <Button 
-                  variant="default" 
-                  className="w-full" 
-                  onClick={() => {
-                    logout();
-                    toast({
-                      title: "Выход выполнен",
-                      description: "Вы вышли из панели администратора"
-                    });
-                    navigate('/');
-                    setIsMobileMenuOpen(false);
-                  }}
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Выйти
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
+            <LogOut size={18} className="mr-2" />
+            Выйти
+          </button>
+        </div>
+      </aside>
 
-        {/* Desktop sidebar */}
-        <Sidebar className="hidden md:flex">
-          <SidebarHeader className="flex items-center justify-between p-4">
-            <h2 className="text-lg font-semibold">Панель администратора</h2>
-          </SidebarHeader>
-          <SidebarContent>
-            <SidebarGroup>
-              <SidebarGroupLabel>Управление</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton 
-                      asChild 
-                      className={isActive('/admin') || isActive('/admin/dashboard') ? 'bg-accent text-accent-foreground' : ''}
-                    >
-                      <a href="#" onClick={(e) => handleMenuItemClick(e, "/admin")}>
-                        <BarChart3 className="h-5 w-5" />
-                        <span>Главная</span>
-                      </a>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton 
-                      asChild
-                      className={isActive('/admin/cars') ? 'bg-accent text-accent-foreground' : ''}
-                    >
-                      <a href="#" onClick={(e) => handleMenuItemClick(e, "/admin/cars")}>
-                        <CarFront className="h-5 w-5" />
-                        <span>Автомобили</span>
-                      </a>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton 
-                      asChild
-                      className={isActive('/admin/orders') ? 'bg-accent text-accent-foreground' : ''}
-                    >
-                      <a href="#" onClick={(e) => handleMenuItemClick(e, "/admin/orders")}>
-                        <ShoppingCart className="h-5 w-5" />
-                        <span>Заказы</span>
-                        {newOrdersCount > 0 && (
-                          <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
-                            {newOrdersCount}
-                          </span>
-                        )}
-                      </a>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-            
-            <SidebarGroup className="mt-4">
-              <SidebarGroupLabel>Импорт/Экспорт</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton 
-                      asChild
-                      className={isActive('/admin/import') ? 'bg-accent text-accent-foreground' : ''}
-                    >
-                      <a href="#" onClick={(e) => handleMenuItemClick(e, "/admin/import")}>
-                        <FileArchive className="h-5 w-5" />
-                        <span>Импорт данных</span>
-                      </a>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton 
-                      asChild
-                      className={isActive('/admin/tmcavto-catalog') ? 'bg-accent text-accent-foreground' : ''}
-                    >
-                      <a href="#" onClick={(e) => handleMenuItemClick(e, "/admin/tmcavto-catalog")}>
-                        <Package className="h-5 w-5" />
-                        <span>Каталог TMC Авто</span>
-                      </a>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-            
-            <SidebarGroup className="mt-4">
-              <SidebarGroupLabel>Система</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton 
-                      asChild
-                      className={isActive('/admin/settings') ? 'bg-accent text-accent-foreground' : ''}
-                    >
-                      <a href="#" onClick={(e) => handleMenuItemClick(e, "/admin/settings")}>
-                        <Cog className="h-5 w-5" />
-                        <span>Настройки</span>
-                      </a>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </SidebarContent>
-          <SidebarFooter className="p-4">
-            <Button 
-              variant="outline" 
-              className="w-full" 
-              onClick={() => {
-                logout();
-                toast({
-                  title: "Выход выполнен",
-                  description: "Вы вышли из панели администратора"
-                });
-                navigate('/');
-              }}
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              Выйти
-            </Button>
-          </SidebarFooter>
-        </Sidebar>
-        <SidebarInset className="bg-background flex-1 p-0 md:p-6 mt-[60px] md:mt-0">
-          <div className="container mx-auto">
-            <SidebarTrigger className="mb-4 hidden md:flex" />
-            <Outlet />
-          </div>
-        </SidebarInset>
+      {/* Основное содержимое */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50">
+          <Outlet />
+        </main>
       </div>
-    </SidebarProvider>
+    </div>
   );
 };
 

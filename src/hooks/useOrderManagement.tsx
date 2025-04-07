@@ -12,8 +12,7 @@ export const useOrderManagement = () => {
   const {
     getCarById,
     orders,
-    syncOrders: contextSyncOrders,
-    processOrder: contextProcessOrder
+    setOrders: setContextOrders
   } = useGlobalCars();
   
   const { toast } = useToast();
@@ -47,22 +46,33 @@ export const useOrderManagement = () => {
   };
 
   // Синхронизация заказов с сервером
-  const serverSyncOrders = async (): Promise<boolean> => {
+  const syncOrders = async (): Promise<boolean> => {
     try {
-      console.log('Начало синхронизации заказов с сервером');
+      console.log('Получение заказов с сервера');
       
       const serverOrders = await fetchOrdersFromServer();
       console.log(`Получено ${serverOrders.length} заказов с сервера`);
       
       if (serverOrders.length > 0) {
-        // Вызываем контекстный метод без параметров
-        contextSyncOrders();
-        console.log('Заказы успешно синхронизированы с сервером');
+        setContextOrders(serverOrders);
+        console.log('Заказы успешно обновлены из базы данных');
+        
+        toast({
+          title: "Заказы обновлены",
+          description: `Получено ${serverOrders.length} заказов из базы данных`
+        });
       }
       
       return true;
     } catch (error) {
-      console.error('Ошибка синхронизации заказов с сервером:', error);
+      console.error('Ошибка получения заказов из базы данных:', error);
+      
+      toast({
+        variant: "destructive",
+        title: "Ошибка обновления",
+        description: "Не удалось получить заказы из базы данных"
+      });
+      
       return false;
     }
   };
@@ -127,7 +137,7 @@ export const useOrderManagement = () => {
         console.log(`Заказ ${order.id} успешно создан на сервере`);
         
         // После успешного создания заказа на сервере, синхронизируем заказы
-        await serverSyncOrders();
+        await syncOrders();
         
         return true;
       } else {
@@ -147,13 +157,13 @@ export const useOrderManagement = () => {
   };
 
   // Обработка заказа с обновлением статуса на сервере
-  const processOrderWithServer = async (orderId: string, newStatus: Order['status']): Promise<boolean> => {
+  const processOrder = async (orderId: string, newStatus: Order['status']): Promise<boolean> => {
     try {
       const serverUpdateSuccess = await updateOrderStatusOnServer(orderId, newStatus);
       
       if (serverUpdateSuccess) {
-        // Выполняем локальное обновление статуса после успешного обновления на сервере
-        contextProcessOrder(orderId, newStatus);
+        // Обновляем заказы после успешного обновления на сервере
+        await syncOrders();
         
         toast({
           title: "Статус заказа обновлен",
@@ -162,13 +172,10 @@ export const useOrderManagement = () => {
         
         return true;
       } else {
-        // В случае неудачи на сервере, все равно обновляем локально
-        contextProcessOrder(orderId, newStatus);
-        
         toast({
           variant: "destructive",
-          title: "Синхронизация не выполнена",
-          description: "Статус заказа обновлен локально, но не на сервере"
+          title: "Ошибка обновления статуса",
+          description: "Не удалось обновить статус заказа на сервере"
         });
         
         return false;
@@ -194,7 +201,7 @@ export const useOrderManagement = () => {
 
     const headers = [
       'ID', 'Дата создания', 'Статус', 'Имя клиента', 
-      'Телефон', 'Email', 'ID автомобиля', 'Марка', 'Модель', 'Синхронизация', 'JSON файл'
+      'Телефон', 'Email', 'ID автомобиля', 'Марка', 'Модель'
     ];
     
     const csvRows = [];
@@ -211,9 +218,7 @@ export const useOrderManagement = () => {
         order.customerEmail,
         order.carId,
         car ? car.brand : 'Н/Д',
-        car ? car.model : 'Н/Д',
-        order.syncStatus || 'Н/Д',
-        order.jsonFilePath || 'Н/Д'
+        car ? car.model : 'Н/Д'
       ];
       
       const escapedRow = row.map(value => {
@@ -228,42 +233,12 @@ export const useOrderManagement = () => {
     
     return csvRows.join('\n');
   };
-  
-  // Метод для синхронизации заказов
-  const syncOrders = async (): Promise<boolean> => {
-    try {
-      const success = await serverSyncOrders();
-      
-      if (success) {
-        toast({
-          title: "Синхронизация завершена",
-          description: "Заказы успешно синхронизированы с сервером"
-        });
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Ошибка синхронизации",
-          description: "Не удалось синхронизировать заказы с сервером"
-        });
-      }
-      
-      return success;
-    } catch (error) {
-      console.error("Ошибка синхронизации заказов:", error);
-      toast({
-        variant: "destructive",
-        title: "Ошибка синхронизации",
-        description: "Не удалось синхронизировать заказы"
-      });
-      return false;
-    }
-  };
 
   return {
     orders,
     getOrders: () => orders,
     createOrder,
-    processOrder: processOrderWithServer,
+    processOrder,
     exportOrdersToCsv,
     getOrderCreationDate,
     syncOrders,
