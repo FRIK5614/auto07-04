@@ -16,7 +16,7 @@ interface PurchaseRequestFormProps {
 
 const PurchaseRequestForm = ({ car }: PurchaseRequestFormProps) => {
   const { toast } = useToast();
-  const { createOrder } = useCars();
+  const { createOrder, syncOrders } = useCars();
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -56,6 +56,9 @@ const PurchaseRequestForm = ({ car }: PurchaseRequestFormProps) => {
       const success = await createOrder(newOrder);
       
       if (success) {
+        // Принудительно запускаем синхронизацию, чтобы другие браузеры могли видеть заказ
+        await syncOrders();
+        
         toast({
           title: "Заявка отправлена",
           description: "Мы свяжемся с вами в ближайшее время",

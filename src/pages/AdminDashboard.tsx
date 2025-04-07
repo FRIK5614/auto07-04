@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useCars } from '@/hooks/useCars';
@@ -30,6 +31,18 @@ const AdminDashboard: React.FC = () => {
     };
     
     checkJsonStatus();
+    
+    // Check and sync on mount
+    syncOrders().catch(console.error);
+    
+    // Set up periodic checks
+    const checkInterval = setInterval(() => {
+      checkJsonStatus();
+    }, 10000); // Check JSON availability every 10 seconds
+    
+    return () => {
+      clearInterval(checkInterval);
+    };
   }, []);
   
   useEffect(() => {
@@ -40,18 +53,6 @@ const AdminDashboard: React.FC = () => {
   
   const safeCars = cars || [];
   const safeOrders = orders || [];
-  
-  useEffect(() => {
-    console.log('Admin Dashboard Data:', { cars: safeCars, orders: safeOrders, loading });
-    
-    if (safeCars.length === 0 && !loading && isAdmin) {
-      toast({
-        title: "Нет данных об автомобилях",
-        description: "Каталог автомобилей пуст",
-        variant: "destructive"
-      });
-    }
-  }, [safeCars, safeOrders, isAdmin, toast, loading]);
 
   const handleSyncOrders = async () => {
     try {

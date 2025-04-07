@@ -1,7 +1,7 @@
 import { useCars as useGlobalCars } from "../contexts/CarsContext";
 import { Car, Order } from "../types/car";
 import { useToast } from "@/hooks/use-toast";
-import { uploadImage, assignImageToCar as apiAssignImageToCar, saveOrderToJson, loadOrdersFromJson } from "../services/api";
+import { uploadImage, assignImageToCar as apiAssignImageToCar, saveOrderToJson } from "../services/api";
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
@@ -295,6 +295,16 @@ export const useCars = () => {
 
   const createOrder = async (order: Order): Promise<boolean> => {
     try {
+      // Save to JSON immediately as the source of truth
+      const jsonFilePath = await saveOrderToJson(order);
+      
+      const updatedOrder: Order = {
+        ...order,
+        syncStatus: 'synced' as const,
+        jsonFilePath
+      };
+      
+      // Update local storage
       const savedOrders = localStorage.getItem("orders");
       let currentOrders: Order[] = [];
       
@@ -302,23 +312,22 @@ export const useCars = () => {
         currentOrders = JSON.parse(savedOrders);
       }
       
-      const jsonFilePath = await saveOrderToJson(order);
-      
-      const updatedOrder: Order = {
-        ...order,
-        syncStatus: 'synced',
-        jsonFilePath
-      };
-      
       currentOrders.push(updatedOrder);
       localStorage.setItem("orders", JSON.stringify(currentOrders));
       
+      // Force a sync to update the orders from all JSON files
       await syncOrders();
       
-      processOrder(order.id, order.status);
+      toast({
+        title: "Заказ создан",
+        description: "Ваш заказ был успешно создан и сохранен"
+      });
+      
       return true;
     } catch (error) {
       console.error("Error creating order:", error);
+      
+      // Store locally anyway, but mark as failed sync
       const savedOrders = localStorage.getItem("orders");
       let currentOrders: Order[] = [];
       
@@ -328,11 +337,17 @@ export const useCars = () => {
       
       const failedOrder: Order = {
         ...order,
-        syncStatus: 'failed'
+        syncStatus: 'failed' as const
       };
       
       currentOrders.push(failedOrder);
       localStorage.setItem("orders", JSON.stringify(currentOrders));
+      
+      toast({
+        variant: "destructive",
+        title: "Ошибка сохранения",
+        description: "Заказ сохранен локально, но возникла ошибка при сохранении в файл"
+      });
       
       return false;
     }

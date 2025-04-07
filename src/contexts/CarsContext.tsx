@@ -55,64 +55,32 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
-      const localStorageOrders = localStorage.getItem("orders");
-      let localOrders: Order[] = [];
+      const ordersWithSyncStatus = jsonOrders.map(order => ({
+        ...order,
+        syncStatus: 'synced' as const
+      }));
       
-      if (localStorageOrders) {
-        try {
-          localOrders = JSON.parse(localStorageOrders);
-        } catch (err) {
-          console.error("Failed to parse local orders:", err);
-        }
-      }
-
-      const mergedOrders: Record<string, Order> = {};
+      setOrders(ordersWithSyncStatus);
+      localStorage.setItem("orders", JSON.stringify(ordersWithSyncStatus));
       
-      jsonOrders.forEach(order => {
-        mergedOrders[order.id] = {
-          ...order,
-          syncStatus: 'synced' as const
-        };
-      });
-      
-      localOrders.forEach(order => {
-        if (mergedOrders[order.id]) {
-          if (new Date(order.createdAt) > new Date(mergedOrders[order.id].createdAt)) {
-            mergedOrders[order.id] = order;
-          }
-        } else {
-          mergedOrders[order.id] = order;
-        }
-      });
-      
-      const updatedOrders = Object.values(mergedOrders) as Order[];
-      
-      setOrders(updatedOrders);
-      localStorage.setItem("orders", JSON.stringify(updatedOrders));
-      
-      for (const order of updatedOrders) {
-        if (!order.jsonFilePath || order.syncStatus === 'failed') {
-          try {
-            const jsonFilePath = await saveOrderToJson(order);
-            order.syncStatus = 'synced';
-            order.jsonFilePath = jsonFilePath;
-          } catch (error) {
-            console.error(`Failed to save order ${order.id} to JSON:`, error);
-            order.syncStatus = 'failed';
-          }
-        }
-      }
-      
-      localStorage.setItem("orders", JSON.stringify(updatedOrders));
+      console.log(`Synchronized ${ordersWithSyncStatus.length} orders from JSON files`);
       
       const csvContent = saveOrdersToCSV();
       localStorage.setItem("ordersCSVBackup", csvContent);
       localStorage.setItem("ordersCSVBackupTime", new Date().toISOString());
       
-      console.log(`Synchronized ${updatedOrders.length} orders`);
-      
     } catch (error) {
       console.error("Failed to synchronize orders:", error);
+      
+      const savedOrders = localStorage.getItem("orders");
+      if (savedOrders) {
+        try {
+          setOrders(JSON.parse(savedOrders));
+        } catch (err) {
+          console.error("Failed to parse saved orders:", err);
+        }
+      }
+      
       throw error;
     }
   };
@@ -140,7 +108,7 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
       syncOrders().catch(error => {
         console.error("Periodic sync failed:", error);
       });
-    }, 30000);
+    }, 15000);
     
     return () => {
       clearInterval(syncInterval);
@@ -474,7 +442,7 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
 
   const processOrder = async (orderId: string, status: Order['status']) => {
     const updatedOrders = orders.map(order => 
-      order.id === orderId ? { ...order, status } : order
+      order.id === orderId ? { ...order, status, syncStatus: 'pending' as const } : order
     );
     
     setOrders(updatedOrders);
