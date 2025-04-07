@@ -1,4 +1,3 @@
-
 import { useCars as useGlobalCars } from "../contexts/CarsContext";
 import { Car, Order } from "../types/car";
 import { useToast } from "@/hooks/use-toast";
@@ -294,10 +293,8 @@ export const useCars = () => {
     }
   };
 
-  // Обновленная функция создания заказа с сохранением в JSON
   const createOrder = async (order: Order): Promise<boolean> => {
     try {
-      // Сохраняем заказ в localStorage
       const savedOrders = localStorage.getItem("orders");
       let currentOrders: Order[] = [];
       
@@ -305,11 +302,9 @@ export const useCars = () => {
         currentOrders = JSON.parse(savedOrders);
       }
       
-      // Сохраняем заказ в JSON файл
       const jsonFilePath = await saveOrderToJson(order);
       
-      // Обновляем статус синхронизации и путь к файлу
-      const updatedOrder = {
+      const updatedOrder: Order = {
         ...order,
         syncStatus: 'synced',
         jsonFilePath
@@ -318,14 +313,12 @@ export const useCars = () => {
       currentOrders.push(updatedOrder);
       localStorage.setItem("orders", JSON.stringify(currentOrders));
       
-      // Вызываем функцию синхронизации заказов в CarsContext
       await syncOrders();
       
       processOrder(order.id, order.status);
       return true;
     } catch (error) {
       console.error("Error creating order:", error);
-      // Если произошла ошибка при сохранении в JSON, сохраняем в localStorage с пометкой 'failed'
       const savedOrders = localStorage.getItem("orders");
       let currentOrders: Order[] = [];
       
@@ -333,7 +326,7 @@ export const useCars = () => {
         currentOrders = JSON.parse(savedOrders);
       }
       
-      const failedOrder = {
+      const failedOrder: Order = {
         ...order,
         syncStatus: 'failed'
       };
@@ -442,7 +435,6 @@ export const useCars = () => {
     getOrderCreationDate,
     syncOrders: async () => {
       try {
-        // Синхронизация заказов с JSON файлами
         await syncOrders();
         toast({
           title: "Синхронизация завершена",

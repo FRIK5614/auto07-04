@@ -71,7 +71,7 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
       jsonOrders.forEach(order => {
         mergedOrders[order.id] = {
           ...order,
-          syncStatus: 'synced'
+          syncStatus: 'synced' as const
         };
       });
       
@@ -85,7 +85,7 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
         }
       });
       
-      const updatedOrders = Object.values(mergedOrders);
+      const updatedOrders = Object.values(mergedOrders) as Order[];
       
       setOrders(updatedOrders);
       localStorage.setItem("orders", JSON.stringify(updatedOrders));
@@ -486,7 +486,7 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
         const jsonFilePath = await saveOrderToJson(orderToUpdate);
         
         const finalOrders = updatedOrders.map(order => 
-          order.id === orderId ? { ...order, syncStatus: 'synced', jsonFilePath } : order
+          order.id === orderId ? { ...order, syncStatus: 'synced' as const, jsonFilePath } : order
         );
         
         setOrders(finalOrders);
@@ -500,7 +500,7 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
         console.error(`Failed to update order ${orderId} in JSON:`, error);
         
         const failedOrders = updatedOrders.map(order => 
-          order.id === orderId ? { ...order, syncStatus: 'failed' } : order
+          order.id === orderId ? { ...order, syncStatus: 'failed' as const } : order
         );
         
         setOrders(failedOrders);
