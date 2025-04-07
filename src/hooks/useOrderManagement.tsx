@@ -51,9 +51,8 @@ export const useOrderManagement = () => {
       console.log(`Получено ${serverOrders.length} заказов с сервера`);
       
       if (serverOrders.length > 0) {
-        // Теперь мы обновляем контекст через contextSyncOrders
-        // вместо localStorage
-        contextSyncOrders(serverOrders);
+        // Исправленная строка - вызов без передачи параметров
+        contextSyncOrders();
         console.log('Заказы успешно синхронизированы с сервером');
       }
       
