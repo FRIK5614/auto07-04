@@ -436,7 +436,7 @@ export const useCars = () => {
         localStorage.setItem("orders", JSON.stringify(currentOrders));
         console.log(`Заказ ${order.id} сохранен локально с пометкой об ошибке`);
         
-        // Тот же подход с обработкой результата через catch
+        // Исправление ошибки TypeScript - удаляем проверку на истинность для void типа
         saveOrderToJson(failedOrder)
           .then(() => {
             console.log(`Заказ с ошибкой ${order.id} сохранен в JSON`);
