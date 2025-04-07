@@ -10,22 +10,125 @@ import { Badge } from '@/components/ui/badge';
 import { Order } from '@/types/car';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { CheckCircle, Clock, XCircle, AlertCircle, Download, FileDown, RefreshCw } from 'lucide-react';
+import { 
+  CheckCircle, 
+  Clock, 
+  XCircle, 
+  AlertCircle, 
+  FileDown, 
+  RefreshCw,
+  Phone,
+  Mail,
+  Car,
+  Calendar,
+  User
+} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const OrderStatusBadge = ({ status }: { status: Order['status'] }) => {
   switch (status) {
     case 'new':
-      return <Badge className="bg-blue-500"><AlertCircle className="w-3 h-3 mr-1" /> Новый</Badge>;
+      return <Badge className="bg-blue-500 whitespace-nowrap"><AlertCircle className="w-3 h-3 mr-1" /> Новый</Badge>;
     case 'processing':
-      return <Badge variant="secondary"><Clock className="w-3 h-3 mr-1" /> В обработке</Badge>;
+      return <Badge variant="secondary" className="whitespace-nowrap"><Clock className="w-3 h-3 mr-1" /> В обработке</Badge>;
     case 'completed':
-      return <Badge className="bg-green-500"><CheckCircle className="w-3 h-3 mr-1" /> Завершен</Badge>;
+      return <Badge className="bg-green-500 whitespace-nowrap"><CheckCircle className="w-3 h-3 mr-1" /> Завершен</Badge>;
     case 'canceled':
-      return <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" /> Отменен</Badge>;
+      return <Badge variant="destructive" className="whitespace-nowrap"><XCircle className="w-3 h-3 mr-1" /> Отменен</Badge>;
     default:
       return <Badge variant="outline">{status}</Badge>;
   }
+};
+
+// Компонент для отображения карточки заказа на мобильных устройствах
+const OrderCard = ({ order, car, onStatusChange }: { 
+  order: Order; 
+  car: ReturnType<typeof useCars>['getCarById'] extends (id: string) => infer R ? R : never;
+  onStatusChange: (orderId: string, status: Order['status']) => void;
+}) => {
+  return (
+    <Card className="mb-4 overflow-hidden">
+      <CardContent className="p-0">
+        <div className="bg-muted/20 p-3 border-b flex justify-between items-center">
+          <div className="flex items-center gap-1.5">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm">
+              {format(new Date(order.createdAt), 'dd MMM yyyy HH:mm', { locale: ru })}
+            </span>
+          </div>
+          <OrderStatusBadge status={order.status} />
+        </div>
+        
+        <div className="p-4 space-y-3">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-1.5">
+              <User className="h-4 w-4 text-muted-foreground" />
+              <span className="font-medium">{order.customerName}</span>
+            </div>
+            <div className="text-sm text-right">ID: {order.id.substring(0, 8)}</div>
+          </div>
+          
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-1.5">
+              <Phone className="h-4 w-4 text-muted-foreground" />
+              <a href={`tel:${order.customerPhone}`} className="text-primary">
+                {order.customerPhone}
+              </a>
+            </div>
+            
+            <div className="flex items-center gap-1.5">
+              <Mail className="h-4 w-4 text-muted-foreground" />
+              <a href={`mailto:${order.customerEmail}`} className="text-primary text-sm">
+                {order.customerEmail}
+              </a>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-1.5 pt-1">
+            <Car className="h-4 w-4 text-muted-foreground" />
+            <span>
+              {car ? `${car.brand} ${car.model}` : 'Автомобиль не найден'}
+            </span>
+          </div>
+        </div>
+        
+        <div className="bg-muted/10 p-3 border-t">
+          <div className="flex flex-wrap gap-2">
+            {order.status === 'new' && (
+              <Button 
+                size="sm" 
+                onClick={() => onStatusChange(order.id, 'processing')}
+                className="flex-1"
+              >
+                В обработку
+              </Button>
+            )}
+            {order.status === 'processing' && (
+              <Button 
+                size="sm" 
+                variant="default" 
+                className="bg-green-500 hover:bg-green-600 flex-1"
+                onClick={() => onStatusChange(order.id, 'completed')}
+              >
+                Завершить
+              </Button>
+            )}
+            {(order.status === 'new' || order.status === 'processing') && (
+              <Button 
+                size="sm" 
+                variant="destructive"
+                className="flex-1"
+                onClick={() => onStatusChange(order.id, 'canceled')}
+              >
+                Отменить
+              </Button>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 };
 
 const AdminOrders: React.FC = () => {
@@ -35,6 +138,7 @@ const AdminOrders: React.FC = () => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const { toast } = useToast();
   const [lastBackupTime, setLastBackupTime] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
 
   // Загружаем время последнего бэкапа
   useEffect(() => {
@@ -42,6 +146,20 @@ const AdminOrders: React.FC = () => {
     if (backupTime) {
       setLastBackupTime(backupTime);
     }
+  }, []);
+
+  // Автоматически выбираем режим отображения на основе ширины экрана
+  useEffect(() => {
+    const handleResize = () => {
+      setViewMode(window.innerWidth >= 768 ? 'table' : 'card');
+    };
+    
+    handleResize(); // Установить начальное значение
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
   // Refresh orders data periodically to sync between different admin users
@@ -114,8 +232,8 @@ const AdminOrders: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="container mx-auto p-6">
-        <h1 className="text-2xl font-bold mb-6">Загрузка заказов...</h1>
+      <div className="container mx-auto p-4">
+        <h1 className="text-2xl font-bold mb-4">Загрузка заказов...</h1>
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
         </div>
@@ -125,8 +243,8 @@ const AdminOrders: React.FC = () => {
 
   if (!orders || orders.length === 0) {
     return (
-      <div className="container mx-auto p-6">
-        <h1 className="text-2xl font-bold mb-6">Управление заказами</h1>
+      <div className="container mx-auto p-4">
+        <h1 className="text-2xl font-bold mb-4">Управление заказами</h1>
         <Card>
           <CardContent className="pt-6">
             <div className="text-center py-8">
@@ -143,99 +261,139 @@ const AdminOrders: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-6">Управление заказами</h1>
+    <div className="container mx-auto p-4">
+      <h1 className="text-xl sm:text-2xl font-bold mb-4">Управление заказами</h1>
       
-      <div className="grid grid-cols-1 gap-6">
+      <div className="grid grid-cols-1 gap-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle>Список заказов</CardTitle>
-            <div className="flex gap-2">
+          <CardHeader className="pb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
+            <div>
+              <CardTitle className="text-lg">Список заказов</CardTitle>
               {lastBackupTime && (
-                <div className="text-xs text-muted-foreground flex items-center mr-2">
-                  Последнее автосохранение:&nbsp;
-                  <span className="font-medium">
-                    {format(new Date(lastBackupTime), 'dd.MM.yyyy HH:mm')}
-                  </span>
+                <div className="text-xs text-muted-foreground">
+                  Автосохранение: {format(new Date(lastBackupTime), 'dd.MM.yyyy HH:mm')}
                 </div>
               )}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="hidden sm:flex">
+                <Button 
+                  onClick={() => setViewMode('card')}
+                  variant={viewMode === 'card' ? 'default' : 'outline'}
+                  size="sm"
+                  className="rounded-r-none"
+                >
+                  Карточки
+                </Button>
+                <Button 
+                  onClick={() => setViewMode('table')}
+                  variant={viewMode === 'table' ? 'default' : 'outline'}
+                  size="sm"
+                  className="rounded-l-none"
+                >
+                  Таблица
+                </Button>
+              </div>
               <Button 
                 onClick={exportOrdersToCSV}
                 variant="outline"
-                className="flex items-center gap-2"
+                size="sm"
+                className="flex items-center gap-1.5 ml-auto sm:ml-2"
               >
                 <FileDown className="h-4 w-4" />
-                Экспорт в CSV
+                <span className="hidden sm:inline">Экспорт в CSV</span>
+                <span className="inline sm:hidden">Экспорт</span>
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Дата</TableHead>
-                  <TableHead>Клиент</TableHead>
-                  <TableHead>Контакты</TableHead>
-                  <TableHead>Автомобиль</TableHead>
-                  <TableHead>Статус</TableHead>
-                  <TableHead>Действия</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+          
+          <CardContent className="p-3 sm:p-4">
+            {viewMode === 'card' ? (
+              <div className="space-y-1">
                 {orders.map((order) => {
                   const car = getCarById(order.carId);
                   return (
-                    <TableRow key={order.id}>
-                      <TableCell>
-                        {format(new Date(order.createdAt), 'dd MMM yyyy HH:mm', { locale: ru })}
-                      </TableCell>
-                      <TableCell>{order.customerName}</TableCell>
-                      <TableCell>
-                        <div>{order.customerPhone}</div>
-                        <div className="text-sm text-muted-foreground">{order.customerEmail}</div>
-                      </TableCell>
-                      <TableCell>
-                        {car ? `${car.brand} ${car.model}` : 'Автомобиль не найден'}
-                      </TableCell>
-                      <TableCell>
-                        <OrderStatusBadge status={order.status} />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex space-x-2">
-                          {order.status === 'new' && (
-                            <Button 
-                              size="sm" 
-                              onClick={() => handleStatusChange(order.id, 'processing')}
-                            >
-                              В обработку
-                            </Button>
-                          )}
-                          {order.status === 'processing' && (
-                            <Button 
-                              size="sm" 
-                              variant="default" 
-                              className="bg-green-500 hover:bg-green-600"
-                              onClick={() => handleStatusChange(order.id, 'completed')}
-                            >
-                              Завершить
-                            </Button>
-                          )}
-                          {(order.status === 'new' || order.status === 'processing') && (
-                            <Button 
-                              size="sm" 
-                              variant="destructive"
-                              onClick={() => handleStatusChange(order.id, 'canceled')}
-                            >
-                              Отменить
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                    <OrderCard 
+                      key={order.id} 
+                      order={order} 
+                      car={car} 
+                      onStatusChange={handleStatusChange} 
+                    />
                   );
                 })}
-              </TableBody>
-            </Table>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Дата</TableHead>
+                      <TableHead>Клиент</TableHead>
+                      <TableHead className="hidden sm:table-cell">Контакты</TableHead>
+                      <TableHead>Автомобиль</TableHead>
+                      <TableHead>Статус</TableHead>
+                      <TableHead className="text-right">Действия</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {orders.map((order) => {
+                      const car = getCarById(order.carId);
+                      return (
+                        <TableRow key={order.id}>
+                          <TableCell className="whitespace-nowrap">
+                            {format(new Date(order.createdAt), 'dd MMM HH:mm', { locale: ru })}
+                          </TableCell>
+                          <TableCell>{order.customerName}</TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            <div>{order.customerPhone}</div>
+                            <div className="text-sm text-muted-foreground">{order.customerEmail}</div>
+                          </TableCell>
+                          <TableCell>
+                            {car ? `${car.brand} ${car.model}` : 'Не найден'}
+                          </TableCell>
+                          <TableCell>
+                            <OrderStatusBadge status={order.status} />
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex justify-end flex-wrap gap-1">
+                              {order.status === 'new' && (
+                                <Button 
+                                  size="sm" 
+                                  onClick={() => handleStatusChange(order.id, 'processing')}
+                                  className="h-8 px-2"
+                                >
+                                  В обработку
+                                </Button>
+                              )}
+                              {order.status === 'processing' && (
+                                <Button 
+                                  size="sm" 
+                                  variant="default" 
+                                  className="bg-green-500 hover:bg-green-600 h-8 px-2"
+                                  onClick={() => handleStatusChange(order.id, 'completed')}
+                                >
+                                  Завершить
+                                </Button>
+                              )}
+                              {(order.status === 'new' || order.status === 'processing') && (
+                                <Button 
+                                  size="sm" 
+                                  variant="destructive"
+                                  className="h-8 px-2"
+                                  onClick={() => handleStatusChange(order.id, 'canceled')}
+                                >
+                                  Отменить
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

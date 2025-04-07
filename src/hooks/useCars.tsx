@@ -1,4 +1,3 @@
-
 import { useCars as useGlobalCars } from "../contexts/CarsContext";
 import { Car, Order } from "../types/car";
 
@@ -56,7 +55,6 @@ export const useCars = () => {
   
   const isInCompare = (carId: string) => compareCars.includes(carId);
   
-  // Get most viewed cars
   const getMostViewedCars = (limit = 5): Car[] => {
     return [...cars]
       .filter(car => car.viewCount && car.viewCount > 0)
@@ -64,7 +62,6 @@ export const useCars = () => {
       .slice(0, limit);
   };
   
-  // Get most popular car models
   const getPopularCarModels = (limit = 5): { model: string, count: number }[] => {
     const modelCounts: Record<string, number> = {};
     cars.forEach(car => {
@@ -78,12 +75,10 @@ export const useCars = () => {
       .slice(0, limit);
   };
   
-  // Get cars by body type
   const getCarsByBodyType = (bodyType: string): Car[] => {
     return cars.filter(car => car.bodyType === bodyType);
   };
   
-  // Function to get uploaded images
   const getUploadedImages = (): { name: string, url: string }[] => {
     try {
       const imagesData = localStorage.getItem('carImages');
@@ -100,12 +95,10 @@ export const useCars = () => {
     }
   };
   
-  // Function to save uploaded images
   const saveUploadedImages = (images: { name: string, base64: string }[]): void => {
     try {
       if (!images || images.length === 0) return;
       
-      // First get existing images
       const existingImagesStr = localStorage.getItem('carImages');
       let existingImages = [];
       
@@ -118,7 +111,6 @@ export const useCars = () => {
         }
       }
       
-      // Merge with new ones and save
       const updatedImages = [...existingImages, ...images];
       localStorage.setItem('carImages', JSON.stringify(updatedImages));
       console.log('Images saved to localStorage:', updatedImages.length);
@@ -127,7 +119,6 @@ export const useCars = () => {
     }
   };
   
-  // Sort cars by specific criteria
   const sortCars = (carsToSort: Car[], criterion: string): Car[] => {
     switch (criterion) {
       case 'priceAsc':
@@ -143,19 +134,25 @@ export const useCars = () => {
     }
   };
   
-  // Export orders to CSV
+  const getOrderCreationDate = (order: Order): string => {
+    try {
+      return new Date(order.createdAt).toISOString().slice(0, 19).replace('T', ' ');
+    } catch (error) {
+      console.error('Error formatting order date:', error);
+      return 'Неизвестно';
+    }
+  };
+  
   const exportOrdersToCsv = (): string => {
     if (!orders || orders.length === 0) {
       return '';
     }
 
-    // CSV headers
     const headers = [
       'ID', 'Дата создания', 'Статус', 'Имя клиента', 
       'Телефон', 'Email', 'ID автомобиля', 'Марка', 'Модель'
     ];
     
-    // Form CSV rows
     const csvRows = [];
     csvRows.push(headers.join(','));
     
@@ -163,7 +160,7 @@ export const useCars = () => {
       const car = getCarById(order.carId);
       const row = [
         order.id,
-        new Date(order.createdAt).toISOString().slice(0, 19).replace('T', ' '),
+        getOrderCreationDate(order),
         order.status,
         order.customerName,
         order.customerPhone,
@@ -173,7 +170,6 @@ export const useCars = () => {
         car ? car.model : 'Н/Д'
       ];
       
-      // Escape commas and quotes
       const escapedRow = row.map(value => {
         const strValue = String(value).replace(/"/g, '""');
         return value.includes(',') || value.includes('"') || value.includes('\n') 
@@ -184,7 +180,6 @@ export const useCars = () => {
       csvRows.push(escapedRow.join(','));
     }
     
-    // Return CSV content
     return csvRows.join('\n');
   };
   
@@ -221,7 +216,7 @@ export const useCars = () => {
     getUploadedImages,
     saveUploadedImages,
     exportOrdersToCsv,
-    // Export these functions to fix the build errors
+    getOrderCreationDate,
     addToFavorites,
     removeFromFavorites,
     addToCompare,
