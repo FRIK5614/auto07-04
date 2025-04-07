@@ -1,11 +1,10 @@
-
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Car } from "@/types/car";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Heart, BarChart2, Info, Fuel, Calendar, Gauge, SteeringWheel } from "lucide-react";
+import { Heart, BarChart2, Info, Fuel, Calendar, Gauge, Settings } from "lucide-react";
 import { useCars } from "@/hooks/useCars";
 import { cn } from "@/lib/utils";
 import useEmblaCarousel from "embla-carousel-react";
@@ -28,12 +27,10 @@ const CarCard = ({ car, className }: CarCardProps) => {
   const { toggleFavorite, toggleCompare, isFavorite, isInCompare } = useCars();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   
-  // Use Embla carousel for image swiping - fix the type error by removing draggable
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true });
   
   const handlePrev = () => {
     emblaApi?.scrollPrev();
-    // Update current image index after scrolling
     if (emblaApi) {
       const index = emblaApi.selectedScrollSnap();
       setCurrentImageIndex(index);
@@ -42,7 +39,6 @@ const CarCard = ({ car, className }: CarCardProps) => {
   
   const handleNext = () => {
     emblaApi?.scrollNext();
-    // Update current image index after scrolling
     if (emblaApi) {
       const index = emblaApi.selectedScrollSnap();
       setCurrentImageIndex(index);
@@ -146,7 +142,7 @@ const CarCard = ({ car, className }: CarCardProps) => {
           </div>
           
           <div className="flex items-center text-sm text-auto-gray-700">
-            <SteeringWheel className="h-4 w-4 mr-2 text-auto-blue-600" />
+            <Settings className="h-4 w-4 mr-2 text-auto-blue-600" />
             <span className="font-medium">{car.transmission.type}, {car.drivetrain}</span>
           </div>
           
@@ -161,7 +157,6 @@ const CarCard = ({ car, className }: CarCardProps) => {
           </div>
         </div>
 
-        {/* Additional technical specs */}
         <div className="mt-3 pt-3 border-t border-gray-200">
           <h4 className="font-semibold text-sm mb-2 text-auto-gray-800">Технические характеристики:</h4>
           <div className="grid grid-cols-2 gap-1 text-xs">
