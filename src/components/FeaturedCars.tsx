@@ -49,13 +49,13 @@ const FeaturedCars = ({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Всегда двигаемся на один автомобиль за раз
+  // Всегда двигаемся только на один автомобиль за раз
   const handlePrevious = () => {
     setCurrentIndex((prev) => Math.max(0, prev - 1));
   };
 
   const handleNext = () => {
-    setCurrentIndex((prev) => Math.min(cars.length - 1, prev + 1));
+    setCurrentIndex((prev) => Math.min(cars.length - visibleCount, prev + 1));
   };
 
   return (
