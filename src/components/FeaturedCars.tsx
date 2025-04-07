@@ -67,24 +67,28 @@ const FeaturedCars = ({
     }
   }, [visibleCount, emblaApi, isMobile, options]);
 
-  // Process cars to ensure they have images
+  // Process cars to ensure they have images - modified for better reliability
   const processedCars = cars.map(car => {
-    // First try to apply any saved images
-    const carWithImages = applySavedImagesToCar(car);
+    // Make a deep copy to avoid reference issues
+    const carWithImages = JSON.parse(JSON.stringify(car));
     
-    // Make sure the car has at least one image
-    if (!carWithImages.images || carWithImages.images.length === 0) {
+    // Apply saved images if available
+    const carWithSavedImages = applySavedImagesToCar(carWithImages);
+    
+    // Double check the car has at least one image after processing
+    if (!carWithSavedImages.images || carWithSavedImages.images.length === 0 || 
+        !carWithSavedImages.images[0] || !carWithSavedImages.images[0].url) {
       return {
-        ...carWithImages,
+        ...carWithSavedImages,
         images: [{
-          id: `placeholder-${carWithImages.id}`,
+          id: `placeholder-${carWithSavedImages.id}`,
           url: '/placeholder.svg',
-          alt: `${carWithImages.brand} ${carWithImages.model}`
+          alt: `${carWithSavedImages.brand} ${carWithSavedImages.model}`
         }]
       };
     }
     
-    return carWithImages;
+    return carWithSavedImages;
   });
 
   return (

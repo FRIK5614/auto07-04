@@ -41,20 +41,31 @@ const CarCard = ({ car, className }: CarCardProps) => {
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true });
   
   useEffect(() => {
-    const savedImage = getCarSavedImage(car.id);
+    // Create a deep copy to avoid reference issues
+    const carCopy = JSON.parse(JSON.stringify(car));
     
-    let updatedCar = car;
+    // First check for a saved image specifically for this car
+    const savedImage = getCarSavedImage(carCopy.id);
+    
+    let updatedCar = carCopy;
     
     if (savedImage) {
+      // If there's a saved image for this specific car, use it as the first image
       updatedCar = {
-        ...car,
-        images: [savedImage, ...(car.images || [])]
+        ...carCopy,
+        images: [savedImage, ...(carCopy.images || [])]
       };
+      
+      // Ensure we're saving this image association
+      updateCarImage(updatedCar.id, savedImage.url);
     } else {
-      updatedCar = applySavedImagesToCar(car);
+      // Otherwise apply general saved images logic
+      updatedCar = applySavedImagesToCar(carCopy);
     }
     
-    if (!updatedCar.images || updatedCar.images.length === 0) {
+    // Final check to make sure we have at least one image
+    if (!updatedCar.images || updatedCar.images.length === 0 || 
+        !updatedCar.images[0] || !updatedCar.images[0].url) {
       updatedCar = {
         ...updatedCar,
         images: [{
@@ -65,9 +76,11 @@ const CarCard = ({ car, className }: CarCardProps) => {
       };
     }
     
+    // Update the processed car state
     setProcessedCar(updatedCar);
     
-    if (updatedCar.images && updatedCar.images.length > 0) {
+    // Always make sure to save the current image for future use
+    if (updatedCar.images && updatedCar.images.length > 0 && updatedCar.images[0].url) {
       updateCarImage(updatedCar.id, updatedCar.images[0].url);
     }
   }, [car, applySavedImagesToCar, updateCarImage, getCarSavedImage]);
@@ -106,22 +119,27 @@ const CarCard = ({ car, className }: CarCardProps) => {
     }
   }, [emblaApi]);
   
+  // Double check that we have valid images before rendering
+  const validImages = (processedCar.images || []).filter(img => img && img.url);
+  const hasValidImages = validImages.length > 0;
+  
   return (
     <Card className={cn("overflow-hidden group h-full flex flex-col", className)}>
       <div className="relative overflow-hidden h-48">
         <div className="h-full w-full" ref={emblaRef}>
           <div className="flex h-full">
-            {processedCar.images && processedCar.images.map((image, idx) => (
+            {hasValidImages ? validImages.map((image, idx) => (
               <div 
-                key={idx} 
+                key={`${processedCar.id}-img-${idx}`} 
                 className="relative flex-none w-full h-full min-w-0"
               >
                 <Link to={`/car/${processedCar.id}`}>
                   <img
                     src={image.url}
-                    alt={image.alt}
+                    alt={image.alt || `${processedCar.brand} ${processedCar.model}`}
                     className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                     onError={(e) => {
+                      console.log(`Image error for car ${processedCar.id}:`, image.url);
                       const target = e.target as HTMLImageElement;
                       target.src = '/placeholder.svg';
                       setIsImageError(true);
@@ -129,11 +147,21 @@ const CarCard = ({ car, className }: CarCardProps) => {
                   />
                 </Link>
               </div>
-            ))}
+            )) : (
+              <div className="relative flex-none w-full h-full min-w-0">
+                <Link to={`/car/${processedCar.id}`}>
+                  <img
+                    src="/placeholder.svg"
+                    alt={`${processedCar.brand} ${processedCar.model}`}
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                </Link>
+              </div>
+            )}
           </div>
         </div>
         
-        {processedCar.images && processedCar.images.length > 1 && (
+        {hasValidImages && validImages.length > 1 && (
           <>
             <Button
               variant="ghost"
@@ -177,11 +205,11 @@ const CarCard = ({ car, className }: CarCardProps) => {
           </Badge>
         )}
 
-        {processedCar.images && processedCar.images.length > 1 && (
+        {hasValidImages && validImages.length > 1 && (
           <div className="absolute bottom-2 left-0 w-full flex justify-center gap-1 z-10">
-            {processedCar.images.map((_, idx) => (
+            {validImages.map((_, idx) => (
               <div 
-                key={idx} 
+                key={`${processedCar.id}-dot-${idx}`} 
                 className={`w-2 h-2 rounded-full ${
                   idx === currentImageIndex ? "bg-white" : "bg-white/50"
                 }`}
