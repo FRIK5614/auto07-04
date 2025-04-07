@@ -25,6 +25,7 @@ const PurchaseRequestForm = ({ car }: PurchaseRequestFormProps) => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<string | null>(null);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -33,9 +34,43 @@ const PurchaseRequestForm = ({ car }: PurchaseRequestFormProps) => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const testConnection = async () => {
+    try {
+      setDebugInfo("Проверка соединения...");
+      const response = await fetch('/api/test_connection.php');
+      const data = await response.json();
+      setDebugInfo(JSON.stringify(data, null, 2));
+    } catch (error) {
+      setDebugInfo(`Ошибка проверки соединения: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
+  const checkTables = async () => {
+    try {
+      setDebugInfo("Проверка таблиц...");
+      const response = await fetch('/api/check_tables.php');
+      const data = await response.json();
+      setDebugInfo(JSON.stringify(data, null, 2));
+    } catch (error) {
+      setDebugInfo(`Ошибка проверки таблиц: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
+  const createTables = async () => {
+    try {
+      setDebugInfo("Создание таблиц...");
+      const response = await fetch('/api/create_tables.php');
+      const data = await response.json();
+      setDebugInfo(JSON.stringify(data, null, 2));
+    } catch (error) {
+      setDebugInfo(`Ошибка создания таблиц: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setDebugInfo(null);
 
     try {
       // Создаем новый заказ с уникальным ID
@@ -75,11 +110,14 @@ const PurchaseRequestForm = ({ car }: PurchaseRequestFormProps) => {
       }
     } catch (error) {
       console.error("Ошибка при создании заказа:", error);
+      
       toast({
         variant: "destructive",
         title: "Ошибка отправки заявки",
         description: "Пожалуйста, попробуйте еще раз",
       });
+      
+      setDebugInfo(`Ошибка отправки заявки: ${error instanceof Error ? error.message : String(error)}`);
       setIsSubmitting(false);
     }
   };
@@ -103,6 +141,7 @@ const PurchaseRequestForm = ({ car }: PurchaseRequestFormProps) => {
               email: "",
               message: car ? `Интересует автомобиль ${car.brand} ${car.model}` : "",
             });
+            setDebugInfo(null);
           }} 
           variant="outline"
         >
@@ -179,6 +218,43 @@ const PurchaseRequestForm = ({ car }: PurchaseRequestFormProps) => {
         <p className="text-xs text-auto-gray-500 mt-2">
           Нажимая кнопку «Отправить заявку», вы соглашаетесь с условиями обработки персональных данных.
         </p>
+
+        {/* Отладочные кнопки - только для разработки */}
+        <div className="mt-4 pt-4 border-t border-gray-200">
+          <p className="text-sm font-medium text-gray-600 mb-2">Отладка подключения к БД:</p>
+          <div className="flex flex-wrap gap-2">
+            <Button 
+              type="button" 
+              variant="outline"
+              size="sm"
+              onClick={testConnection}
+            >
+              Тест соединения
+            </Button>
+            <Button 
+              type="button" 
+              variant="outline"
+              size="sm"
+              onClick={checkTables}
+            >
+              Проверить таблицы
+            </Button>
+            <Button 
+              type="button" 
+              variant="outline"
+              size="sm"
+              onClick={createTables}
+            >
+              Создать таблицы
+            </Button>
+          </div>
+        </div>
+        
+        {debugInfo && (
+          <div className="mt-4 p-4 bg-gray-100 rounded overflow-auto max-h-[200px]">
+            <pre className="text-xs">{debugInfo}</pre>
+          </div>
+        )}
       </div>
     </form>
   );
