@@ -1,8 +1,8 @@
+
 import { useCars as useGlobalCars } from "../contexts/CarsContext";
 import { Car, Order } from "../types/car";
 import { useToast } from "@/hooks/use-toast";
 import { uploadImage, assignImageToCar as apiAssignImageToCar } from "../services/api";
-import { supabase } from "@/integrations/supabase/client";
 
 export const useCars = () => {
   const {
@@ -293,13 +293,16 @@ export const useCars = () => {
 
   const createOrder = async (order: Order): Promise<boolean> => {
     try {
-      const { error } = await supabase.from('orders').insert([order]);
+      // Сохраняем заказ в localStorage
+      const savedOrders = localStorage.getItem("orders");
+      let currentOrders: Order[] = [];
       
-      if (error) {
-        console.error("Error creating order in Supabase:", error);
-        processOrder(order.id, order.status);
-        return false;
+      if (savedOrders) {
+        currentOrders = JSON.parse(savedOrders);
       }
+      
+      currentOrders.push(order);
+      localStorage.setItem("orders", JSON.stringify(currentOrders));
       
       processOrder(order.id, order.status);
       return true;

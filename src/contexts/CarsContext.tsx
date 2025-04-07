@@ -3,7 +3,6 @@ import { Car, CarFilter, Order } from "../types/car";
 import { fetchAllCars } from "../services/api";
 import { useToast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from "uuid";
-import { supabase } from "@/integrations/supabase/client";
 
 interface CarsContextType {
   cars: Car[];
@@ -48,36 +47,12 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const { data: supabaseOrders, error } = await supabase
-          .from('orders')
-          .select('*');
-        
-        if (error) {
-          console.error("Ошибка при получении заказов из Supabase:", error);
-          const savedOrders = localStorage.getItem("orders");
-          if (savedOrders) {
-            try {
-              setOrders(JSON.parse(savedOrders));
-            } catch (err) {
-              console.error("Failed to parse saved orders:", err);
-            }
-          }
-        } else if (supabaseOrders && supabaseOrders.length > 0) {
-          setOrders(supabaseOrders);
-          localStorage.setItem("orders", JSON.stringify(supabaseOrders));
-        } else {
-          const savedOrders = localStorage.getItem("orders");
-          if (savedOrders) {
-            try {
-              const parsedOrders = JSON.parse(savedOrders);
-              setOrders(parsedOrders);
-              
-              if (parsedOrders.length > 0) {
-                await supabase.from('orders').insert(parsedOrders);
-              }
-            } catch (err) {
-              console.error("Failed to parse saved orders:", err);
-            }
+        const savedOrders = localStorage.getItem("orders");
+        if (savedOrders) {
+          try {
+            setOrders(JSON.parse(savedOrders));
+          } catch (err) {
+            console.error("Failed to parse saved orders:", err);
           }
         }
       } catch (fetchError) {
@@ -99,7 +74,7 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
   }, [orders]);
 
   const saveOrdersToCSV = () => {
-    if (!orders || orders.length === 0) return;
+    if (!orders || orders.length === 0) return "";
     
     const headers = [
       'ID', 'Дата создания', 'Статус', 'Имя клиента', 
@@ -244,18 +219,6 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
     
     setOrders(sampleOrders);
     localStorage.setItem("orders", JSON.stringify(sampleOrders));
-    
-    try {
-      const { error } = await supabase
-        .from('orders')
-        .insert(sampleOrders);
-      
-      if (error) {
-        console.error("Error inserting sample orders to Supabase:", error);
-      }
-    } catch (error) {
-      console.error("Error inserting sample orders to Supabase:", error);
-    }
   };
 
   useEffect(() => {
@@ -427,26 +390,13 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
-  const processOrder = async (orderId: string, status: Order['status']) => {
+  const processOrder = (orderId: string, status: Order['status']) => {
     const updatedOrders = orders.map(order => 
       order.id === orderId ? { ...order, status } : order
     );
     
     setOrders(updatedOrders);
     localStorage.setItem("orders", JSON.stringify(updatedOrders));
-    
-    try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ status })
-        .eq('id', orderId);
-      
-      if (error) {
-        console.error("Error updating order in Supabase:", error);
-      }
-    } catch (error) {
-      console.error("Error updating order in Supabase:", error);
-    }
     
     toast({
       title: "Заказ обновлен",

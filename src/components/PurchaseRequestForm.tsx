@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +9,6 @@ import { CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCars } from "@/hooks/useCars";
 import { v4 as uuidv4 } from "uuid";
-import { supabase } from "@/integrations/supabase/client";
 
 interface PurchaseRequestFormProps {
   car?: Car;
@@ -50,35 +50,21 @@ const PurchaseRequestForm = ({ car }: PurchaseRequestFormProps) => {
     };
 
     try {
-      // Сохраняем заказ в Supabase
-      const { error } = await supabase
-        .from('orders')
-        .insert([newOrder]);
-
-      if (error) {
-        console.error("Ошибка при сохранении заказа в Supabase:", error);
-        
-        // Резервное сохранение в localStorage, если Supabase недоступен
-        const savedOrders = localStorage.getItem("orders");
-        let currentOrders: Order[] = [];
-        
-        if (savedOrders) {
-          currentOrders = JSON.parse(savedOrders);
-        }
-        
-        currentOrders.push(newOrder);
-        localStorage.setItem("orders", JSON.stringify(currentOrders));
-        
-        toast({
-          title: "Заявка отправлена",
-          description: "Мы свяжемся с вами в ближайшее время (сохранено локально)",
-        });
-      } else {
-        toast({
-          title: "Заявка отправлена",
-          description: "Мы свяжемся с вами в ближайшее время",
-        });
+      // Сохраняем заказ в localStorage
+      const savedOrders = localStorage.getItem("orders");
+      let currentOrders: Order[] = [];
+      
+      if (savedOrders) {
+        currentOrders = JSON.parse(savedOrders);
       }
+      
+      currentOrders.push(newOrder);
+      localStorage.setItem("orders", JSON.stringify(currentOrders));
+      
+      toast({
+        title: "Заявка отправлена",
+        description: "Мы свяжемся с вами в ближайшее время",
+      });
       
       setIsSubmitting(false);
       setIsSubmitted(true);

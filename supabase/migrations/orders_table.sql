@@ -1,4 +1,7 @@
 
+-- Эта миграция будет использоваться только если в будущем вы решите подключить Supabase
+-- Сейчас данные хранятся локально в localStorage
+
 CREATE TABLE IF NOT EXISTS orders (
   id TEXT PRIMARY KEY,
   carId TEXT NOT NULL,
