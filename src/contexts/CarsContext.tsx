@@ -1,8 +1,9 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { Car, CarFilter, Order } from "../types/car";
-import { fetchAllCars } from "../services/api";
+import { Car, CarFilter, Order, OrdersFile } from "../types/car";
+import { fetchAllCars, loadOrdersFromJson, saveOrderToJson } from "../services/api";
 import { useToast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from "uuid";
+import { format } from "date-fns";
 
 interface CarsContextType {
   cars: Car[];
@@ -29,6 +30,7 @@ interface CarsContextType {
   getOrders: () => Order[];
   exportCarsData: () => string;
   importCarsData: (data: string) => boolean;
+  syncOrders: () => Promise<void>;
 }
 
 const CarsContext = createContext<CarsContextType | undefined>(undefined);
@@ -44,9 +46,83 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
   const [filter, setFilter] = useState<CarFilter>({});
   const { toast } = useToast();
 
+  const syncOrders = async () => {
+    try {
+      const jsonOrders = await loadOrdersFromJson();
+      
+      if (!jsonOrders || jsonOrders.length === 0) {
+        console.log("No JSON orders found, using localStorage only");
+        return;
+      }
+
+      const localStorageOrders = localStorage.getItem("orders");
+      let localOrders: Order[] = [];
+      
+      if (localStorageOrders) {
+        try {
+          localOrders = JSON.parse(localStorageOrders);
+        } catch (err) {
+          console.error("Failed to parse local orders:", err);
+        }
+      }
+
+      const mergedOrders: Record<string, Order> = {};
+      
+      jsonOrders.forEach(order => {
+        mergedOrders[order.id] = {
+          ...order,
+          syncStatus: 'synced'
+        };
+      });
+      
+      localOrders.forEach(order => {
+        if (mergedOrders[order.id]) {
+          if (new Date(order.createdAt) > new Date(mergedOrders[order.id].createdAt)) {
+            mergedOrders[order.id] = order;
+          }
+        } else {
+          mergedOrders[order.id] = order;
+        }
+      });
+      
+      const updatedOrders = Object.values(mergedOrders);
+      
+      setOrders(updatedOrders);
+      localStorage.setItem("orders", JSON.stringify(updatedOrders));
+      
+      for (const order of updatedOrders) {
+        if (!order.jsonFilePath || order.syncStatus === 'failed') {
+          try {
+            const jsonFilePath = await saveOrderToJson(order);
+            order.syncStatus = 'synced';
+            order.jsonFilePath = jsonFilePath;
+          } catch (error) {
+            console.error(`Failed to save order ${order.id} to JSON:`, error);
+            order.syncStatus = 'failed';
+          }
+        }
+      }
+      
+      localStorage.setItem("orders", JSON.stringify(updatedOrders));
+      
+      const csvContent = saveOrdersToCSV();
+      localStorage.setItem("ordersCSVBackup", csvContent);
+      localStorage.setItem("ordersCSVBackupTime", new Date().toISOString());
+      
+      console.log(`Synchronized ${updatedOrders.length} orders`);
+      
+    } catch (error) {
+      console.error("Failed to synchronize orders:", error);
+      throw error;
+    }
+  };
+
   useEffect(() => {
     const fetchOrders = async () => {
       try {
+        await syncOrders();
+      } catch (fetchError) {
+        console.error("Error fetching orders:", fetchError);
         const savedOrders = localStorage.getItem("orders");
         if (savedOrders) {
           try {
@@ -55,12 +131,20 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
             console.error("Failed to parse saved orders:", err);
           }
         }
-      } catch (fetchError) {
-        console.error("Error fetching orders:", fetchError);
       }
     };
     
     fetchOrders();
+    
+    const syncInterval = setInterval(() => {
+      syncOrders().catch(error => {
+        console.error("Periodic sync failed:", error);
+      });
+    }, 30000);
+    
+    return () => {
+      clearInterval(syncInterval);
+    };
   }, []);
 
   useEffect(() => {
@@ -78,7 +162,7 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
     
     const headers = [
       'ID', 'Дата создания', 'Статус', 'Имя клиента', 
-      'Телефон', 'Email', 'ID автомобиля', 'Марка', 'Модель'
+      'Телефон', 'Email', 'ID автомобиля', 'Марка', 'Модель', 'Синхронизация', 'JSON файл'
     ];
     
     const csvRows = [];
@@ -95,7 +179,9 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
         order.customerEmail,
         order.carId,
         car ? car.brand : 'Н/Д',
-        car ? car.model : 'Н/Д'
+        car ? car.model : 'Н/Д',
+        order.syncStatus || 'Н/Д',
+        order.jsonFilePath || 'Н/Д'
       ];
       
       const escapedRow = row.map(value => {
@@ -126,17 +212,7 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
           setFilteredCars(parsedCars);
           setLoading(false);
           
-          const savedOrders = localStorage.getItem("orders");
-          if (savedOrders) {
-            try {
-              setOrders(JSON.parse(savedOrders));
-            } catch (err) {
-              console.error("Failed to parse saved orders:", err);
-              createSampleOrders(parsedCars);
-            }
-          } else {
-            createSampleOrders(parsedCars);
-          }
+          await syncOrders();
           
           fetchAllCars().then(apiCars => {
             if (apiCars && apiCars.length > 0) {
@@ -160,17 +236,7 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
       setFilteredCars(data);
       localStorage.setItem("carsCatalog", JSON.stringify(data));
       
-      const savedOrders = localStorage.getItem("orders");
-      if (savedOrders) {
-        try {
-          setOrders(JSON.parse(savedOrders));
-        } catch (err) {
-          console.error("Failed to parse saved orders:", err);
-          createSampleOrders(data);
-        }
-      } else {
-        createSampleOrders(data);
-      }
+      await syncOrders();
       
       setLoading(false);
     } catch (err) {
@@ -196,6 +262,7 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
         customerEmail: "ivan@example.com",
         status: "new",
         createdAt: new Date().toISOString(),
+        syncStatus: "pending"
       },
       {
         id: "order2",
@@ -205,6 +272,7 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
         customerEmail: "petr@example.com",
         status: "processing",
         createdAt: new Date(Date.now() - 86400000).toISOString(),
+        syncStatus: "pending"
       },
       {
         id: "order3",
@@ -214,10 +282,24 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
         customerEmail: "maria@example.com",
         status: "completed",
         createdAt: new Date(Date.now() - 172800000).toISOString(),
+        syncStatus: "pending"
       },
     ];
     
     setOrders(sampleOrders);
+    localStorage.setItem("orders", JSON.stringify(sampleOrders));
+    
+    for (const order of sampleOrders) {
+      try {
+        const jsonFilePath = await saveOrderToJson(order);
+        order.jsonFilePath = jsonFilePath;
+        order.syncStatus = "synced";
+      } catch (error) {
+        console.error(`Failed to save sample order ${order.id} to JSON:`, error);
+        order.syncStatus = "failed";
+      }
+    }
+    
     localStorage.setItem("orders", JSON.stringify(sampleOrders));
   };
 
@@ -390,7 +472,7 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
-  const processOrder = (orderId: string, status: Order['status']) => {
+  const processOrder = async (orderId: string, status: Order['status']) => {
     const updatedOrders = orders.map(order => 
       order.id === orderId ? { ...order, status } : order
     );
@@ -398,10 +480,39 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
     setOrders(updatedOrders);
     localStorage.setItem("orders", JSON.stringify(updatedOrders));
     
-    toast({
-      title: "Заказ обновлен",
-      description: `Статус заказа изменен на: ${status}`
-    });
+    const orderToUpdate = updatedOrders.find(order => order.id === orderId);
+    if (orderToUpdate) {
+      try {
+        const jsonFilePath = await saveOrderToJson(orderToUpdate);
+        
+        const finalOrders = updatedOrders.map(order => 
+          order.id === orderId ? { ...order, syncStatus: 'synced', jsonFilePath } : order
+        );
+        
+        setOrders(finalOrders);
+        localStorage.setItem("orders", JSON.stringify(finalOrders));
+        
+        toast({
+          title: "Заказ обновлен",
+          description: `Статус заказа изменен на: ${status}`
+        });
+      } catch (error) {
+        console.error(`Failed to update order ${orderId} in JSON:`, error);
+        
+        const failedOrders = updatedOrders.map(order => 
+          order.id === orderId ? { ...order, syncStatus: 'failed' } : order
+        );
+        
+        setOrders(failedOrders);
+        localStorage.setItem("orders", JSON.stringify(failedOrders));
+        
+        toast({
+          variant: "destructive",
+          title: "Ошибка обновления",
+          description: "Заказ обновлен локально, но не сохранен в JSON-файле"
+        });
+      }
+    }
   };
 
   const getOrders = () => {
@@ -457,66 +568,7 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const ensureCompleteCar = (car: Partial<Car>): Car => {
-    return {
-      id: car.id || `car-${uuidv4()}`,
-      brand: car.brand || 'Неизвестно',
-      model: car.model || 'Неизвестно',
-      year: car.year || new Date().getFullYear(),
-      bodyType: car.bodyType || "Седан",
-      colors: car.colors || ["Белый", "Черный"],
-      price: car.price || {
-        base: 0,
-        withOptions: 0
-      },
-      engine: car.engine || {
-        type: "4-цилиндровый",
-        displacement: 2.0,
-        power: 150,
-        torque: 200,
-        fuelType: "Бензин"
-      },
-      transmission: car.transmission || {
-        type: "Автоматическая",
-        gears: 6
-      },
-      drivetrain: car.drivetrain || "Передний",
-      dimensions: car.dimensions || {
-        length: 4500,
-        width: 1800,
-        height: 1500,
-        wheelbase: 2700,
-        weight: 1500,
-        trunkVolume: 450
-      },
-      performance: car.performance || {
-        acceleration: 9.0,
-        topSpeed: 200,
-        fuelConsumption: {
-          city: 8.0,
-          highway: 6.0,
-          combined: 7.0
-        }
-      },
-      features: car.features || [
-        {
-          id: `feature-${uuidv4()}`,
-          name: "Климат-контроль",
-          category: "Комфорт",
-          isStandard: true
-        }
-      ],
-      images: car.images && car.images.length > 0 ? car.images : [
-        {
-          id: `image-${uuidv4()}`,
-          url: "/placeholder.svg",
-          alt: `${car.brand || 'Неизвестно'} ${car.model || 'Неизвестно'}`
-        }
-      ],
-      description: car.description || `${car.brand || 'Неизвестно'} ${car.model || 'Неизвестно'} ${car.year || new Date().getFullYear()} года`,
-      isNew: car.isNew !== undefined ? car.isNew : false,
-      country: car.country || "Неизвестно",
-      viewCount: car.viewCount || 0
-    };
+    return car as Car;
   };
 
   useEffect(() => {
@@ -551,7 +603,8 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
         processOrder,
         getOrders,
         exportCarsData,
-        importCarsData
+        importCarsData,
+        syncOrders
       }}
     >
       {children}

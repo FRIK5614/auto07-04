@@ -2,7 +2,9 @@
 import { useCars as useGlobalCars } from "../contexts/CarsContext";
 import { Car, Order } from "../types/car";
 import { useToast } from "@/hooks/use-toast";
-import { uploadImage, assignImageToCar as apiAssignImageToCar } from "../services/api";
+import { uploadImage, assignImageToCar as apiAssignImageToCar, saveOrderToJson, loadOrdersFromJson } from "../services/api";
+import { format } from 'date-fns';
+import { ru } from 'date-fns/locale';
 
 export const useCars = () => {
   const {
@@ -29,7 +31,8 @@ export const useCars = () => {
     processOrder,
     getOrders,
     exportCarsData,
-    importCarsData
+    importCarsData,
+    syncOrders
   } = useGlobalCars();
   
   const { toast } = useToast();
@@ -284,13 +287,14 @@ export const useCars = () => {
   
   const getOrderCreationDate = (order: Order) => {
     try {
-      return new Date(order.createdAt).toISOString().slice(0, 19).replace('T', ' ');
+      return format(new Date(order.createdAt), 'dd.MM.yyyy HH:mm', { locale: ru });
     } catch (error) {
       console.error('Error formatting order date:', error);
       return 'Неизвестно';
     }
   };
 
+  // Обновленная функция создания заказа с сохранением в JSON
   const createOrder = async (order: Order): Promise<boolean> => {
     try {
       // Сохраняем заказ в localStorage
@@ -301,13 +305,42 @@ export const useCars = () => {
         currentOrders = JSON.parse(savedOrders);
       }
       
-      currentOrders.push(order);
+      // Сохраняем заказ в JSON файл
+      const jsonFilePath = await saveOrderToJson(order);
+      
+      // Обновляем статус синхронизации и путь к файлу
+      const updatedOrder = {
+        ...order,
+        syncStatus: 'synced',
+        jsonFilePath
+      };
+      
+      currentOrders.push(updatedOrder);
       localStorage.setItem("orders", JSON.stringify(currentOrders));
+      
+      // Вызываем функцию синхронизации заказов в CarsContext
+      await syncOrders();
       
       processOrder(order.id, order.status);
       return true;
     } catch (error) {
       console.error("Error creating order:", error);
+      // Если произошла ошибка при сохранении в JSON, сохраняем в localStorage с пометкой 'failed'
+      const savedOrders = localStorage.getItem("orders");
+      let currentOrders: Order[] = [];
+      
+      if (savedOrders) {
+        currentOrders = JSON.parse(savedOrders);
+      }
+      
+      const failedOrder = {
+        ...order,
+        syncStatus: 'failed'
+      };
+      
+      currentOrders.push(failedOrder);
+      localStorage.setItem("orders", JSON.stringify(currentOrders));
+      
       return false;
     }
   };
@@ -372,7 +405,7 @@ export const useCars = () => {
 
       const headers = [
         'ID', 'Дата создания', 'Статус', 'Имя клиента', 
-        'Телефон', 'Email', 'ID автомобиля', 'Марка', 'Модель'
+        'Телефон', 'Email', 'ID автомобиля', 'Марка', 'Модель', 'Синхронизация', 'JSON файл'
       ];
       
       const csvRows = [];
@@ -389,7 +422,9 @@ export const useCars = () => {
           order.customerEmail,
           order.carId,
           car ? car.brand : 'Н/Д',
-          car ? car.model : 'Н/Д'
+          car ? car.model : 'Н/Д',
+          order.syncStatus || 'Н/Д',
+          order.jsonFilePath || 'Н/Д'
         ];
         
         const escapedRow = row.map(value => {
@@ -405,6 +440,25 @@ export const useCars = () => {
       return csvRows.join('\n');
     },
     getOrderCreationDate,
+    syncOrders: async () => {
+      try {
+        // Синхронизация заказов с JSON файлами
+        await syncOrders();
+        toast({
+          title: "Синхронизация завершена",
+          description: "Заказы успешно синхронизированы"
+        });
+        return true;
+      } catch (error) {
+        console.error("Ошибка синхронизации заказов:", error);
+        toast({
+          variant: "destructive",
+          title: "Ошибка синхронизации",
+          description: "Не удалось синхронизировать заказы"
+        });
+        return false;
+      }
+    },
     addToFavorites,
     removeFromFavorites,
     addToCompare,

@@ -1,10 +1,13 @@
-import { Car } from '../types/car';
+
+import { Car, Order } from '../types/car';
 
 // Базовый URL для API
 const BASE_URL = 'https://catalog.tmcavto.ru';
 
 // Temporary image storage for demo purposes
 const IMAGE_STORAGE_PREFIX = '/car/image/';
+// JSON storage for orders
+const ORDERS_JSON_PREFIX = '/orders/';
 
 /**
  * Получение данных о всех автомобилях
@@ -237,6 +240,106 @@ export const submitPurchaseRequest = async (formData: Record<string, any>): Prom
 };
 
 /**
+ * Сохранение заказа в JSON-файл
+ * @param order Заказ для сохранения
+ * @returns Путь к созданному файлу
+ */
+export const saveOrderToJson = async (order: Order): Promise<string> => {
+  try {
+    // В реальном приложении здесь будет запрос к бэкенду для сохранения в файловой системе
+    // Но для эмуляции мы сохраняем в localStorage в специальном формате
+    
+    // Создаем имя файла на основе ID заказа и временной метки
+    const fileName = `order_${order.id.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.json`;
+    const filePath = `${ORDERS_JSON_PREFIX}${fileName}`;
+    
+    // Получаем существующие JSON-файлы заказов или создаем новый объект
+    const ordersJsonFiles = localStorage.getItem('ordersJsonFiles') || '{}';
+    let jsonFilesMap;
+    
+    try {
+      jsonFilesMap = JSON.parse(ordersJsonFiles);
+    } catch (e) {
+      jsonFilesMap = {};
+    }
+    
+    // Сохраняем новый файл в структуру
+    jsonFilesMap[filePath] = {
+      fileName,
+      order: JSON.stringify(order),
+      createdAt: new Date().toISOString(),
+      lastModified: new Date().toISOString()
+    };
+    
+    // Обновляем структуру в localStorage
+    localStorage.setItem('ordersJsonFiles', JSON.stringify(jsonFilesMap));
+    
+    console.log(`[API] Заказ ${order.id} сохранен в JSON-файл: ${filePath}`);
+    
+    // Добавляем задержку для имитации сетевого запроса
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    return filePath;
+  } catch (error) {
+    console.error('Ошибка при сохранении заказа в JSON:', error);
+    throw new Error('Не удалось сохранить заказ в JSON-файл');
+  }
+};
+
+/**
+ * Загрузка заказов из JSON-файлов
+ * @returns Массив заказов
+ */
+export const loadOrdersFromJson = async (): Promise<Order[]> => {
+  try {
+    // В реальном приложении здесь будет запрос к бэкенду для чтения файлов
+    // Но для эмуляции мы читаем из localStorage
+    
+    // Получаем сохраненные JSON-файлы заказов
+    const ordersJsonFiles = localStorage.getItem('ordersJsonFiles');
+    
+    if (!ordersJsonFiles) {
+      console.log('[API] Нет сохраненных JSON-файлов с заказами');
+      return [];
+    }
+    
+    const jsonFilesMap = JSON.parse(ordersJsonFiles);
+    const orders: Order[] = [];
+    
+    // Обрабатываем каждый JSON-файл
+    for (const [filePath, fileData] of Object.entries(jsonFilesMap)) {
+      try {
+        // @ts-ignore
+        const orderData = JSON.parse(fileData.order);
+        
+        // Добавляем путь к файлу, если его нет
+        if (!orderData.jsonFilePath) {
+          orderData.jsonFilePath = filePath;
+        }
+        
+        // Добавляем статус синхронизации, если его нет
+        if (!orderData.syncStatus) {
+          orderData.syncStatus = 'synced';
+        }
+        
+        orders.push(orderData);
+      } catch (e) {
+        console.error(`Ошибка при разборе JSON-файла ${filePath}:`, e);
+      }
+    }
+    
+    // Добавляем задержку для имитации сетевого запроса
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    console.log(`[API] Загружено ${orders.length} заказов из JSON-файлов`);
+    return orders;
+  } catch (error) {
+    console.error('Ошибка при загрузке заказов из JSON:', error);
+    throw new Error('Не удалось загрузить заказы из JSON-файлов');
+  }
+};
+
+/**
  * Генерация мок-данных о автомобилях для Китая
  * Это служебная функция для создания тестовых данных, когда реальные данные недоступны
  */
@@ -356,5 +459,31 @@ export const fetchCarsByCountryWithFallback = async (country: string): Promise<C
     
     // Для других стран возвращаем пустой массив
     return [];
+  }
+};
+
+/**
+ * Проверка существования и доступности JSON-файлов для заказов
+ */
+export const checkJsonFilesAvailability = async (): Promise<boolean> => {
+  try {
+    // В реальном приложении здесь можно проверить доступность директории для сохранения JSON
+    // Но в эмуляции мы просто проверим, что localStorage доступен
+    
+    const testKey = 'jsonFilesAvailabilityTest';
+    localStorage.setItem(testKey, 'test');
+    
+    if (localStorage.getItem(testKey) === 'test') {
+      localStorage.removeItem(testKey);
+      
+      console.log('[API] Проверка доступности JSON-файлов: успешно');
+      return true;
+    }
+    
+    console.error('[API] Проверка доступности JSON-файлов: localStorage недоступен');
+    return false;
+  } catch (error) {
+    console.error('Ошибка при проверке доступности JSON-файлов:', error);
+    return false;
   }
 };

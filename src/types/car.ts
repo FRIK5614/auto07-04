@@ -97,5 +97,15 @@ export interface Order {
   message?: string;
   status: 'new' | 'processing' | 'completed' | 'canceled';
   createdAt: string;
-  image?: string; // Добавлено поле для хранения изображения в формате base64
+  image?: string; // Поле для хранения изображения в формате base64
+  syncStatus?: 'pending' | 'synced' | 'failed'; // Статус синхронизации
+  jsonFilePath?: string; // Путь к файлу JSON, где сохранён заказ
 }
+
+// Добавляем новый интерфейс для работы с файлом заказов
+export interface OrdersFile {
+  orders: Order[];
+  lastUpdated: string;
+  version: string;
+}
+

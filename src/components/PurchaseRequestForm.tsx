@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Car, Order } from "@/types/car";
-import { CheckCircle, Camera, Upload } from "lucide-react";
+import { CheckCircle, Camera, Upload, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCars } from "@/hooks/useCars";
 import { v4 as uuidv4 } from "uuid";
@@ -16,7 +16,7 @@ interface PurchaseRequestFormProps {
 
 const PurchaseRequestForm = ({ car }: PurchaseRequestFormProps) => {
   const { toast } = useToast();
-  const { processOrder } = useCars();
+  const { createOrder } = useCars();
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -76,32 +76,26 @@ const PurchaseRequestForm = ({ car }: PurchaseRequestFormProps) => {
       status: 'new',
       createdAt: new Date().toISOString(),
       message: formData.message,
-      image: previewImage || undefined
+      image: previewImage || undefined,
+      syncStatus: 'pending' // Изначально помечаем как ожидающий синхронизации
     };
 
     try {
-      // Сохраняем заказ в localStorage
-      const savedOrders = localStorage.getItem("orders");
-      let currentOrders: Order[] = [];
+      // Сохраняем заказ через хук useCars, который теперь будет
+      // сохранять заказ в JSON-файле и в localStorage
+      const success = await createOrder(newOrder);
       
-      if (savedOrders) {
-        currentOrders = JSON.parse(savedOrders);
+      if (success) {
+        toast({
+          title: "Заявка отправлена",
+          description: "Мы свяжемся с вами в ближайшее время",
+        });
+        
+        setIsSubmitting(false);
+        setIsSubmitted(true);
+      } else {
+        throw new Error("Не удалось сохранить заказ");
       }
-      
-      currentOrders.push(newOrder);
-      localStorage.setItem("orders", JSON.stringify(currentOrders));
-      
-      // Сохраняем в отдельный JSON для скачивания
-      const ordersJson = JSON.stringify(currentOrders, null, 2);
-      localStorage.setItem("ordersJSON", ordersJson);
-      
-      toast({
-        title: "Заявка отправлена",
-        description: "Мы свяжемся с вами в ближайшее время",
-      });
-      
-      setIsSubmitting(false);
-      setIsSubmitted(true);
     } catch (error) {
       console.error("Ошибка при создании заказа:", error);
       toast({
@@ -225,7 +219,7 @@ const PurchaseRequestForm = ({ car }: PurchaseRequestFormProps) => {
                   onClick={clearFileInput}
                   className="absolute top-2 right-2 bg-white rounded-full p-1 shadow hover:bg-red-50"
                 >
-                  <CheckCircle className="h-4 w-4 text-red-500" />
+                  <X className="h-4 w-4 text-red-500" />
                 </button>
               </div>
             )}

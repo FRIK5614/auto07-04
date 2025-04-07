@@ -21,7 +21,8 @@ import {
   Mail,
   Car,
   Calendar,
-  User
+  User,
+  CloudSync
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -38,6 +39,20 @@ const OrderStatusBadge = ({ status }: { status: Order['status'] }) => {
       return <Badge variant="destructive" className="whitespace-nowrap"><XCircle className="w-3 h-3 mr-1" /> Отменен</Badge>;
     default:
       return <Badge variant="outline">{status}</Badge>;
+  }
+};
+
+// Бейдж для отображения статуса синхронизации
+const SyncStatusBadge = ({ status }: { status?: string }) => {
+  switch (status) {
+    case 'synced':
+      return <Badge className="bg-green-500 whitespace-nowrap"><CheckCircle className="w-3 h-3 mr-1" /> Синхронизирован</Badge>;
+    case 'failed':
+      return <Badge variant="destructive" className="whitespace-nowrap"><XCircle className="w-3 h-3 mr-1" /> Ошибка</Badge>;
+    case 'pending':
+      return <Badge variant="secondary" className="whitespace-nowrap"><Clock className="w-3 h-3 mr-1" /> Ожидание</Badge>;
+    default:
+      return <Badge variant="outline">Неизвестно</Badge>;
   }
 };
 
@@ -91,6 +106,20 @@ const OrderCard = ({ order, car, onStatusChange }: {
               {car ? `${car.brand} ${car.model}` : 'Автомобиль не найден'}
             </span>
           </div>
+          
+          <div className="flex items-center gap-1.5">
+            <CloudSync className="h-4 w-4 text-muted-foreground" />
+            <div className="flex items-center gap-1">
+              <span className="text-sm">Синхронизация:</span>
+              <SyncStatusBadge status={order.syncStatus} />
+            </div>
+          </div>
+          
+          {order.jsonFilePath && (
+            <div className="text-xs text-muted-foreground truncate">
+              JSON: {order.jsonFilePath}
+            </div>
+          )}
         </div>
         
         <div className="bg-muted/10 p-3 border-t">
@@ -132,13 +161,14 @@ const OrderCard = ({ order, car, onStatusChange }: {
 };
 
 const AdminOrders: React.FC = () => {
-  const { orders, getCarById, processOrder, loading, exportOrdersToCsv } = useCars();
+  const { orders, getCarById, processOrder, loading, exportOrdersToCsv, syncOrders } = useCars();
   const { isAdmin } = useAdmin();
   const navigate = useNavigate();
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const { toast } = useToast();
   const [lastBackupTime, setLastBackupTime] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // Загружаем время последнего бэкапа
   useEffect(() => {
@@ -166,25 +196,20 @@ const AdminOrders: React.FC = () => {
   useEffect(() => {
     // Check for updated orders in localStorage every 5 seconds
     const intervalId = setInterval(() => {
-      const savedOrders = localStorage.getItem("orders");
-      if (savedOrders) {
-        try {
-          // We don't need to set the orders directly as the useCars hook
-          // already loads them from localStorage on mount
-          console.log("Checking for order updates");
-          // Обновляем время последнего бэкапа
-          const backupTime = localStorage.getItem("ordersCSVBackupTime");
-          if (backupTime) {
-            setLastBackupTime(backupTime);
-          }
-        } catch (error) {
-          console.error("Failed to parse orders from localStorage:", error);
-        }
+      // Обновляем время последнего бэкапа
+      const backupTime = localStorage.getItem("ordersCSVBackupTime");
+      if (backupTime) {
+        setLastBackupTime(backupTime);
       }
+      
+      // Проверяем наличие новых заказов из JSON
+      syncOrders().catch(error => {
+        console.error("Auto-sync failed:", error);
+      });
     }, 5000);
 
     return () => clearInterval(intervalId);
-  }, []);
+  }, [syncOrders]);
 
   React.useEffect(() => {
     if (!isAdmin) {
@@ -224,6 +249,27 @@ const AdminOrders: React.FC = () => {
       title: "Экспорт завершен",
       description: `Заказы экспортированы в файл ${filename}`
     });
+  };
+
+  // Функция принудительной синхронизации заказов
+  const handleSyncOrders = async () => {
+    try {
+      setIsSyncing(true);
+      await syncOrders();
+      toast({
+        title: "Синхронизация завершена",
+        description: "Заказы успешно синхронизированы с JSON-файлами"
+      });
+    } catch (error) {
+      console.error("Sync error:", error);
+      toast({
+        variant: "destructive",
+        title: "Ошибка синхронизации",
+        description: "Не удалось синхронизировать заказы"
+      });
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   if (!isAdmin) {
@@ -294,6 +340,19 @@ const AdminOrders: React.FC = () => {
                   Таблица
                 </Button>
               </div>
+              
+              <Button 
+                onClick={handleSyncOrders}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-1.5"
+                disabled={isSyncing}
+              >
+                <CloudSync className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">Синхронизировать</span>
+                <span className="inline sm:hidden">Синхр.</span>
+              </Button>
+              
               <Button 
                 onClick={exportOrdersToCSV}
                 variant="outline"
@@ -332,6 +391,7 @@ const AdminOrders: React.FC = () => {
                       <TableHead className="hidden sm:table-cell">Контакты</TableHead>
                       <TableHead>Автомобиль</TableHead>
                       <TableHead>Статус</TableHead>
+                      <TableHead>Синхронизация</TableHead>
                       <TableHead className="text-right">Действия</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -353,6 +413,9 @@ const AdminOrders: React.FC = () => {
                           </TableCell>
                           <TableCell>
                             <OrderStatusBadge status={order.status} />
+                          </TableCell>
+                          <TableCell>
+                            <SyncStatusBadge status={order.syncStatus} />
                           </TableCell>
                           <TableCell>
                             <div className="flex justify-end flex-wrap gap-1">
