@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useAdmin } from '@/contexts/AdminContext';
 import { useNavigate, Link } from 'react-router-dom';
@@ -33,7 +32,6 @@ const AdminCars: React.FC = () => {
   const [activeTab, setActiveTab] = useState('basic');
   const [loading, setLoading] = useState(false);
 
-  // Load cars when component mounts
   useEffect(() => {
     if (!isAdmin) {
       navigate('/admin/login');
@@ -42,7 +40,6 @@ const AdminCars: React.FC = () => {
     }
   }, [isAdmin, navigate, loadCars]);
 
-  // Handle adding a new car
   const handleAddCar = () => {
     const newCar: CarType = {
       id: `car_${Date.now()}`,
@@ -64,21 +61,13 @@ const AdminCars: React.FC = () => {
     };
 
     try {
-      const result = addCar(newCar);
-      if (result) {
-        toast({
-          title: "Успешно",
-          description: "Автомобиль добавлен"
-        });
-        loadCars();
-        handleEditCar(newCar);
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Ошибка",
-          description: "Не удалось добавить автомобиль"
-        });
-      }
+      addCar(newCar);
+      toast({
+        title: "Успешно",
+        description: "Автомобиль добавлен"
+      });
+      loadCars();
+      handleEditCar(newCar);
     } catch (error) {
       console.error('Error adding car:', error);
       toast({
@@ -89,7 +78,6 @@ const AdminCars: React.FC = () => {
     }
   };
 
-  // Handle deleting a car
   const handleDeleteCar = (carId: string) => {
     if (window.confirm('Вы уверены, что хотите удалить этот автомобиль?')) {
       deleteCar(carId);
@@ -100,31 +88,21 @@ const AdminCars: React.FC = () => {
     }
   };
 
-  // Handle editing a car
   const handleEditCar = (car: CarType) => {
     setSelectedCar(car);
   };
 
-  // Handle saving an edited car
   const handleSaveCar = async () => {
     if (selectedCar) {
       setLoading(true);
       try {
-        const result = await updateCar(selectedCar);
-        if (result) {
-          toast({
-            title: "Успешно",
-            description: "Автомобиль обновлен"
-          });
-          setSelectedCar(null);
-          loadCars();
-        } else {
-          toast({
-            variant: "destructive",
-            title: "Ошибка",
-            description: "Не удалось обновить автомобиль"
-          });
-        }
+        await updateCar(selectedCar);
+        toast({
+          title: "Успешно",
+          description: "Автомобиль обновлен"
+        });
+        setSelectedCar(null);
+        loadCars();
       } catch (error) {
         console.error('Error updating car:', error);
         toast({
@@ -138,14 +116,12 @@ const AdminCars: React.FC = () => {
     }
   };
 
-  // Handle basic field changes
   const handleBasicChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>, field: string) => {
     if (selectedCar) {
       setSelectedCar({ ...selectedCar, [field]: e.target.value });
     }
   };
 
-  // Handle price field changes
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>, field: string) => {
     if (selectedCar && selectedCar.price) {
       const value = e.target.value ? Number(e.target.value) : 0;
@@ -159,7 +135,6 @@ const AdminCars: React.FC = () => {
     }
   };
 
-  // Handle engine field changes
   const handleEngineChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>, field: string) => {
     if (selectedCar && selectedCar.engine) {
       const value = e.target.type === 'number' ? Number(e.target.value) : e.target.value;
@@ -173,7 +148,6 @@ const AdminCars: React.FC = () => {
     }
   };
 
-  // Handle transmission field changes
   const handleTransmissionChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>, field: string) => {
     if (selectedCar && selectedCar.transmission) {
       const value = e.target.type === 'number' ? Number(e.target.value) : e.target.value;
@@ -187,7 +161,6 @@ const AdminCars: React.FC = () => {
     }
   };
 
-  // Handle dimensions field changes
   const handleDimensionsChange = (e: React.ChangeEvent<HTMLInputElement>, field: string) => {
     if (selectedCar && selectedCar.dimensions) {
       setSelectedCar({
@@ -200,7 +173,6 @@ const AdminCars: React.FC = () => {
     }
   };
 
-  // Handle performance field changes
   const handlePerformanceChange = (e: React.ChangeEvent<HTMLInputElement>, field: string) => {
     if (selectedCar && selectedCar.performance) {
       if (field.startsWith('fuelConsumption.')) {
@@ -227,7 +199,6 @@ const AdminCars: React.FC = () => {
     }
   };
 
-  // Handle checkbox changes
   const handleCheckboxChange = (field: string, checked: boolean) => {
     if (selectedCar) {
       setSelectedCar({
@@ -237,7 +208,6 @@ const AdminCars: React.FC = () => {
     }
   };
 
-  // Handle select changes
   const handleSelectChange = (field: string, value: string) => {
     if (selectedCar) {
       setSelectedCar({
@@ -247,11 +217,9 @@ const AdminCars: React.FC = () => {
     }
   };
 
-  // Handle image update
   const handleImageUpdate = () => {
     if (selectedCar) {
       loadCars();
-      // Refresh the selected car data to show new images
       const updatedCar = cars.find(c => c.id === selectedCar.id);
       if (updatedCar) {
         setSelectedCar(updatedCar);
@@ -259,13 +227,11 @@ const AdminCars: React.FC = () => {
     }
   };
 
-  // Handle export of cars as JSON
   const handleExportCars = () => {
     try {
       const jsonData = exportCarsData();
       const jsonString = JSON.stringify(jsonData, null, 2);
       
-      // Create blob and download
       const blob = new Blob([jsonString], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       
@@ -290,8 +256,7 @@ const AdminCars: React.FC = () => {
       });
     }
   };
-  
-  // If not admin, don't render anything
+
   if (!isAdmin) {
     return null;
   }

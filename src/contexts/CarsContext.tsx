@@ -28,8 +28,8 @@ interface CarsContextType {
   addCar: (car: Car) => void;
   processOrder: (orderId: string, status: Order['status']) => void;
   getOrders: () => Order[];
-  exportCarsData: () => string;
-  importCarsData: (data: string) => boolean;
+  exportCarsData: () => Car[];
+  importCarsData: (data: Car[] | Car) => { success: number, failed: number };
   syncOrders: () => Promise<void>;
 }
 
@@ -53,14 +53,12 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
       
       if (!jsonOrders || jsonOrders.length === 0) {
         console.log("JSON-файлы с заказами не найдены");
-        // Проверяем наличие локальных заказов для защиты от потери данных
         const savedOrders = localStorage.getItem("orders");
         if (savedOrders) {
           try {
             const localOrders = JSON.parse(savedOrders);
             if (localOrders && localOrders.length > 0) {
               console.log(`Найдено ${localOrders.length} локальных заказов, но нет JSON. Используем локальные.`);
-              // Если есть только локальные заказы, но нет JSON, пересоздаем JSON-файлы
               for (const localOrder of localOrders) {
                 try {
                   const jsonFilePath = await saveOrderToJson(localOrder);
@@ -70,7 +68,6 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
                   console.error(`Ошибка при сохранении локального заказа ${localOrder.id} в JSON:`, saveError);
                 }
               }
-              // Обновляем localStorage с восстановленными данными
               localStorage.setItem("orders", JSON.stringify(localOrders));
               setOrders(localOrders);
               return;
@@ -84,22 +81,18 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
 
       console.log(`Получено ${jsonOrders.length} заказов из JSON-файлов`);
 
-      // Убедимся, что все заказы имеют корректный syncStatus
       const ordersWithSyncStatus = jsonOrders.map(order => ({
         ...order,
         syncStatus: order.syncStatus || 'synced' as const
       }));
       
-      // Обновляем состояние приложения
       setOrders(ordersWithSyncStatus);
       
-      // Обновляем localStorage, но с защитой от ошибок переполнения
       try {
         localStorage.setItem("orders", JSON.stringify(ordersWithSyncStatus));
       } catch (storageError) {
         console.error("Ошибка при сохранении заказов в localStorage:", storageError);
         
-        // Если localStorage переполнен, сохраняем только последние 50 заказов
         if (ordersWithSyncStatus.length > 50) {
           const limitedOrders = ordersWithSyncStatus.slice(-50);
           try {
@@ -111,26 +104,17 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
         }
       }
       
-      // Создаем резервную копию в CSV
-      try {
-        const csvContent = saveOrdersToCSV();
-        localStorage.setItem("ordersCSVBackup", csvContent);
-        localStorage.setItem("ordersCSVBackupTime", new Date().toISOString());
-        console.log("Создана резервная копия заказов в CSV");
-      } catch (csvError) {
-        console.error("Ошибка при создании CSV-резервной копии:", csvError);
-      }
-      
+      const csvContent = saveOrdersToCSV();
+      localStorage.setItem("ordersCSVBackup", csvContent);
+      localStorage.setItem("ordersCSVBackupTime", new Date().toISOString());
       console.log("Синхронизация заказов успешно завершена");
     } catch (error) {
       console.error("Ошибка при синхронизации заказов:", error);
       
-      // В случае ошибки синхронизации, пытаемся загрузить заказы из localStorage
       const savedOrders = localStorage.getItem("orders");
       if (savedOrders) {
         try {
-          const parsedOrders = JSON.parse(savedOrders);
-          setOrders(parsedOrders);
+          setOrders(JSON.parse(savedOrders));
           console.log("Восстановлены заказы из localStorage после ошибки синхронизации");
         } catch (err) {
           console.error("Ошибка при восстановлении заказов из localStorage:", err);
@@ -161,12 +145,11 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
     
     fetchOrders();
     
-    // Уменьшаем интервал синхронизации для большей надежности
     const syncInterval = setInterval(() => {
       syncOrders().catch(error => {
         console.error("Периодическая синхронизация не удалась:", error);
       });
-    }, 10000); // Синхронизация каждые 10 секунд вместо 15
+    }, 10000);
     
     return () => {
       clearInterval(syncInterval);
@@ -549,15 +532,16 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
     await loadCars();
   };
 
-  const exportCarsData = (): string => {
-    return JSON.stringify(cars, null, 2);
+  const exportCarsData = (): Car[] => {
+    return cars;
   };
 
-  const importCarsData = (data: string): boolean => {
+  const importCarsData = (data: Car[] | Car): { success: number, failed: number } => {
     try {
-      const parsedData = JSON.parse(data);
-      if (Array.isArray(parsedData) && parsedData.length > 0) {
-        const processedCars = parsedData.map((car: Partial<Car>) => {
+      const carsToImport = Array.isArray(data) ? data : [data];
+      
+      if (carsToImport.length > 0) {
+        const processedCars = carsToImport.map((car: Partial<Car>) => {
           if (!car.id || car.id.trim() === '') {
             car.id = `imported-${uuidv4()}`;
           }
@@ -573,23 +557,24 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
           title: "Импорт завершен",
           description: `Импортировано ${processedCars.length} автомобилей`
         });
-        return true;
+        return { success: processedCars.length, failed: 0 };
       } else {
         toast({
           variant: "destructive",
           title: "Ошибка импорта",
           description: "Данные не содержат автомобилей или имеют неверный формат"
         });
-        return false;
+        return { success: 0, failed: 0 };
       }
     } catch (error) {
       console.error("Import error:", error);
       toast({
         variant: "destructive",
         title: "Ошибка импорта",
-        description: "Не удалось разобрать JSON данные"
+        description: "Не удалось разобрать данные"
       });
-      return false;
+      const count = Array.isArray(data) ? data.length : 1;
+      return { success: 0, failed: count };
     }
   };
 
