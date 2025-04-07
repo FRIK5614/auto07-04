@@ -12,19 +12,16 @@ import {
   BarChart3, 
   FileArchive, 
   Package,
-  MessageCircle,
-  Menu
+  Menu,
+  X
 } from 'lucide-react';
 import { useCars } from '@/hooks/useCars';
-import { useChat } from '@/contexts/ChatContext';
 import { useToast } from '@/hooks/use-toast';
 
 const AdminLayout = () => {
   const { isAdmin, logout } = useAdmin();
   const { orders } = useCars();
-  const { chatState } = useChat();
   const [newOrdersCount, setNewOrdersCount] = useState(0);
-  const [newMessagesCount, setNewMessagesCount] = useState(0);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -37,21 +34,6 @@ const AdminLayout = () => {
       setNewOrdersCount(count);
     }
   }, [orders]);
-
-  // Count unread messages for the badge
-  useEffect(() => {
-    const totalUnread = chatState.sessions.reduce((total, session) => total + session.unreadCount, 0);
-    setNewMessagesCount(totalUnread);
-    
-    // Show notification for new messages
-    if (totalUnread > 0 && location.pathname !== '/admin/chat') {
-      toast({
-        title: "Новые сообщения",
-        description: `У вас ${totalUnread} непрочитанных сообщений`,
-        action: <Button variant="secondary" size="sm" onClick={() => navigate('/admin/chat')}>Перейти</Button>
-      });
-    }
-  }, [chatState.sessions, location.pathname, navigate, toast]);
 
   useEffect(() => {
     if (!isAdmin) {
@@ -142,19 +124,6 @@ const AdminLayout = () => {
                       {newOrdersCount > 0 && (
                         <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
                           {newOrdersCount}
-                        </span>
-                      )}
-                    </Button>
-                    <Button 
-                      variant={isActive('/admin/chat') ? 'secondary' : 'ghost'} 
-                      className="w-full justify-start" 
-                      onClick={(e) => handleMenuItemClick(e as any, "/admin/chat")}
-                    >
-                      <MessageCircle className="h-5 w-5 mr-2" />
-                      <span>Чат</span>
-                      {newMessagesCount > 0 && (
-                        <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
-                          {newMessagesCount}
                         </span>
                       )}
                     </Button>
@@ -263,22 +232,6 @@ const AdminLayout = () => {
                         {newOrdersCount > 0 && (
                           <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
                             {newOrdersCount}
-                          </span>
-                        )}
-                      </a>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton 
-                      asChild
-                      className={isActive('/admin/chat') ? 'bg-accent text-accent-foreground' : ''}
-                    >
-                      <a href="#" onClick={(e) => handleMenuItemClick(e, "/admin/chat")}>
-                        <MessageCircle className="h-5 w-5" />
-                        <span>Чат</span>
-                        {newMessagesCount > 0 && (
-                          <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
-                            {newMessagesCount}
                           </span>
                         )}
                       </a>

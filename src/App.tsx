@@ -13,16 +13,12 @@ import NotFound from "./pages/NotFound";
 import TmcAvtoCatalog from "./components/TmcAvtoCatalog";
 import { AdminProvider } from "./contexts/AdminContext";
 import { CarsProvider } from "./contexts/CarsContext";
-import { ChatProvider } from "./contexts/ChatContext";
 import AdminLogin from "./pages/AdminLogin";
 import AdminLayout from "./components/AdminLayout";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminOrders from "./pages/AdminOrders";
 import AdminImport from "./pages/AdminImport";
-import AdminChat from "./pages/AdminChat";
 import AdminCars from "./pages/AdminCars";
-import ChatWidget from "./components/ChatWidget";
-import { useLocation } from "react-router-dom";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -34,9 +30,6 @@ const queryClient = new QueryClient({
 });
 
 const AppContent = () => {
-  const location = useLocation();
-  const isAdminRoute = location.pathname.startsWith('/admin');
-
   return (
     <>
       <TooltipProvider>
@@ -58,7 +51,6 @@ const AppContent = () => {
             <Route path="orders" element={<AdminOrders />} />
             <Route path="import" element={<AdminImport />} />
             <Route path="settings" element={<AdminDashboard />} />
-            <Route path="chat" element={<AdminChat />} />
           </Route>
           
           {/* Redirect old route to admin panel */}
@@ -67,7 +59,6 @@ const AppContent = () => {
           {/* Catch-all route */}
           <Route path="*" element={<NotFound />} />
         </Routes>
-        {!isAdminRoute && <ChatWidget />}
       </TooltipProvider>
     </>
   );
@@ -79,9 +70,7 @@ const App = () => {
       <BrowserRouter>
         <AdminProvider>
           <CarsProvider>
-            <ChatProvider>
-              <AppContent />
-            </ChatProvider>
+            <AppContent />
           </CarsProvider>
         </AdminProvider>
       </BrowserRouter>
