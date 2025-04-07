@@ -1,4 +1,3 @@
-
 import { useCars as useGlobalCars } from "../contexts/CarsContext";
 import { Car } from "../types/car";
 import { useToast } from "@/hooks/use-toast";
@@ -30,11 +29,9 @@ export const useCarManagement = () => {
       .slice(0, limit);
   };
   
-  // Fixed: Return Car[] instead of string
   const exportCarsData = (): Car[] => {
     try {
       if (typeof contextExportCarsData === 'function') {
-        // Ensure the context function returns Car[]
         return contextExportCarsData();
       }
       
@@ -50,13 +47,11 @@ export const useCarManagement = () => {
     }
   };
   
-  // Fixed: Handle Car[] | Car as input type
   const importCarsData = (data: Car[] | Car): { success: number, failed: number } => {
     try {
       const carsArray = Array.isArray(data) ? data : [data];
       
       if (typeof contextImportCarsData === 'function') {
-        // Convert to string if the context function expects a string
         const result = contextImportCarsData(carsArray);
         
         if (typeof result === 'boolean') {
@@ -72,13 +67,8 @@ export const useCarManagement = () => {
       
       for (const car of carsArray) {
         try {
-          // Updated: Handle boolean return
-          const result = addCar(car);
-          if (result) {
-            success++;
-          } else {
-            failed++;
-          }
+          addCar(car);
+          success++;
         } catch (err) {
           console.error('Error importing car:', car, err);
           failed++;
