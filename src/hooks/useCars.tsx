@@ -3,6 +3,7 @@ import { useCarManagement } from "./useCarManagement";
 import { useFavoritesAndCompare } from "./useFavoritesAndCompare";
 import { useCarImages } from "./useCarImages";
 import { useOrderManagement } from "./useOrderManagement";
+import { Car } from "@/types/car";
 
 export const useCars = () => {
   const carManagement = useCarManagement();
@@ -21,12 +22,12 @@ export const useCars = () => {
     return carManagement.reloadCars();
   };
   
-  // Add exportCarsData and importCarsData methods
+  // Add exportCarsData and importCarsData methods with proper typing
   const exportCarsData = () => {
     return carManagement.exportCarsData();
   };
   
-  const importCarsData = (data: any) => {
+  const importCarsData = (data: Car[] | Car): { success: number, failed: number } => {
     return carManagement.importCarsData(data);
   };
 
@@ -36,7 +37,7 @@ export const useCars = () => {
     // Overwrite cars with image-enhanced versions
     cars: carsWithImages,
     filteredCars: filteredCarsWithImages,
-    loadCars, // Add the loadCars method
+    loadCars,
     exportCarsData,
     importCarsData,
     

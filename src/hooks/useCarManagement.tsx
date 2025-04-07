@@ -16,7 +16,7 @@ export const useCarManagement = () => {
     deleteCar,
     updateCar,
     addCar,
-    exportCarsData,
+    exportCarsData: contextExportCarsData,
     importCarsData: contextImportCarsData
   } = useGlobalCars();
   
@@ -29,21 +29,81 @@ export const useCarManagement = () => {
       .slice(0, limit);
   };
   
-  const importCarsData = (data: any): { success: number, failed: number } => {
+  const exportCarsData = (): Car[] => {
     try {
-      const result = contextImportCarsData(data);
-      
-      if (typeof result === 'boolean') {
-        return result ? { success: Array.isArray(data) ? data.length : 1, failed: 0 } 
-                     : { success: 0, failed: Array.isArray(data) ? data.length : 1 };
-      } else if (result && typeof result === 'object' && 'success' in result && 'failed' in result) {
-        return result;
+      if (typeof contextExportCarsData === 'function') {
+        return contextExportCarsData();
       }
       
-      return { success: 0, failed: 0 };
+      return cars;
+    } catch (error) {
+      console.error('Error exporting cars data:', error);
+      toast({
+        variant: "destructive",
+        title: "Ошибка экспорта",
+        description: "Произошла ошибка при экспорте данных автомобилей"
+      });
+      return [];
+    }
+  };
+  
+  const importCarsData = (data: Car[] | Car): { success: number, failed: number } => {
+    try {
+      const carsArray = Array.isArray(data) ? data : [data];
+      
+      if (typeof contextImportCarsData === 'function') {
+        const result = contextImportCarsData(data);
+        
+        if (typeof result === 'boolean') {
+          return result ? { success: carsArray.length, failed: 0 } 
+                        : { success: 0, failed: carsArray.length };
+        } else if (result && typeof result === 'object' && 'success' in result && 'failed' in result) {
+          return result;
+        }
+      }
+      
+      let success = 0;
+      let failed = 0;
+      
+      for (const car of carsArray) {
+        try {
+          const result = addCar(car);
+          if (result) {
+            success++;
+          } else {
+            failed++;
+          }
+        } catch (err) {
+          console.error('Error importing car:', car, err);
+          failed++;
+        }
+      }
+      
+      if (success > 0) {
+        toast({
+          title: "Импорт завершен",
+          description: `Успешно импортировано: ${success}, не удалось: ${failed}`
+        });
+      } else if (failed > 0) {
+        toast({
+          variant: "destructive",
+          title: "Ошибка импорта",
+          description: `Не удалось импортировать ни одного автомобиля. Ошибок: ${failed}`
+        });
+      }
+      
+      return { success, failed };
     } catch (error) {
       console.error('Error in importCarsData:', error);
-      return { success: 0, failed: Array.isArray(data) ? data.length : 1 };
+      const count = Array.isArray(data) ? data.length : 1;
+      
+      toast({
+        variant: "destructive",
+        title: "Ошибка импорта",
+        description: "Произошла неожиданная ошибка при импорте данных"
+      });
+      
+      return { success: 0, failed: count };
     }
   };
   
