@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, Database, CloudUpload } from 'lucide-react';
+import { RefreshCw, Database, CloudUpload, Activity } from 'lucide-react';
 import { checkJsonFilesAvailability } from '@/services/api';
 
 const AdminDashboard: React.FC = () => {
@@ -17,6 +17,7 @@ const AdminDashboard: React.FC = () => {
   const { toast } = useToast();
   const [jsonFileStatus, setJsonFileStatus] = useState<'checking' | 'available' | 'unavailable'>('checking');
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'success' | 'error'>('idle');
+  const [mysqlStatus, setMysqlStatus] = useState<'checking' | 'connected' | 'error' | 'idle'>('idle');
   
   useEffect(() => {
     const checkJsonStatus = async () => {
@@ -31,13 +32,11 @@ const AdminDashboard: React.FC = () => {
     
     checkJsonStatus();
     
-    // Check and sync on mount
     syncOrders().catch(console.error);
     
-    // Set up periodic checks
     const checkInterval = setInterval(() => {
       checkJsonStatus();
-    }, 10000); // Check JSON availability every 10 seconds
+    }, 10000);
     
     return () => {
       clearInterval(checkInterval);
@@ -68,6 +67,47 @@ const AdminDashboard: React.FC = () => {
       
       setTimeout(() => {
         setSyncStatus('idle');
+      }, 3000);
+    }
+  };
+
+  const testDirectMysqlConnection = async () => {
+    try {
+      setMysqlStatus('checking');
+      const response = await fetch('/api/direct_mysql_test.php');
+      const result = await response.json();
+      
+      if (result.success) {
+        setMysqlStatus('connected');
+        toast({
+          title: "Успешное соединение",
+          description: "Прямое подключение к MySQL установлено.",
+          variant: "default"
+        });
+      } else {
+        setMysqlStatus('error');
+        toast({
+          title: "Ошибка соединения",
+          description: result.message || "Не удалось подключиться к MySQL",
+          variant: "destructive"
+        });
+      }
+      
+      setTimeout(() => {
+        setMysqlStatus('idle');
+      }, 3000);
+    } catch (error) {
+      setMysqlStatus('error');
+      console.error('Ошибка при тестировании MySQL:', error);
+      
+      toast({
+        title: "Ошибка соединения",
+        description: "Произошла ошибка при проверке подключения к MySQL",
+        variant: "destructive"
+      });
+      
+      setTimeout(() => {
+        setMysqlStatus('idle');
       }, 3000);
     }
   };
@@ -136,14 +176,14 @@ const AdminDashboard: React.FC = () => {
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
             <Database className="h-5 w-5" />
-            JSON файловое хранилище
+            Диагностика базы данных
           </CardTitle>
           <CardDescription>
-            Статус хранилища заказов и автомобилей
+            Проверка подключения к базе данных и состояния таблиц
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <div>
               <div className="text-sm font-medium text-muted-foreground mb-1">Статус JSON-файлов:</div>
               <div className="flex items-center">
@@ -162,17 +202,65 @@ const AdminDashboard: React.FC = () => {
               </div>
             </div>
             <div>
-              <div className="text-sm font-medium text-muted-foreground mb-1">Всего заказов в JSON:</div>
-              <div className="text-2xl font-bold">
-                {safeOrders.filter(order => order.syncStatus === 'synced').length}
+              <div className="text-sm font-medium text-muted-foreground mb-1">Статус MySQL:</div>
+              <div className="flex items-center">
+                {mysqlStatus === 'checking' && (
+                  <Badge variant="outline" className="flex items-center gap-1">
+                    <RefreshCw className="h-3 w-3 animate-spin" />
+                    Проверка
+                  </Badge>
+                )}
+                {mysqlStatus === 'connected' && (
+                  <Badge variant="default" className="bg-green-500">Подключено</Badge>
+                )}
+                {mysqlStatus === 'error' && (
+                  <Badge variant="destructive">Ошибка</Badge>
+                )}
+                {mysqlStatus === 'idle' && (
+                  <Badge variant="outline">Нет данных</Badge>
+                )}
               </div>
             </div>
-            <div>
-              <div className="text-sm font-medium text-muted-foreground mb-1">Несинхронизированных:</div>
-              <div className="text-2xl font-bold">
-                {safeOrders.filter(order => order.syncStatus !== 'synced').length}
-              </div>
-            </div>
+          </div>
+          
+          <div className="flex flex-wrap gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => {
+                window.location.href = '/api/test_connection.php';
+              }}
+            >
+              Тест соединения
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => {
+                window.location.href = '/api/check_tables.php';
+              }}
+            >
+              Проверить таблицы
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => {
+                window.location.href = '/api/install.php';
+              }}
+            >
+              Создать таблицы
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={testDirectMysqlConnection}
+              disabled={mysqlStatus === 'checking'}
+              className="flex items-center gap-1.5"
+            >
+              <Activity className="h-4 w-4" />
+              Прямой тест MySQL
+            </Button>
           </div>
         </CardContent>
       </Card>
