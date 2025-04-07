@@ -97,4 +97,5 @@ export interface Order {
   message?: string;
   status: 'new' | 'processing' | 'completed' | 'canceled';
   createdAt: string;
+  image?: string; // Добавлено поле для хранения изображения в формате base64
 }
