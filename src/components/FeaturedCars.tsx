@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Car } from "@/types/car";
 import CarCard from "@/components/CarCard";
@@ -29,7 +30,7 @@ const FeaturedCars = ({
   const isMobile = useIsMobile();
   
   const options = {
-    align: "start" as const,
+    align: "start" as const, // исправляем ошибку типа здесь
     loop: false,
     slidesToScroll: isMobile ? 1 : visibleCount,
   };

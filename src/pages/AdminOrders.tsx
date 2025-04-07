@@ -10,7 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Order } from '@/types/car';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { CheckCircle, Clock, XCircle, AlertCircle } from 'lucide-react';
+import { CheckCircle, Clock, XCircle, AlertCircle, Download, FileDown } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 const OrderStatusBadge = ({ status }: { status: Order['status'] }) => {
   switch (status) {
@@ -32,6 +33,7 @@ const AdminOrders: React.FC = () => {
   const { isAdmin } = useAdmin();
   const navigate = useNavigate();
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const { toast } = useToast();
 
   // Refresh orders data periodically to sync between different admin users
   useEffect(() => {
@@ -59,6 +61,74 @@ const AdminOrders: React.FC = () => {
     
     console.log('Orders in AdminOrders:', orders);
   }, [isAdmin, navigate, orders]);
+
+  // Функция для экспорта заказов в CSV
+  const exportOrdersToCSV = () => {
+    if (!orders || orders.length === 0) {
+      toast({
+        title: "Нет данных для экспорта",
+        description: "Список заказов пуст",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Заголовки CSV
+    const headers = [
+      'ID', 'Дата создания', 'Статус', 'Имя клиента', 
+      'Телефон', 'Email', 'ID автомобиля', 'Марка', 'Модель'
+    ];
+    
+    // Формируем строки CSV
+    const csvRows = [];
+    csvRows.push(headers.join(','));
+    
+    for (const order of orders) {
+      const car = getCarById(order.carId);
+      const row = [
+        order.id,
+        format(new Date(order.createdAt), 'dd.MM.yyyy HH:mm'),
+        order.status,
+        order.customerName,
+        order.customerPhone,
+        order.customerEmail,
+        order.carId,
+        car ? car.brand : 'Н/Д',
+        car ? car.model : 'Н/Д'
+      ];
+      
+      // Экранируем запятые и кавычки
+      const escapedRow = row.map(value => {
+        const strValue = String(value).replace(/"/g, '""');
+        return value.includes(',') || value.includes('"') || value.includes('\n') 
+          ? `"${strValue}"` 
+          : strValue;
+      });
+      
+      csvRows.push(escapedRow.join(','));
+    }
+    
+    // Объединяем строки в текст CSV
+    const csvContent = csvRows.join('\n');
+    
+    // Создаем файл для загрузки
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const filename = `orders_export_${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    
+    // Создаем ссылку для скачивания и имитируем клик
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast({
+      title: "Экспорт завершен",
+      description: `Заказы экспортированы в файл ${filename}`
+    });
+  };
 
   if (!isAdmin) {
     return null;
@@ -100,8 +170,16 @@ const AdminOrders: React.FC = () => {
       
       <div className="grid grid-cols-1 gap-6">
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle>Список заказов</CardTitle>
+            <Button 
+              onClick={exportOrdersToCSV}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <FileDown className="h-4 w-4" />
+              Экспорт в CSV
+            </Button>
           </CardHeader>
           <CardContent>
             <Table>

@@ -12,6 +12,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
 import { 
   Download, 
   Loader2, 
@@ -32,8 +33,9 @@ import { v4 as uuidv4 } from 'uuid';
 const AdminImport: React.FC = () => {
   const { isAdmin } = useAdmin();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const { fetchCatalogData, importAllCars, cars: importedCars, loading, error, blockedSources } = useTmcAvtoCatalog();
-  const { cars, reloadCars, importCarsData, addCar } = useCars();
+  const { cars, reloadCars, importCarsData, addCar, getUploadedImages } = useCars();
   const [importDestination, setImportDestination] = useState<string>('preview');
   const [exportFormat, setExportFormat] = useState<string>('json');
   const [importData, setImportData] = useState<string>('');
@@ -41,7 +43,16 @@ const AdminImport: React.FC = () => {
   const [importSuccess, setImportSuccess] = useState<boolean>(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadedImages, setUploadedImages] = useState<{name: string, url: string}[]>([]);
   
+  // При загрузке компонента получаем ранее загруженные изображения
+  React.useEffect(() => {
+    if (isAdmin) {
+      const images = getUploadedImages();
+      setUploadedImages(images);
+    }
+  }, [isAdmin, getUploadedImages]);
+
   React.useEffect(() => {
     if (!isAdmin) {
       navigate('/admin/login');
@@ -239,7 +250,17 @@ const AdminImport: React.FC = () => {
           imagesData.push({ name: file.name, base64 });
         } catch (error) {
           console.error('Ошибка при чтении файла:', error);
+          toast({
+            variant: "destructive",
+            title: "Ошибка загрузки",
+            description: `Не удалось загрузить файл ${file.name}`
+          });
         }
+      }
+
+      if (imagesData.length === 0) {
+        setImportError('Не удалось загрузить изображения');
+        return;
       }
 
       // Сохраняем в localStorage
@@ -247,11 +268,24 @@ const AdminImport: React.FC = () => {
       const updatedImages = [...existingImages, ...imagesData];
       localStorage.setItem('carImages', JSON.stringify(updatedImages));
 
+      // Обновляем список загруженных изображений
+      const newImages = imagesData.map(img => ({
+        name: img.name,
+        url: img.base64
+      }));
+      setUploadedImages(prev => [...prev, ...newImages]);
+
       setImportSuccess(true);
       setSelectedFiles([]);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
+      
+      toast({
+        title: "Изображения загружены",
+        description: `Успешно загружено ${imagesData.length} изображений`
+      });
+      
       setTimeout(() => setImportSuccess(false), 3000);
     };
 
@@ -536,6 +570,27 @@ const AdminImport: React.FC = () => {
                         Загрузить изображения
                       </Button>
                     </div>
+                    
+                    {/* Отображение загруженных изображений */}
+                    {uploadedImages.length > 0 && (
+                      <div>
+                        <h4 className="font-medium mb-2">Загруженные изображения ({uploadedImages.length})</h4>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+                          {uploadedImages.map((image, index) => (
+                            <div key={index} className="rounded-md overflow-hidden border aspect-square relative">
+                              <img 
+                                src={image.url} 
+                                alt={image.name} 
+                                className="w-full h-full object-cover"
+                              />
+                              <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-60 text-white p-1 text-xs truncate">
+                                {image.name}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
