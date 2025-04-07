@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useCars } from '@/hooks/useCars';
 import { useAdmin } from '@/contexts/AdminContext';
@@ -161,7 +160,6 @@ const AdminOrders: React.FC = () => {
       navigate('/admin/login');
     }
     
-    // Загружаем заказы при загрузке страницы
     const loadOrders = async () => {
       setIsSyncing(true);
       try {
@@ -175,7 +173,6 @@ const AdminOrders: React.FC = () => {
     
     loadOrders();
     
-    // Обновление заказов каждые 30 секунд
     const intervalId = setInterval(() => {
       syncOrders().catch(error => {
         console.error("Auto-sync failed:", error);

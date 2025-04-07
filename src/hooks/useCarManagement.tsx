@@ -1,4 +1,3 @@
-
 import { useCars as useGlobalCars } from "../contexts/CarsContext";
 import { Car } from "../types/car";
 import { useToast } from "@/hooks/use-toast";
@@ -18,7 +17,7 @@ export const useCarManagement = () => {
     updateCar,
     addCar,
     exportCarsData,
-    importCarsData
+    importCarsData: contextImportCarsData
   } = useGlobalCars();
   
   const { toast } = useToast();
@@ -28,6 +27,24 @@ export const useCarManagement = () => {
       .filter(car => car.viewCount && car.viewCount > 0)
       .sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0))
       .slice(0, limit);
+  };
+  
+  const importCarsData = (data: any): { success: number, failed: number } => {
+    try {
+      const result = contextImportCarsData(data);
+      
+      if (typeof result === 'boolean') {
+        return result ? { success: Array.isArray(data) ? data.length : 1, failed: 0 } 
+                     : { success: 0, failed: Array.isArray(data) ? data.length : 1 };
+      } else if (result && typeof result === 'object' && 'success' in result && 'failed' in result) {
+        return result;
+      }
+      
+      return { success: 0, failed: 0 };
+    } catch (error) {
+      console.error('Error in importCarsData:', error);
+      return { success: 0, failed: Array.isArray(data) ? data.length : 1 };
+    }
   };
   
   const getPopularCarModels = (limit = 5): { model: string, count: number }[] => {

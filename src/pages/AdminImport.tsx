@@ -54,13 +54,30 @@ const AdminImport: React.FC = () => {
     
     try {
       const data = JSON.parse(jsonData);
-      const { success, failed } = await importCarsData(data);
+      const result = await importCarsData(data);
       
-      setImportResult({ success, failed });
-      toast({
-        title: "Импорт завершен",
-        description: `Успешно импортировано: ${success}, не удалось: ${failed}`
-      });
+      if (typeof result === 'boolean') {
+        if (result) {
+          setImportResult({ success: data.length || 1, failed: 0 });
+          toast({
+            title: "Импорт завершен",
+            description: `Успешно импортировано: ${data.length || 1}, не удалось: 0`
+          });
+        } else {
+          setImportResult({ success: 0, failed: data.length || 1 });
+          toast({
+            variant: "destructive",
+            title: "Ошибка импорта",
+            description: "Не удалось импортировать данные"
+          });
+        }
+      } else if (result && typeof result === 'object') {
+        setImportResult(result);
+        toast({
+          title: "Импорт завершен",
+          description: `Успешно импортировано: ${result.success}, не удалось: ${result.failed}`
+        });
+      }
     } catch (error) {
       console.error('Error importing JSON data:', error);
       toast({
