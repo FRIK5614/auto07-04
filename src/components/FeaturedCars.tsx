@@ -105,14 +105,13 @@ const FeaturedCars = ({
               className="flex transition-transform duration-500 ease-in-out"
               style={{
                 transform: `translateX(-${currentIndex * (100 / visibleCount)}%)`,
-                width: `${(cars.length * 100) / visibleCount}%`,
               }}
             >
               {cars.map((car) => (
                 <div
                   key={car.id}
                   className="px-2"
-                  style={{ width: `${100 / cars.length}%` }}
+                  style={{ width: `${100 / visibleCount}%` }}
                 >
                   <CarCard car={car} className="h-full" />
                 </div>
