@@ -183,19 +183,19 @@ export const useOrderManagement = () => {
     }
   };
 
+  // Fix: Don't check void type for truthiness
   const processOrderWithServer = async (orderId: string, newStatus: Order['status']): Promise<boolean> => {
     try {
       const serverUpdateSuccess = await updateOrderStatusOnServer(orderId, newStatus);
       
       if (serverUpdateSuccess) {
-        const localResult = contextProcessOrder(orderId, newStatus);
+        // Execute without checking return value since it's void
+        contextProcessOrder(orderId, newStatus);
         
-        if (localResult) {
-          toast({
-            title: "Статус заказа обновлен",
-            description: `Заказ #${orderId.substring(0, 8)} теперь в статусе "${newStatus}"`
-          });
-        }
+        toast({
+          title: "Статус заказа обновлен",
+          description: `Заказ #${orderId.substring(0, 8)} теперь в статусе "${newStatus}"`
+        });
         
         return true;
       } else {
