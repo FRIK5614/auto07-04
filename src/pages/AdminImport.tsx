@@ -1,15 +1,13 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAdmin } from '@/contexts/AdminContext';
 import { useNavigate } from 'react-router-dom';
 import { useCars } from '@/hooks/useCars';
-import { useTmcAvtoCatalog } from '@/hooks/useTmcAvtoCatalog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Upload, FileText, Database, AlertTriangle, Check, X, Loader2 } from 'lucide-react';
+import { Upload, Loader2 } from 'lucide-react';
 import TmcAvtoCatalog from '@/components/TmcAvtoCatalog';
 import { useToast } from '@/hooks/use-toast';
 
@@ -19,8 +17,6 @@ const AdminImport: React.FC = () => {
   const { 
     loadCars, 
     importCarsData,
-    uploadCarImage,
-    addImageByUrl
   } = useCars();
   
   const { toast } = useToast();
@@ -29,15 +25,7 @@ const AdminImport: React.FC = () => {
   const [jsonData, setJsonData] = useState('');
   const [isImporting, setIsImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ success: number; failed: number } | null>(null);
-  const [tmcCatalogVisible, setTmcCatalogVisible] = useState(false);
-  const [tmcCatalogCars, setTmcCatalogCars] = useState<any[]>([]);
-  const [tmcCatalogLoading, setTmcCatalogLoading] = useState(false);
-  const [tmcCatalogError, setTmcCatalogError] = useState<string | null>(null);
-  const [tmcCatalogPage, setTmcCatalogPage] = useState(1);
-  const [tmcCatalogTotalPages, setTmcCatalogTotalPages] = useState(1);
-  const [tmcCatalogSearchTerm, setTmcCatalogSearchTerm] = useState('');
-  const [tmcCatalogItemsPerPage, setTmcCatalogItemsPerPage] = useState(10);
-
+  
   useEffect(() => {
     if (!isAdmin) {
       navigate('/admin/login');
@@ -54,28 +42,20 @@ const AdminImport: React.FC = () => {
     
     try {
       const data = JSON.parse(jsonData);
-      const result = await importCarsData(data);
+      const result = importCarsData(data);
       
-      if (typeof result === 'boolean') {
-        if (result) {
-          setImportResult({ success: data.length || 1, failed: 0 });
-          toast({
-            title: "Импорт завершен",
-            description: `Успешно импортировано: ${data.length || 1}, не удалось: 0`
-          });
-        } else {
-          setImportResult({ success: 0, failed: data.length || 1 });
-          toast({
-            variant: "destructive",
-            title: "Ошибка импорта",
-            description: "Не удалось импортировать данные"
-          });
-        }
-      } else if (result && typeof result === 'object') {
+      if (result && typeof result === 'object' && 'success' in result && 'failed' in result) {
         setImportResult(result);
         toast({
           title: "Импорт завершен",
           description: `Успешно импортировано: ${result.success}, не удалось: ${result.failed}`
+        });
+      } else {
+        setImportResult({ success: 0, failed: 0 });
+        toast({
+          variant: "destructive",
+          title: "Ошибка импорта",
+          description: "Неожиданный формат результата"
         });
       }
     } catch (error) {
@@ -87,6 +67,8 @@ const AdminImport: React.FC = () => {
       });
     } finally {
       setIsImporting(false);
+      // Перезагружаем список автомобилей после импорта
+      loadCars();
     }
   };
 
@@ -108,9 +90,7 @@ const AdminImport: React.FC = () => {
           <CardContent>
             <TabsContent value="json" className="mt-0">
               <div className="grid gap-4">
-                <Label htmlFor="json-data">JSON данные</Label>
                 <Textarea
-                  id="json-data"
                   value={jsonData}
                   onChange={handleJsonChange}
                   placeholder="Вставьте JSON данные сюда"

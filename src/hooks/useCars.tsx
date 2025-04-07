@@ -20,6 +20,15 @@ export const useCars = () => {
   const loadCars = () => {
     return carManagement.reloadCars();
   };
+  
+  // Add exportCarsData and importCarsData methods
+  const exportCarsData = () => {
+    return carManagement.exportCarsData();
+  };
+  
+  const importCarsData = (data: any) => {
+    return carManagement.importCarsData(data);
+  };
 
   return {
     // Car management
@@ -28,6 +37,8 @@ export const useCars = () => {
     cars: carsWithImages,
     filteredCars: filteredCarsWithImages,
     loadCars, // Add the loadCars method
+    exportCarsData,
+    importCarsData,
     
     // Favorites and comparison
     ...favoritesAndCompare,
