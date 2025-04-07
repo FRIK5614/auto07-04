@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import { Car, CarFilter, Order } from "../types/car";
 import { fetchAllCars } from "../services/api";
 import { useToast } from "@/hooks/use-toast";
+import { v4 as uuidv4 } from "uuid";
 
 interface CarsContextType {
   cars: Car[];
@@ -172,10 +173,6 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
     loadCars();
   }, []);
 
-  const reloadCars = async () => {
-    await loadCars();
-  };
-
   useEffect(() => {
     const savedFavorites = localStorage.getItem("favorites");
     if (savedFavorites) {
@@ -329,7 +326,12 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const addCar = (newCar: Car) => {
-    setCars(prevCars => [...prevCars, newCar]);
+    const carToAdd = {
+      ...newCar,
+      id: newCar.id || `car-${uuidv4()}`
+    };
+
+    setCars(prevCars => [...prevCars, carToAdd]);
     toast({
       title: "Автомобиль добавлен",
       description: "Новый автомобиль был успешно добавлен в каталог"
@@ -354,6 +356,10 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
     return orders;
   };
 
+  const reloadCars = async () => {
+    await loadCars();
+  };
+
   const exportCarsData = (): string => {
     return JSON.stringify(cars, null, 2);
   };
@@ -362,12 +368,21 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
     try {
       const parsedData = JSON.parse(data);
       if (Array.isArray(parsedData) && parsedData.length > 0) {
-        setCars(parsedData);
-        setFilteredCars(parsedData);
-        localStorage.setItem("carsCatalog", data);
+        const processedCars = parsedData.map((car: Partial<Car>) => {
+          if (!car.id || car.id.trim() === '') {
+            car.id = `imported-${uuidv4()}`;
+          }
+          
+          return ensureCompleteCar(car as Car);
+        });
+        
+        setCars(processedCars);
+        setFilteredCars(processedCars);
+        localStorage.setItem("carsCatalog", JSON.stringify(processedCars));
+        
         toast({
           title: "Импорт завершен",
-          description: `Импортировано ${parsedData.length} автомобилей`
+          description: `Импортировано ${processedCars.length} автомобилей`
         });
         return true;
       } else {
@@ -387,6 +402,69 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
       });
       return false;
     }
+  };
+
+  const ensureCompleteCar = (car: Partial<Car>): Car => {
+    return {
+      id: car.id || `car-${uuidv4()}`,
+      brand: car.brand || 'Неизвестно',
+      model: car.model || 'Неизвестно',
+      year: car.year || new Date().getFullYear(),
+      bodyType: car.bodyType || "Седан",
+      colors: car.colors || ["Белый", "Черный"],
+      price: car.price || {
+        base: 0,
+        withOptions: 0
+      },
+      engine: car.engine || {
+        type: "4-цилиндровый",
+        displacement: 2.0,
+        power: 150,
+        torque: 200,
+        fuelType: "Бензин"
+      },
+      transmission: car.transmission || {
+        type: "Автоматическая",
+        gears: 6
+      },
+      drivetrain: car.drivetrain || "Передний",
+      dimensions: car.dimensions || {
+        length: 4500,
+        width: 1800,
+        height: 1500,
+        wheelbase: 2700,
+        weight: 1500,
+        trunkVolume: 450
+      },
+      performance: car.performance || {
+        acceleration: 9.0,
+        topSpeed: 200,
+        fuelConsumption: {
+          city: 8.0,
+          highway: 6.0,
+          combined: 7.0
+        }
+      },
+      features: car.features || [
+        {
+          id: `feature-${uuidv4()}`,
+          name: "Климат-контроль",
+          category: "Комфорт",
+          isStandard: true
+        }
+      ],
+      images: car.images && car.images.length > 0 ? car.images : [
+        {
+          id: `image-${uuidv4()}`,
+          url: "/placeholder.svg",
+          alt: `${car.brand || 'Неизвестно'} ${car.model || 'Неизвестно'}`
+        }
+      ],
+      description: car.description || `${car.brand || 'Неизвестно'} ${car.model || 'Неизвестно'} ${car.year || new Date().getFullYear()} года`,
+      isNew: car.isNew !== undefined ? car.isNew : false,
+      country: car.country || "Неизвестно",
+      viewCount: car.viewCount || 0
+    };
   };
 
   useEffect(() => {

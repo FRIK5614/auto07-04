@@ -64,6 +64,23 @@ export const useCars = () => {
       .slice(0, limit);
   };
   
+  // Получение списка загруженных изображений
+  const getUploadedImages = (): { name: string, url: string }[] => {
+    try {
+      const imagesData = localStorage.getItem('carImages');
+      if (!imagesData) return [];
+      
+      const images = JSON.parse(imagesData);
+      return images.map((img: { name: string, base64: string }) => ({
+        name: img.name,
+        url: img.base64
+      }));
+    } catch (error) {
+      console.error('Ошибка при получении загруженных изображений:', error);
+      return [];
+    }
+  };
+  
   return {
     cars,
     filteredCars,
@@ -91,6 +108,7 @@ export const useCars = () => {
     getMostViewedCars,
     exportCarsData,
     importCarsData,
+    getUploadedImages,
     // Export these functions to fix the build errors
     addToFavorites,
     removeFromFavorites,

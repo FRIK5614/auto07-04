@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useRef } from 'react';
 import { useAdmin } from '@/contexts/AdminContext';
 import { useNavigate } from 'react-router-dom';
 import { useTmcAvtoCatalog } from '@/hooks/useTmcAvtoCatalog';
@@ -22,20 +23,24 @@ import {
   Save,
   ArrowUpDown,
   FileUp,
-  FileDown
+  FileDown,
+  ImagePlus
 } from 'lucide-react';
 import { Car } from '@/types/car';
+import { v4 as uuidv4 } from 'uuid';
 
 const AdminImport: React.FC = () => {
   const { isAdmin } = useAdmin();
   const navigate = useNavigate();
   const { fetchCatalogData, importAllCars, cars: importedCars, loading, error, blockedSources } = useTmcAvtoCatalog();
-  const { cars, reloadCars, addCar } = useCars();
+  const { cars, reloadCars, importCarsData, addCar } = useCars();
   const [importDestination, setImportDestination] = useState<string>('preview');
   const [exportFormat, setExportFormat] = useState<string>('json');
   const [importData, setImportData] = useState<string>('');
   const [importError, setImportError] = useState<string | null>(null);
   const [importSuccess, setImportSuccess] = useState<boolean>(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   React.useEffect(() => {
     if (!isAdmin) {
@@ -54,8 +59,9 @@ const AdminImport: React.FC = () => {
       
       for (const importedCar of importedCars) {
         try {
+          const carId = `imported-${uuidv4()}`;
           const newCar = {
-            id: `imported-${importedCar.id || Date.now()}`,
+            id: carId,
             brand: importedCar.brand,
             model: importedCar.model,
             year: importedCar.year,
@@ -96,7 +102,7 @@ const AdminImport: React.FC = () => {
             },
             features: [
               {
-                id: `feature-${Date.now()}-1`,
+                id: `feature-${uuidv4()}`,
                 name: "Климат-контроль",
                 category: "Комфорт",
                 isStandard: true
@@ -104,7 +110,7 @@ const AdminImport: React.FC = () => {
             ],
             images: [
               {
-                id: `image-${Date.now()}-1`,
+                id: `image-${uuidv4()}`,
                 url: importedCar.imageUrl || "/placeholder.svg",
                 alt: `${importedCar.brand} ${importedCar.model}`
               }
@@ -123,7 +129,8 @@ const AdminImport: React.FC = () => {
       }
       
       if (addedCount > 0) {
-        await reloadCars();
+        setImportSuccess(true);
+        setTimeout(() => setImportSuccess(false), 3000);
       }
     }
   };
@@ -189,39 +196,15 @@ const AdminImport: React.FC = () => {
     }
 
     try {
-      const parsedData = JSON.parse(importData);
+      const success = importCarsData(importData);
       
-      if (!Array.isArray(parsedData)) {
-        setImportError('Данные должны быть массивом автомобилей');
-        return;
-      }
-
-      for (const item of parsedData) {
-        if (!item.brand || !item.model) {
-          setImportError('Некоторые автомобили не содержат обязательные поля (brand, model)');
-          return;
-        }
-      }
-
-      let addedCount = 0;
-      for (const carData of parsedData) {
-        if (!carData.id) {
-          carData.id = `imported-${Date.now()}-${addedCount}`;
-        }
-        
-        const completeCar = ensureCompleteCarObject(carData);
-        
-        addCar(completeCar);
-        addedCount++;
-      }
-
-      if (addedCount > 0) {
+      if (success) {
         setImportSuccess(true);
         setImportError(null);
         setImportData('');
-        reloadCars();
+        setTimeout(() => setImportSuccess(false), 3000);
       } else {
-        setImportError('Нет данных для импорта');
+        setImportError('Ошибка при импорте данных');
       }
     } catch (err) {
       console.error('Error parsing import data:', err);
@@ -229,67 +212,65 @@ const AdminImport: React.FC = () => {
     }
   };
 
-  const ensureCompleteCarObject = (carData: Partial<Car>): Car => {
-    return {
-      id: carData.id || `imported-${Date.now()}`,
-      brand: carData.brand || 'Неизвестно',
-      model: carData.model || 'Неизвестно',
-      year: carData.year || new Date().getFullYear(),
-      bodyType: carData.bodyType || "Седан",
-      colors: carData.colors || ["Белый", "Черный"],
-      price: carData.price || {
-        base: 0,
-        withOptions: 0
-      },
-      engine: carData.engine || {
-        type: "4-цилиндровый",
-        displacement: 2.0,
-        power: 150,
-        torque: 200,
-        fuelType: "Бензин"
-      },
-      transmission: carData.transmission || {
-        type: "Автоматическая",
-        gears: 6
-      },
-      drivetrain: carData.drivetrain || "Передний",
-      dimensions: carData.dimensions || {
-        length: 4500,
-        width: 1800,
-        height: 1500,
-        wheelbase: 2700,
-        weight: 1500,
-        trunkVolume: 450
-      },
-      performance: carData.performance || {
-        acceleration: 9.0,
-        topSpeed: 200,
-        fuelConsumption: {
-          city: 8.0,
-          highway: 6.0,
-          combined: 7.0
+  // Функция для обработки выбора файлов изображений
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files) {
+      const fileArray = Array.from(event.target.files);
+      setSelectedFiles(fileArray);
+    }
+  };
+
+  // Функция для загрузки изображений
+  const handleImageUpload = () => {
+    if (selectedFiles.length === 0) {
+      setImportError('Пожалуйста, выберите файлы для загрузки');
+      return;
+    }
+
+    // Преобразуем файлы в base64 и сохраняем их в localStorage
+    const processFiles = async () => {
+      const files = selectedFiles;
+      const imagesData: { name: string, base64: string }[] = [];
+
+      // Считываем все файлы и преобразуем их в base64
+      for (const file of files) {
+        try {
+          const base64 = await readFileAsBase64(file);
+          imagesData.push({ name: file.name, base64 });
+        } catch (error) {
+          console.error('Ошибка при чтении файла:', error);
         }
-      },
-      features: carData.features || [
-        {
-          id: `feature-${Date.now()}-1`,
-          name: "Климат-контроль",
-          category: "Комфорт",
-          isStandard: true
-        }
-      ],
-      images: carData.images || [
-        {
-          id: `image-${Date.now()}-1`,
-          url: "/placeholder.svg",
-          alt: `${carData.brand || 'Неизвестно'} ${carData.model || 'Неизвестно'}`
-        }
-      ],
-      description: carData.description || `${carData.brand || 'Неизвестно'} ${carData.model || 'Неизвестно'} ${carData.year || new Date().getFullYear()} года`,
-      isNew: carData.isNew || false,
-      country: carData.country || "Неизвестно",
-      viewCount: carData.viewCount || 0
+      }
+
+      // Сохраняем в localStorage
+      const existingImages = JSON.parse(localStorage.getItem('carImages') || '[]');
+      const updatedImages = [...existingImages, ...imagesData];
+      localStorage.setItem('carImages', JSON.stringify(updatedImages));
+
+      setImportSuccess(true);
+      setSelectedFiles([]);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      setTimeout(() => setImportSuccess(false), 3000);
     };
+
+    processFiles();
+  };
+
+  // Вспомогательная функция для преобразования файла в base64
+  const readFileAsBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64String = reader.result as string;
+        resolve(base64String);
+      };
+      reader.onerror = () => {
+        reject(new Error('Ошибка при чтении файла'));
+      };
+      reader.readAsDataURL(file);
+    });
   };
 
   if (!isAdmin) {
@@ -323,6 +304,7 @@ const AdminImport: React.FC = () => {
               <TabsTrigger value="export"><FileDown className="mr-2 h-4 w-4" />Экспорт</TabsTrigger>
               <TabsTrigger value="import"><FileUp className="mr-2 h-4 w-4" />Импорт</TabsTrigger>
               <TabsTrigger value="tmcavto">TMC Авто</TabsTrigger>
+              <TabsTrigger value="images"><ImagePlus className="mr-2 h-4 w-4" />Изображения</TabsTrigger>
             </TabsList>
             
             <TabsContent value="export">
@@ -493,6 +475,67 @@ const AdminImport: React.FC = () => {
                         </p>
                       </div>
                     )}
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="images">
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-medium mb-2">Загрузка изображений</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Загрузите изображения для использования в каталоге автомобилей
+                  </p>
+                  
+                  <div className="flex flex-col space-y-4">
+                    <div className="border p-4 rounded-md">
+                      <Input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleFileSelect}
+                        className="mb-4"
+                      />
+                      
+                      {selectedFiles.length > 0 && (
+                        <div className="mb-4">
+                          <h4 className="font-medium mb-2">Выбрано файлов: {selectedFiles.length}</h4>
+                          <div className="grid grid-cols-3 gap-2">
+                            {selectedFiles.slice(0, 6).map((file, index) => (
+                              <div key={index} className="text-xs truncate">
+                                {file.name}
+                              </div>
+                            ))}
+                            {selectedFiles.length > 6 && (
+                              <div className="text-xs text-muted-foreground">
+                                ...и еще {selectedFiles.length - 6} файлов
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {importSuccess && (
+                        <Alert className="bg-green-50 border-green-200 mb-4">
+                          <AlertTriangle className="h-4 w-4 text-green-500" />
+                          <AlertTitle>Загрузка завершена</AlertTitle>
+                          <AlertDescription>
+                            Изображения успешно загружены
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                      
+                      <Button 
+                        onClick={handleImageUpload}
+                        className="w-full"
+                        disabled={selectedFiles.length === 0}
+                      >
+                        <Upload className="mr-2 h-4 w-4" />
+                        Загрузить изображения
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
