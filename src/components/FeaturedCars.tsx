@@ -42,26 +42,16 @@ const FeaturedCars = ({
   
   // Process cars with images on component mount and whenever cars change
   useEffect(() => {
-    const processCarsWithImages = () => {
-      if (!cars || cars.length === 0) {
-        setProcessedCars([]);
-        return;
-      }
-
-      // Create deep copies to avoid reference issues and process each car
-      const carsWithImages = cars.map(car => {
-        // Make a deep copy of the car object
-        const carCopy = JSON.parse(JSON.stringify(car));
-        // Apply saved images to the car
-        return applySavedImagesToCar(carCopy);
-      });
-
-      console.log('FeaturedCars - Processed cars with images:', carsWithImages.length);
-      setProcessedCars(carsWithImages);
-    };
-
-    processCarsWithImages();
-  }, [cars, applySavedImagesToCar]);
+    if (!cars || cars.length === 0) {
+      setProcessedCars([]);
+      return;
+    }
+    
+    // Use the original cars without modifying them
+    // In a real app, the cars from API would already have proper image paths
+    setProcessedCars([...cars]);
+    console.log('FeaturedCars - Cars count:', cars.length);
+  }, [cars]);
   
   useEffect(() => {
     const handleResize = () => {

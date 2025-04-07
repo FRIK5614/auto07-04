@@ -1,8 +1,10 @@
-
 import { Car } from '../types/car';
 
 // Базовый URL для API
 const BASE_URL = 'https://catalog.tmcavto.ru';
+
+// Temporary image storage for demo purposes
+const IMAGE_STORAGE_PREFIX = '/car/image/';
 
 /**
  * Получение данных о всех автомобилях
@@ -20,11 +22,29 @@ export const fetchAllCars = async (): Promise<Car[]> => {
     // В будущем здесь будет реальный API запрос
     const { carsData } = await import('../data/carsData');
     
+    // Add server paths to images
+    const processedCarsData = carsData.map(car => {
+      if (car.images && car.images.length > 0) {
+        const updatedImages = car.images.map((image, index) => {
+          // Replace placeholder with server path
+          if (image.url === '/placeholder.svg') {
+            return {
+              ...image,
+              url: `${IMAGE_STORAGE_PREFIX}car-${car.id}-default.jpg`
+            };
+          }
+          return image;
+        });
+        return { ...car, images: updatedImages };
+      }
+      return car;
+    });
+    
     // Добавляем задержку для имитации сетевого запроса
     await new Promise(resolve => setTimeout(resolve, 800));
     
-    console.log(`[API] Получено ${carsData.length} автомобилей`);
-    return carsData;
+    console.log(`[API] Получено ${processedCarsData.length} автомобилей`);
+    return processedCarsData;
   } catch (error) {
     console.error("Ошибка при получении данных об автомобилях:", error);
     throw new Error("Не удалось загрузить данные об автомобилях");
@@ -53,11 +73,87 @@ export const fetchCarById = async (id: string): Promise<Car | null> => {
       return null;
     }
     
+    // Update images to use server paths
+    if (car.images && car.images.length > 0) {
+      const updatedImages = car.images.map((image, index) => {
+        // Replace placeholder with server path
+        if (image.url === '/placeholder.svg') {
+          return {
+            ...image,
+            url: `${IMAGE_STORAGE_PREFIX}car-${car.id}-default.jpg`
+          };
+        }
+        return image;
+      });
+      car.images = updatedImages;
+    }
+    
     console.log(`[API] Получены данные об автомобиле: ${car.brand} ${car.model}`);
     return car;
   } catch (error) {
     console.error(`Ошибка при получении данных об автомобиле с ID ${id}:`, error);
     throw new Error("Не удалось загрузить данные об автомобиле");
+  }
+};
+
+/**
+ * Upload image to server
+ * In a real app, this would send the file to a server endpoint
+ */
+export const uploadImage = async (file: File): Promise<string> => {
+  try {
+    console.log(`[API] Имитация загрузки файла на сервер: ${file.name}`);
+    
+    // In a real app, here you would:
+    // 1. Create FormData
+    // 2. Append the file
+    // 3. Send via fetch POST to your endpoint
+    
+    // For demo purposes, simulate a server-side path
+    const fileName = `${Date.now()}-${file.name.replace(/\s/g, '_')}`;
+    const serverPath = `${IMAGE_STORAGE_PREFIX}${fileName}`;
+    
+    // Create an object URL for demo purposes
+    const objectUrl = URL.createObjectURL(file);
+    
+    // Store the mapping between object URL and server path
+    const urlMapping = localStorage.getItem('imageUrlMapping') || '{}';
+    const mapping = JSON.parse(urlMapping);
+    mapping[objectUrl] = serverPath;
+    localStorage.setItem('imageUrlMapping', JSON.stringify(mapping));
+    
+    // Simulate delay for network request
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    console.log(`[API] Файл успешно загружен на ${serverPath}`);
+    return serverPath;
+  } catch (error) {
+    console.error("Ошибка при загрузке изображения:", error);
+    throw new Error("Не удалось загрузить изображение");
+  }
+};
+
+/**
+ * Assign an uploaded image to a car
+ */
+export const assignImageToCar = async (carId: string, imagePath: string): Promise<boolean> => {
+  try {
+    console.log(`[API] Присвоение изображения ${imagePath} автомобилю ${carId}`);
+    
+    // In a real app, this would update a database record
+    const carImageMapping = localStorage.getItem('carImageMapping') || '{}';
+    const mapping = JSON.parse(carImageMapping);
+    mapping[carId] = imagePath;
+    localStorage.setItem('carImageMapping', JSON.stringify(mapping));
+    
+    // Simulate delay
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    console.log(`[API] Изображение успешно присвоено автомобилю ${carId}`);
+    return true;
+  } catch (error) {
+    console.error("Ошибка при присвоении изображения автомобилю:", error);
+    return false;
   }
 };
 

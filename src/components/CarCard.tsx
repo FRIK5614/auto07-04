@@ -74,6 +74,39 @@ const CarCard = ({ car, className }: CarCardProps) => {
     }
   }, [emblaApi]);
   
+  // Log the image URLs for debugging
+  useEffect(() => {
+    if (hasValidImages) {
+      console.log(`Car ${car.id} (${car.brand} ${car.model}) has images:`, validImages.map(img => img.url));
+    } else {
+      console.log(`Car ${car.id} (${car.brand} ${car.model}) has NO valid images`);
+    }
+  }, [car.id, car.brand, car.model, hasValidImages, validImages]);
+  
+  // Function to handle image URLs based on server location
+  const getImageUrl = (url: string) => {
+    // If the image URL starts with server path prefix, use it directly
+    if (url.startsWith('/car/image/')) {
+      return url;
+    }
+    
+    // Otherwise, check if we have a mapping for this URL to a server path
+    const urlMapping = localStorage.getItem('imageUrlMapping');
+    if (urlMapping) {
+      try {
+        const mapping = JSON.parse(urlMapping);
+        if (mapping[url]) {
+          return mapping[url];
+        }
+      } catch (error) {
+        console.error('Error parsing URL mapping:', error);
+      }
+    }
+    
+    // If no mapping found, return original URL
+    return url;
+  };
+  
   return (
     <Card className={cn("overflow-hidden group h-full flex flex-col", className)}>
       <div className="relative overflow-hidden h-48">
@@ -86,7 +119,7 @@ const CarCard = ({ car, className }: CarCardProps) => {
               >
                 <Link to={`/car/${car.id}`}>
                   <img
-                    src={image.url}
+                    src={getImageUrl(image.url)}
                     alt={image.alt || `${car.brand} ${car.model}`}
                     className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                     onError={(e) => {
@@ -169,7 +202,6 @@ const CarCard = ({ car, className }: CarCardProps) => {
           </div>
         )}
       </div>
-      
       
       <CardContent className="flex-1 p-4">
         <Link to={`/car/${car.id}`} className="hover:text-auto-blue-600 transition-colors">
