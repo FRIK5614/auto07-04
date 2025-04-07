@@ -353,7 +353,7 @@ export const useCars = () => {
         return false;
       }
     } catch (error) {
-      console.error('Ошибка запроса к серверу при обновле��ии статуса заказа:', error);
+      console.error('Ошибка запроса к серверу при обновлении статуса заказа:', error);
       return false;
     }
   };
@@ -433,7 +433,9 @@ export const useCars = () => {
         localStorage.setItem("orders", JSON.stringify(currentOrders));
         console.log(`Заказ ${order.id} сохранен локально с пометкой об ошибке`);
         
-        await saveOrderToJson(failedOrder);
+        saveOrderToJson(failedOrder).catch(jsonError => {
+          console.error("Ошибка при сохранении заказа в JSON:", jsonError);
+        });
       } catch (storageError) {
         console.error("Не удалось сохранить заказ даже локально:", storageError);
       }
