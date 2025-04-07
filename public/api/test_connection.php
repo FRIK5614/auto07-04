@@ -2,6 +2,9 @@
 <?php
 require_once 'config.php';
 
+// Явно указываем заголовок Content-Type для JSON
+header('Content-Type: application/json');
+
 try {
     // Проверяем подключение
     $stmt = $pdo->query('SELECT 1');
@@ -42,10 +45,12 @@ try {
             'read_data' => $result ? $result : 'Нет данных'
         ]
     ]);
+    exit;
 } catch (PDOException $e) {
     echo json_encode([
         'success' => false, 
         'message' => 'Ошибка подключения к базе данных: ' . $e->getMessage()
     ]);
+    exit;
 }
 ?>

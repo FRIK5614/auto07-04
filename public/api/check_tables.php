@@ -2,6 +2,9 @@
 <?php
 require_once 'config.php';
 
+// Явно указываем заголовок Content-Type для JSON
+header('Content-Type: application/json');
+
 try {
     // Получаем список таблиц в базе данных
     $tables = [];
@@ -48,10 +51,12 @@ try {
         'orders_table_exists' => $ordersTableExists,
         'orders_columns' => $orderColumns
     ]);
+    exit;
 } catch (PDOException $e) {
     echo json_encode([
         'success' => false, 
         'message' => 'Ошибка проверки таблиц: ' . $e->getMessage()
     ]);
+    exit;
 }
 ?>

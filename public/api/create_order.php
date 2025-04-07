@@ -2,6 +2,9 @@
 <?php
 require_once 'config.php';
 
+// Явно указываем заголовок Content-Type для JSON
+header('Content-Type: application/json');
+
 // Проверяем метод запроса
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode(['success' => false, 'message' => 'Метод не поддерживается']);
@@ -69,7 +72,9 @@ try {
     } else {
         echo json_encode(['success' => false, 'message' => 'Ошибка при создании заказа']);
     }
+    exit;
 } catch (PDOException $e) {
     echo json_encode(['success' => false, 'message' => 'Ошибка базы данных: ' . $e->getMessage()]);
+    exit;
 }
 ?>
