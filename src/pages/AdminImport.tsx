@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useAdmin } from '@/contexts/AdminContext';
 import { useNavigate } from 'react-router-dom';
 import { useTmcAvtoCatalog } from '@/hooks/useTmcAvtoCatalog';
@@ -25,7 +25,8 @@ import {
   ArrowUpDown,
   FileUp,
   FileDown,
-  ImagePlus
+  ImagePlus,
+  Trash2
 } from 'lucide-react';
 import { Car } from '@/types/car';
 import { v4 as uuidv4 } from 'uuid';
@@ -35,7 +36,14 @@ const AdminImport: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { fetchCatalogData, importAllCars, cars: importedCars, loading, error, blockedSources } = useTmcAvtoCatalog();
-  const { cars, reloadCars, importCarsData, addCar, getUploadedImages } = useCars();
+  const { 
+    cars, 
+    reloadCars, 
+    importCarsData, 
+    addCar, 
+    getUploadedImages, 
+    saveUploadedImages 
+  } = useCars();
   const [importDestination, setImportDestination] = useState<string>('preview');
   const [exportFormat, setExportFormat] = useState<string>('json');
   const [importData, setImportData] = useState<string>('');
@@ -44,16 +52,17 @@ const AdminImport: React.FC = () => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadedImages, setUploadedImages] = useState<{name: string, url: string}[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   
   // При загрузке компонента получаем ранее загруженные изображения
-  React.useEffect(() => {
+  useEffect(() => {
     if (isAdmin) {
       const images = getUploadedImages();
       setUploadedImages(images);
     }
   }, [isAdmin, getUploadedImages]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isAdmin) {
       navigate('/admin/login');
     }
@@ -231,14 +240,43 @@ const AdminImport: React.FC = () => {
     }
   };
 
+  // Функция для удаления изображения
+  const handleDeleteImage = (imageName: string) => {
+    try {
+      const imagesData = localStorage.getItem('carImages');
+      if (!imagesData) return;
+      
+      const images = JSON.parse(imagesData);
+      const updatedImages = images.filter((img: { name: string }) => img.name !== imageName);
+      
+      localStorage.setItem('carImages', JSON.stringify(updatedImages));
+      
+      // Обновляем отображаемый список
+      setUploadedImages(prev => prev.filter(img => img.name !== imageName));
+      
+      toast({
+        title: "Изображение удалено",
+        description: `Файл ${imageName} был удален`
+      });
+    } catch (error) {
+      console.error('Error deleting image:', error);
+      toast({
+        variant: "destructive",
+        title: "Ошибка удаления",
+        description: "Не удалось удалить изображение"
+      });
+    }
+  };
+
   // Функция для загрузки изображений
-  const handleImageUpload = () => {
+  const handleImageUpload = async () => {
     if (selectedFiles.length === 0) {
       setImportError('Пожалуйста, выберите файлы для загрузки');
       return;
     }
 
     // Преобразуем файлы в base64 и сохраняем их в localStorage
+    setIsUploading(true);
     const processFiles = async () => {
       const files = selectedFiles;
       const imagesData: { name: string, base64: string }[] = [];
@@ -260,13 +298,12 @@ const AdminImport: React.FC = () => {
 
       if (imagesData.length === 0) {
         setImportError('Не удалось загрузить изображения');
+        setIsUploading(false);
         return;
       }
 
-      // Сохраняем в localStorage
-      const existingImages = JSON.parse(localStorage.getItem('carImages') || '[]');
-      const updatedImages = [...existingImages, ...imagesData];
-      localStorage.setItem('carImages', JSON.stringify(updatedImages));
+      // Сохраняем в localStorage через функцию из хука
+      saveUploadedImages(imagesData);
 
       // Обновляем список загруженных изображений
       const newImages = imagesData.map(img => ({
@@ -287,9 +324,10 @@ const AdminImport: React.FC = () => {
       });
       
       setTimeout(() => setImportSuccess(false), 3000);
+      setIsUploading(false);
     };
 
-    processFiles();
+    await processFiles();
   };
 
   // Вспомогательная функция для преобразования файла в base64
@@ -564,10 +602,19 @@ const AdminImport: React.FC = () => {
                       <Button 
                         onClick={handleImageUpload}
                         className="w-full"
-                        disabled={selectedFiles.length === 0}
+                        disabled={selectedFiles.length === 0 || isUploading}
                       >
-                        <Upload className="mr-2 h-4 w-4" />
-                        Загрузить изображения
+                        {isUploading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Загрузка...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="mr-2 h-4 w-4" />
+                            Загрузить изображения
+                          </>
+                        )}
                       </Button>
                     </div>
                     
@@ -577,7 +624,7 @@ const AdminImport: React.FC = () => {
                         <h4 className="font-medium mb-2">Загруженные изображения ({uploadedImages.length})</h4>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
                           {uploadedImages.map((image, index) => (
-                            <div key={index} className="rounded-md overflow-hidden border aspect-square relative">
+                            <div key={index} className="rounded-md overflow-hidden border aspect-square relative group">
                               <img 
                                 src={image.url} 
                                 alt={image.name} 
@@ -585,6 +632,16 @@ const AdminImport: React.FC = () => {
                               />
                               <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-60 text-white p-1 text-xs truncate">
                                 {image.name}
+                              </div>
+                              <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Button 
+                                  variant="destructive" 
+                                  size="icon" 
+                                  className="h-8 w-8"
+                                  onClick={() => handleDeleteImage(image.name)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
                               </div>
                             </div>
                           ))}

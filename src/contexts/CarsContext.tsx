@@ -58,8 +58,51 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (orders.length > 0) {
       localStorage.setItem("orders", JSON.stringify(orders));
+      
+      const csvContent = saveOrdersToCSV();
+      localStorage.setItem("ordersCSVBackup", csvContent);
+      localStorage.setItem("ordersCSVBackupTime", new Date().toISOString());
     }
   }, [orders]);
+
+  const saveOrdersToCSV = () => {
+    if (!orders || orders.length === 0) return;
+    
+    const headers = [
+      'ID', 'Дата создания', 'Статус', 'Имя клиента', 
+      'Телефон', 'Email', 'ID автомобиля', 'Марка', 'Модель'
+    ];
+    
+    const csvRows = [];
+    csvRows.push(headers.join(','));
+    
+    for (const order of orders) {
+      const car = cars.find(c => c.id === order.carId);
+      const row = [
+        order.id,
+        new Date(order.createdAt).toISOString().slice(0, 19).replace('T', ' '),
+        order.status,
+        order.customerName,
+        order.customerPhone,
+        order.customerEmail,
+        order.carId,
+        car ? car.brand : 'Н/Д',
+        car ? car.model : 'Н/Д'
+      ];
+      
+      const escapedRow = row.map(value => {
+        const strValue = String(value).replace(/"/g, '""');
+        return value.includes(',') || value.includes('"') || value.includes('\n') 
+          ? `"${strValue}"` 
+          : strValue;
+      });
+      
+      csvRows.push(escapedRow.join(','));
+    }
+    
+    const csvContent = csvRows.join('\n');
+    return csvContent;
+  };
 
   const loadCars = async () => {
     try {

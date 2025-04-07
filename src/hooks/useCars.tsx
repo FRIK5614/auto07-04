@@ -83,20 +83,32 @@ export const useCars = () => {
     return cars.filter(car => car.bodyType === bodyType);
   };
   
-  // Get uploaded images
+  // Исправленная функция для получения загруженных изображений
   const getUploadedImages = (): { name: string, url: string }[] => {
     try {
       const imagesData = localStorage.getItem('carImages');
       if (!imagesData) return [];
       
-      const images = JSON.parse(imagesData);
-      return images.map((img: { name: string, base64: string }) => ({
+      const parsedData = JSON.parse(imagesData);
+      return parsedData.map((img: { name: string, base64: string }) => ({
         name: img.name,
         url: img.base64
       }));
     } catch (error) {
       console.error('Error getting uploaded images:', error);
       return [];
+    }
+  };
+  
+  // Функция для сохранения изображений
+  const saveUploadedImages = (images: { name: string, base64: string }[]): void => {
+    try {
+      const existingImages = JSON.parse(localStorage.getItem('carImages') || '[]');
+      const updatedImages = [...existingImages, ...images];
+      localStorage.setItem('carImages', JSON.stringify(updatedImages));
+      console.log('Images saved to localStorage:', updatedImages.length);
+    } catch (error) {
+      console.error('Error saving uploaded images:', error);
     }
   };
   
@@ -114,6 +126,51 @@ export const useCars = () => {
       default:
         return carsToSort;
     }
+  };
+  
+  // Экспорт заказов в CSV
+  const exportOrdersToCsv = (): string => {
+    if (!orders || orders.length === 0) {
+      return '';
+    }
+
+    // Заголовки CSV
+    const headers = [
+      'ID', 'Дата создания', 'Статус', 'Имя клиента', 
+      'Телефон', 'Email', 'ID автомобиля', 'Марка', 'Модель'
+    ];
+    
+    // Формируем строки CSV
+    const csvRows = [];
+    csvRows.push(headers.join(','));
+    
+    for (const order of orders) {
+      const car = getCarById(order.carId);
+      const row = [
+        order.id,
+        new Date(order.createdAt).toISOString().slice(0, 19).replace('T', ' '),
+        order.status,
+        order.customerName,
+        order.customerPhone,
+        order.customerEmail,
+        order.carId,
+        car ? car.brand : 'Н/Д',
+        car ? car.model : 'Н/Д'
+      ];
+      
+      // Экранируем запятые и кавычки
+      const escapedRow = row.map(value => {
+        const strValue = String(value).replace(/"/g, '""');
+        return value.includes(',') || value.includes('"') || value.includes('\n') 
+          ? `"${strValue}"` 
+          : strValue;
+      });
+      
+      csvRows.push(escapedRow.join(','));
+    }
+    
+    // Возвращаем CSV контент
+    return csvRows.join('\n');
   };
   
   return {
@@ -147,6 +204,8 @@ export const useCars = () => {
     exportCarsData,
     importCarsData,
     getUploadedImages,
+    saveUploadedImages,
+    exportOrdersToCsv,
     // Export these functions to fix the build errors
     addToFavorites,
     removeFromFavorites,

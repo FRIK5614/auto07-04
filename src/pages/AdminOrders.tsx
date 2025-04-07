@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Order } from '@/types/car';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { CheckCircle, Clock, XCircle, AlertCircle, Download, FileDown } from 'lucide-react';
+import { CheckCircle, Clock, XCircle, AlertCircle, Download, FileDown, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const OrderStatusBadge = ({ status }: { status: Order['status'] }) => {
@@ -29,11 +29,20 @@ const OrderStatusBadge = ({ status }: { status: Order['status'] }) => {
 };
 
 const AdminOrders: React.FC = () => {
-  const { orders, getCarById, processOrder, loading } = useCars();
+  const { orders, getCarById, processOrder, loading, exportOrdersToCsv } = useCars();
   const { isAdmin } = useAdmin();
   const navigate = useNavigate();
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const { toast } = useToast();
+  const [lastBackupTime, setLastBackupTime] = useState<string | null>(null);
+
+  // Загружаем время последнего бэкапа
+  useEffect(() => {
+    const backupTime = localStorage.getItem("ordersCSVBackupTime");
+    if (backupTime) {
+      setLastBackupTime(backupTime);
+    }
+  }, []);
 
   // Refresh orders data periodically to sync between different admin users
   useEffect(() => {
@@ -45,6 +54,11 @@ const AdminOrders: React.FC = () => {
           // We don't need to set the orders directly as the useCars hook
           // already loads them from localStorage on mount
           console.log("Checking for order updates");
+          // Обновляем время последнего бэкапа
+          const backupTime = localStorage.getItem("ordersCSVBackupTime");
+          if (backupTime) {
+            setLastBackupTime(backupTime);
+          }
         } catch (error) {
           console.error("Failed to parse orders from localStorage:", error);
         }
@@ -73,43 +87,7 @@ const AdminOrders: React.FC = () => {
       return;
     }
 
-    // Заголовки CSV
-    const headers = [
-      'ID', 'Дата создания', 'Статус', 'Имя клиента', 
-      'Телефон', 'Email', 'ID автомобиля', 'Марка', 'Модель'
-    ];
-    
-    // Формируем строки CSV
-    const csvRows = [];
-    csvRows.push(headers.join(','));
-    
-    for (const order of orders) {
-      const car = getCarById(order.carId);
-      const row = [
-        order.id,
-        format(new Date(order.createdAt), 'dd.MM.yyyy HH:mm'),
-        order.status,
-        order.customerName,
-        order.customerPhone,
-        order.customerEmail,
-        order.carId,
-        car ? car.brand : 'Н/Д',
-        car ? car.model : 'Н/Д'
-      ];
-      
-      // Экранируем запятые и кавычки
-      const escapedRow = row.map(value => {
-        const strValue = String(value).replace(/"/g, '""');
-        return value.includes(',') || value.includes('"') || value.includes('\n') 
-          ? `"${strValue}"` 
-          : strValue;
-      });
-      
-      csvRows.push(escapedRow.join(','));
-    }
-    
-    // Объединяем строки в текст CSV
-    const csvContent = csvRows.join('\n');
+    const csvContent = exportOrdersToCsv();
     
     // Создаем файл для загрузки
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -172,14 +150,24 @@ const AdminOrders: React.FC = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle>Список заказов</CardTitle>
-            <Button 
-              onClick={exportOrdersToCSV}
-              variant="outline"
-              className="flex items-center gap-2"
-            >
-              <FileDown className="h-4 w-4" />
-              Экспорт в CSV
-            </Button>
+            <div className="flex gap-2">
+              {lastBackupTime && (
+                <div className="text-xs text-muted-foreground flex items-center mr-2">
+                  Последнее автосохранение:&nbsp;
+                  <span className="font-medium">
+                    {format(new Date(lastBackupTime), 'dd.MM.yyyy HH:mm')}
+                  </span>
+                </div>
+              )}
+              <Button 
+                onClick={exportOrdersToCSV}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <FileDown className="h-4 w-4" />
+                Экспорт в CSV
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <Table>
