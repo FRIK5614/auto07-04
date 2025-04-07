@@ -49,7 +49,7 @@ const FeaturedCars = ({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Всегда двигаемся только на один автомобиль за раз
+  // Always move one car at a time
   const handlePrevious = () => {
     setCurrentIndex((prev) => Math.max(0, prev - 1));
   };
@@ -104,14 +104,14 @@ const FeaturedCars = ({
             <div
               className="flex transition-transform duration-500 ease-in-out"
               style={{
-                transform: `translateX(-${currentIndex * (100 / visibleCount)}%)`,
+                transform: `translateX(-${currentIndex * 100}%)`,
               }}
             >
               {cars.map((car) => (
                 <div
                   key={car.id}
                   className="px-2"
-                  style={{ width: `${100 / visibleCount}%` }}
+                  style={{ width: '100%', flexShrink: 0 }}
                 >
                   <CarCard car={car} className="h-full" />
                 </div>
