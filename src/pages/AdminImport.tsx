@@ -26,7 +26,8 @@ import {
   FileUp,
   FileDown,
   ImagePlus,
-  Trash2
+  Trash2,
+  FileJson
 } from 'lucide-react';
 import { Car } from '@/types/car';
 import { v4 as uuidv4 } from 'uuid';
@@ -51,8 +52,10 @@ const AdminImport: React.FC = () => {
   const [importSuccess, setImportSuccess] = useState<boolean>(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const jsonFileInputRef = useRef<HTMLInputElement>(null);
   const [uploadedImages, setUploadedImages] = useState<{name: string, url: string}[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
   
   // При загрузке компонента получаем ранее загруженные изображения
   useEffect(() => {
@@ -235,6 +238,75 @@ const AdminImport: React.FC = () => {
     }
   };
 
+  // Функция для обработки выбора JSON файла
+  const handleJsonFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files.length > 0) {
+      const file = event.target.files[0];
+      
+      if (file.type !== 'application/json' && !file.name.endsWith('.json')) {
+        setImportError('Выбранный файл не является JSON файлом');
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const content = e.target?.result as string;
+          setImportData(content);
+          setImportError(null);
+        } catch (err) {
+          console.error('Error reading JSON file:', err);
+          setImportError('Ошибка при чтении файла JSON');
+        }
+      };
+      
+      reader.onerror = () => {
+        setImportError('Ошибка при чтении файла');
+      };
+      
+      reader.readAsText(file);
+    }
+  };
+  
+  // Функция для импорта из JSON файла
+  const handleImportFromFile = async () => {
+    setIsImporting(true);
+    
+    try {
+      if (!importData.trim()) {
+        setImportError('Нет данных для импорта');
+        setIsImporting(false);
+        return;
+      }
+      
+      const success = importCarsData(importData);
+      
+      if (success) {
+        setImportSuccess(true);
+        setImportError(null);
+        setImportData('');
+        
+        if (jsonFileInputRef.current) {
+          jsonFileInputRef.current.value = '';
+        }
+        
+        toast({
+          title: "Импорт завершен",
+          description: "Данные успешно импортированы из JSON файла"
+        });
+        
+        setTimeout(() => setImportSuccess(false), 3000);
+      } else {
+        setImportError('Ошибка при импорте данных');
+      }
+    } catch (err) {
+      console.error('Error importing from file:', err);
+      setImportError('Произошла ошибка при импорте');
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   // Функция для обработки выбора файлов изображений
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
@@ -375,7 +447,7 @@ const AdminImport: React.FC = () => {
             </Alert>
           )}
           
-          <Tabs defaultValue="images">
+          <Tabs defaultValue="import">
             <TabsList className="mb-4">
               <TabsTrigger value="export"><FileDown className="mr-2 h-4 w-4" />Экспорт</TabsTrigger>
               <TabsTrigger value="import"><FileUp className="mr-2 h-4 w-4" />Импорт</TabsTrigger>
@@ -435,11 +507,53 @@ const AdminImport: React.FC = () => {
                 <div>
                   <h3 className="text-lg font-medium mb-2">Импорт из JSON</h3>
                   <p className="text-muted-foreground mb-4">
-                    Вставьте JSON данные автомобилей для импорта
+                    Вставьте JSON данные автомобилей или загрузите JSON файл для импорта
                   </p>
                   
-                  <div className="flex flex-col space-y-4">
+                  <div className="flex flex-col space-y-6">
+                    {/* Импорт из файла */}
                     <div className="border p-4 rounded-md">
+                      <h4 className="font-medium mb-2">Импорт из JSON файла</h4>
+                      <Input
+                        ref={jsonFileInputRef}
+                        type="file"
+                        accept=".json,application/json"
+                        onChange={handleJsonFileSelect}
+                        className="mb-4"
+                      />
+                      
+                      {importData && (
+                        <Alert className="bg-blue-50 border-blue-200 mb-4">
+                          <FileJson className="h-4 w-4 text-blue-500" />
+                          <AlertTitle>JSON файл загружен</AlertTitle>
+                          <AlertDescription>
+                            Файл успешно прочитан. Нажмите кнопку импорта для добавления данных.
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                      
+                      <Button 
+                        onClick={handleImportFromFile}
+                        className="w-full"
+                        disabled={!importData.trim() || isImporting}
+                      >
+                        {isImporting ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Импорт...
+                          </>
+                        ) : (
+                          <>
+                            <FileJson className="mr-2 h-4 w-4" />
+                            Импортировать из JSON файла
+                          </>
+                        )}
+                      </Button>
+                    </div>
+
+                    {/* Импорт из текста */}
+                    <div className="border p-4 rounded-md">
+                      <h4 className="font-medium mb-2">Импорт из текста</h4>
                       <Textarea
                         placeholder="Вставьте JSON данные автомобилей..."
                         className="min-h-[200px] mb-4"
@@ -447,33 +561,33 @@ const AdminImport: React.FC = () => {
                         onChange={(e) => setImportData(e.target.value)}
                       />
                       
-                      {importError && (
-                        <Alert variant="destructive" className="mb-4">
-                          <AlertTriangle className="h-4 w-4" />
-                          <AlertTitle>Ошибка импорта</AlertTitle>
-                          <AlertDescription>{importError}</AlertDescription>
-                        </Alert>
-                      )}
-                      
-                      {importSuccess && (
-                        <Alert className="bg-green-50 border-green-200 mb-4">
-                          <AlertTriangle className="h-4 w-4 text-green-500" />
-                          <AlertTitle>Импорт успешно завершен</AlertTitle>
-                          <AlertDescription>
-                            Данные были успешно импортированы в каталог.
-                          </AlertDescription>
-                        </Alert>
-                      )}
-                      
                       <Button 
                         onClick={handleImportFromText}
                         className="w-full"
                         disabled={!importData.trim()}
                       >
                         <FileUp className="mr-2 h-4 w-4" />
-                        Импортировать данные
+                        Импортировать из текста
                       </Button>
                     </div>
+                    
+                    {importError && (
+                      <Alert variant="destructive">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertTitle>Ошибка импорта</AlertTitle>
+                        <AlertDescription>{importError}</AlertDescription>
+                      </Alert>
+                    )}
+                    
+                    {importSuccess && (
+                      <Alert className="bg-green-50 border-green-200">
+                        <AlertTriangle className="h-4 w-4 text-green-500" />
+                        <AlertTitle>Импорт успешно завершен</AlertTitle>
+                        <AlertDescription>
+                          Данные были успешно импортированы в каталог.
+                        </AlertDescription>
+                      </Alert>
+                    )}
                   </div>
                 </div>
               </div>
