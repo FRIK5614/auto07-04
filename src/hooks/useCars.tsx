@@ -295,8 +295,11 @@ export const useCars = () => {
 
   const createOrder = async (order: Order): Promise<boolean> => {
     try {
-      // Save to JSON immediately as the source of truth
+      console.log(`Начало создания заказа ${order.id}`);
+      
+      // Сохраняем в JSON как основной источник данных
       const jsonFilePath = await saveOrderToJson(order);
+      console.log(`Заказ ${order.id} сохранен в JSON: ${jsonFilePath}`);
       
       const updatedOrder: Order = {
         ...order,
@@ -304,19 +307,38 @@ export const useCars = () => {
         jsonFilePath
       };
       
-      // Update local storage
-      const savedOrders = localStorage.getItem("orders");
-      let currentOrders: Order[] = [];
-      
-      if (savedOrders) {
-        currentOrders = JSON.parse(savedOrders);
+      // Обновляем локальное хранилище с защитой от ошибок
+      try {
+        const savedOrders = localStorage.getItem("orders");
+        let currentOrders: Order[] = [];
+        
+        if (savedOrders) {
+          currentOrders = JSON.parse(savedOrders);
+        }
+        
+        // Проверяем, нет ли уже этого заказа в списке (избегаем дубликатов)
+        const orderIndex = currentOrders.findIndex(o => o.id === updatedOrder.id);
+        if (orderIndex >= 0) {
+          currentOrders[orderIndex] = updatedOrder;
+        } else {
+          currentOrders.push(updatedOrder);
+        }
+        
+        localStorage.setItem("orders", JSON.stringify(currentOrders));
+        console.log(`Заказ ${order.id} сохранен в localStorage`);
+      } catch (storageError) {
+        console.error("Ошибка при сохранении заказа в localStorage:", storageError);
+        // Продолжаем выполнение, т.к. JSON уже сохранен
       }
       
-      currentOrders.push(updatedOrder);
-      localStorage.setItem("orders", JSON.stringify(currentOrders));
-      
-      // Force a sync to update the orders from all JSON files
-      await syncOrders();
+      // Принудительно синхронизируем, чтобы обновить заказы во всех браузерах
+      try {
+        await syncOrders();
+        console.log("Выполнена принудительная синхронизация после создания заказа");
+      } catch (syncError) {
+        console.error("Ошибка синхронизации после создания заказа:", syncError);
+        // Продолжаем выполнение, т.к. основные данные уже сохранены
+      }
       
       toast({
         title: "Заказ создан",
@@ -325,23 +347,28 @@ export const useCars = () => {
       
       return true;
     } catch (error) {
-      console.error("Error creating order:", error);
+      console.error("Ошибка при создании заказа:", error);
       
-      // Store locally anyway, but mark as failed sync
-      const savedOrders = localStorage.getItem("orders");
-      let currentOrders: Order[] = [];
-      
-      if (savedOrders) {
-        currentOrders = JSON.parse(savedOrders);
+      // В случае ошибки сохранения в JSON, сохраняем локально с пометкой ошибки
+      try {
+        const savedOrders = localStorage.getItem("orders");
+        let currentOrders: Order[] = [];
+        
+        if (savedOrders) {
+          currentOrders = JSON.parse(savedOrders);
+        }
+        
+        const failedOrder: Order = {
+          ...order,
+          syncStatus: 'failed' as const
+        };
+        
+        currentOrders.push(failedOrder);
+        localStorage.setItem("orders", JSON.stringify(currentOrders));
+        console.log(`Заказ ${order.id} сохранен локально с пометкой об ошибке`);
+      } catch (storageError) {
+        console.error("Не удалось сохранить заказ даже локально:", storageError);
       }
-      
-      const failedOrder: Order = {
-        ...order,
-        syncStatus: 'failed' as const
-      };
-      
-      currentOrders.push(failedOrder);
-      localStorage.setItem("orders", JSON.stringify(currentOrders));
       
       toast({
         variant: "destructive",

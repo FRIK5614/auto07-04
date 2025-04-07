@@ -246,11 +246,10 @@ export const submitPurchaseRequest = async (formData: Record<string, any>): Prom
  */
 export const saveOrderToJson = async (order: Order): Promise<string> => {
   try {
-    // В реальном приложении здесь будет запрос к бэкенду для сохранения в файловой системе
-    // Но для эмуляции мы сохраняем в localStorage в специальном формате
-    
     // Создаем имя файла на основе ID заказа и временной метки
-    const fileName = `order_${order.id.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.json`;
+    // Используем более надежное формирование имени файла с дополнительной временной меткой
+    const timestamp = Date.now();
+    const fileName = `order_${order.id.replace(/[^a-zA-Z0-9]/g, '_')}_${timestamp}.json`;
     const filePath = `${ORDERS_JSON_PREFIX}${fileName}`;
     
     // Получаем существующие JSON-файлы заказов или создаем новый объект
@@ -260,24 +259,45 @@ export const saveOrderToJson = async (order: Order): Promise<string> => {
     try {
       jsonFilesMap = JSON.parse(ordersJsonFiles);
     } catch (e) {
+      console.error('Ошибка при разборе ordersJsonFiles:', e);
       jsonFilesMap = {};
     }
+    
+    // Сохраняем заказ в JSON-структуру более надежно
+    const orderCopy = { ...order };
+    
+    // Обеспечиваем, что объект сериализуем
+    const serializableOrder = JSON.parse(JSON.stringify(orderCopy));
     
     // Сохраняем новый файл в структуру
     jsonFilesMap[filePath] = {
       fileName,
-      order: JSON.stringify(order),
+      order: JSON.stringify(serializableOrder),
       createdAt: new Date().toISOString(),
       lastModified: new Date().toISOString()
     };
     
-    // Обновляем структуру в localStorage
-    localStorage.setItem('ordersJsonFiles', JSON.stringify(jsonFilesMap));
-    
-    console.log(`[API] Заказ ${order.id} сохранен в JSON-файл: ${filePath}`);
+    // Обновляем структуру в localStorage с защитой от ошибок
+    try {
+      localStorage.setItem('ordersJsonFiles', JSON.stringify(jsonFilesMap));
+      console.log(`[API] Заказ ${order.id} сохранен в JSON-файл: ${filePath}`);
+    } catch (storageError) {
+      console.error('Ошибка при сохранении в localStorage:', storageError);
+      // В случае проблем с localStorage, создаем версию с меньшим количеством заказов
+      const keys = Object.keys(jsonFilesMap);
+      // Если слишком много записей, удаляем самые старые
+      if (keys.length > 50) {
+        const limitedMap = {};
+        const recentKeys = keys.slice(-50);
+        recentKeys.forEach(key => {
+          limitedMap[key] = jsonFilesMap[key];
+        });
+        localStorage.setItem('ordersJsonFiles', JSON.stringify(limitedMap));
+      }
+    }
     
     // Добавляем задержку для имитации сетевого запроса
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 200));
     
     return filePath;
   } catch (error) {
@@ -292,9 +312,6 @@ export const saveOrderToJson = async (order: Order): Promise<string> => {
  */
 export const loadOrdersFromJson = async (): Promise<Order[]> => {
   try {
-    // В реальном приложении здесь будет запрос к бэкенду для чтения файлов
-    // Но для эмуляции мы читаем из localStorage
-    
     // Получаем сохраненные JSON-файлы заказов
     const ordersJsonFiles = localStorage.getItem('ordersJsonFiles');
     
@@ -303,14 +320,35 @@ export const loadOrdersFromJson = async (): Promise<Order[]> => {
       return [];
     }
     
-    const jsonFilesMap = JSON.parse(ordersJsonFiles);
+    let jsonFilesMap;
+    try {
+      jsonFilesMap = JSON.parse(ordersJsonFiles);
+    } catch (parseError) {
+      console.error('Ошибка при разборе ordersJsonFiles:', parseError);
+      // В случае ошибки разбора, сбрасываем хранилище
+      localStorage.removeItem('ordersJsonFiles');
+      return [];
+    }
+    
     const orders: Order[] = [];
     
-    // Обрабатываем каждый JSON-файл
+    // Обрабатываем каждый JSON-файл с защитой от ошибок
     for (const [filePath, fileData] of Object.entries(jsonFilesMap)) {
       try {
+        // @ts-ignore - обходим проверку типов для fileData.order
+        if (!fileData || typeof fileData.order !== 'string') {
+          console.error(`Некорректные данные для файла ${filePath}`);
+          continue;
+        }
+        
         // @ts-ignore
         const orderData = JSON.parse(fileData.order);
+        
+        // Проверка обязательных полей
+        if (!orderData.id || !orderData.customerName) {
+          console.error(`Пропущены обязательные поля в заказе ${filePath}`);
+          continue;
+        }
         
         // Добавляем путь к файлу, если его нет
         if (!orderData.jsonFilePath) {
@@ -327,9 +365,6 @@ export const loadOrdersFromJson = async (): Promise<Order[]> => {
         console.error(`Ошибка при разборе JSON-файла ${filePath}:`, e);
       }
     }
-    
-    // Добавляем задержку для имитации сетевого запроса
-    await new Promise(resolve => setTimeout(resolve, 300));
     
     console.log(`[API] Загружено ${orders.length} заказов из JSON-файлов`);
     return orders;

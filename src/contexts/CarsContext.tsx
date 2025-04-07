@@ -48,36 +48,92 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
 
   const syncOrders = async () => {
     try {
+      console.log("Начало синхронизации заказов с JSON...");
       const jsonOrders = await loadOrdersFromJson();
       
       if (!jsonOrders || jsonOrders.length === 0) {
-        console.log("No JSON orders found, using localStorage only");
+        console.log("JSON-файлы с заказами не найдены");
+        // Проверяем наличие локальных заказов для защиты от потери данных
+        const savedOrders = localStorage.getItem("orders");
+        if (savedOrders) {
+          try {
+            const localOrders = JSON.parse(savedOrders);
+            if (localOrders && localOrders.length > 0) {
+              console.log(`Найдено ${localOrders.length} локальных заказов, но нет JSON. Используем локальные.`);
+              // Если есть только локальные заказы, но нет JSON, пересоздаем JSON-файлы
+              for (const localOrder of localOrders) {
+                try {
+                  const jsonFilePath = await saveOrderToJson(localOrder);
+                  localOrder.jsonFilePath = jsonFilePath;
+                  localOrder.syncStatus = 'synced';
+                } catch (saveError) {
+                  console.error(`Ошибка при сохранении локального заказа ${localOrder.id} в JSON:`, saveError);
+                }
+              }
+              // Обновляем localStorage с восстановленными данными
+              localStorage.setItem("orders", JSON.stringify(localOrders));
+              setOrders(localOrders);
+              return;
+            }
+          } catch (parseError) {
+            console.error("Ошибка при разборе локальных заказов:", parseError);
+          }
+        }
         return;
       }
 
+      console.log(`Получено ${jsonOrders.length} заказов из JSON-файлов`);
+
+      // Убедимся, что все заказы имеют корректный syncStatus
       const ordersWithSyncStatus = jsonOrders.map(order => ({
         ...order,
-        syncStatus: 'synced' as const
+        syncStatus: order.syncStatus || 'synced' as const
       }));
       
+      // Обновляем состояние приложения
       setOrders(ordersWithSyncStatus);
-      localStorage.setItem("orders", JSON.stringify(ordersWithSyncStatus));
       
-      console.log(`Synchronized ${ordersWithSyncStatus.length} orders from JSON files`);
+      // Обновляем localStorage, но с защитой от ошибок переполнения
+      try {
+        localStorage.setItem("orders", JSON.stringify(ordersWithSyncStatus));
+      } catch (storageError) {
+        console.error("Ошибка при сохранении заказов в localStorage:", storageError);
+        
+        // Если localStorage переполнен, сохраняем только последние 50 заказов
+        if (ordersWithSyncStatus.length > 50) {
+          const limitedOrders = ordersWithSyncStatus.slice(-50);
+          try {
+            localStorage.setItem("orders", JSON.stringify(limitedOrders));
+            console.log("Сохранены последние 50 заказов из-за ограничений localStorage");
+          } catch (limitError) {
+            console.error("Не удалось сохранить даже ограниченный список заказов:", limitError);
+          }
+        }
+      }
       
-      const csvContent = saveOrdersToCSV();
-      localStorage.setItem("ordersCSVBackup", csvContent);
-      localStorage.setItem("ordersCSVBackupTime", new Date().toISOString());
+      // Создаем резервную копию в CSV
+      try {
+        const csvContent = saveOrdersToCSV();
+        localStorage.setItem("ordersCSVBackup", csvContent);
+        localStorage.setItem("ordersCSVBackupTime", new Date().toISOString());
+        console.log("Создана резервная копия заказов в CSV");
+      } catch (csvError) {
+        console.error("Ошибка при создании CSV-резервной копии:", csvError);
+      }
       
+      console.log("Синхронизация заказов успешно завершена");
     } catch (error) {
-      console.error("Failed to synchronize orders:", error);
+      console.error("Ошибка при синхронизации заказов:", error);
       
+      // В случае ошибки синхронизации, пытаемся загрузить заказы из localStorage
       const savedOrders = localStorage.getItem("orders");
       if (savedOrders) {
         try {
-          setOrders(JSON.parse(savedOrders));
+          const parsedOrders = JSON.parse(savedOrders);
+          setOrders(parsedOrders);
+          console.log("Восстановлены заказы из localStorage после ошибки синхронизации");
         } catch (err) {
-          console.error("Failed to parse saved orders:", err);
+          console.error("Ошибка при восстановлении заказов из localStorage:", err);
         }
       }
       
@@ -90,13 +146,14 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
       try {
         await syncOrders();
       } catch (fetchError) {
-        console.error("Error fetching orders:", fetchError);
+        console.error("Ошибка при загрузке заказов:", fetchError);
         const savedOrders = localStorage.getItem("orders");
         if (savedOrders) {
           try {
             setOrders(JSON.parse(savedOrders));
+            console.log("Загружены заказы из localStorage");
           } catch (err) {
-            console.error("Failed to parse saved orders:", err);
+            console.error("Ошибка при разборе сохраненных заказов:", err);
           }
         }
       }
@@ -104,11 +161,12 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
     
     fetchOrders();
     
+    // Уменьшаем интервал синхронизации для большей надежности
     const syncInterval = setInterval(() => {
       syncOrders().catch(error => {
-        console.error("Periodic sync failed:", error);
+        console.error("Периодическая синхронизация не удалась:", error);
       });
-    }, 15000);
+    }, 10000); // Синхронизация каждые 10 секунд вместо 15
     
     return () => {
       clearInterval(syncInterval);

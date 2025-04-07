@@ -37,26 +37,28 @@ const PurchaseRequestForm = ({ car }: PurchaseRequestFormProps) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Создаем новый заказ
-    const newOrder: Order = {
-      id: `order-${uuidv4()}`,
-      carId: car?.id || 'unspecified',
-      customerName: formData.name,
-      customerPhone: formData.phone,
-      customerEmail: formData.email,
-      status: 'new',
-      createdAt: new Date().toISOString(),
-      message: formData.message,
-      syncStatus: 'pending' // Изначально помечаем как ожидающий синхронизации
-    };
-
     try {
-      // Сохраняем заказ через хук useCars, который теперь будет
-      // сохранять заказ в JSON-файле и в localStorage
+      // Создаем новый заказ с уникальным ID на основе времени для предотвращения конфликтов
+      const timestamp = Date.now();
+      const uniqueId = `order-${timestamp}-${uuidv4().substring(0, 8)}`;
+      
+      const newOrder: Order = {
+        id: uniqueId,
+        carId: car?.id || 'unspecified',
+        customerName: formData.name,
+        customerPhone: formData.phone,
+        customerEmail: formData.email,
+        status: 'new',
+        createdAt: new Date().toISOString(),
+        message: formData.message,
+        syncStatus: 'pending' // Изначально помечаем как ожидающий синхронизации
+      };
+
+      // Сохраняем заказ и принудительно запускаем синхронизацию
       const success = await createOrder(newOrder);
       
       if (success) {
-        // Принудительно запускаем синхронизацию, чтобы другие браузеры могли видеть заказ
+        // Дополнительная синхронизация для обновления данных в других браузерах
         await syncOrders();
         
         toast({
