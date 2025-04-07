@@ -1,4 +1,3 @@
-
 import { useCars as useGlobalCars } from "../contexts/CarsContext";
 import { Car, Order } from "../types/car";
 
@@ -82,45 +81,68 @@ export const useCars = () => {
   
   const getUploadedImages = (): { name: string, url: string }[] => {
     try {
-      const imagesData = localStorage.getItem('carImages');
+      const imagesData = localStorage.getItem('carImagesData');
       if (!imagesData) return [];
       
       const parsedData = JSON.parse(imagesData);
-      return parsedData.map((img: { name: string, base64: string }) => ({
-        name: img.name,
-        url: img.base64
-      }));
+      return Array.isArray(parsedData) ? parsedData : [];
     } catch (error) {
       console.error('Error getting uploaded images:', error);
       return [];
     }
   };
   
-  const saveUploadedImages = (images: { name: string, base64: string }[]): void => {
+  const saveUploadedImages = (images: { name: string, url: string }[]): void => {
     try {
       if (!images || images.length === 0) return;
       
-      const existingImagesStr = localStorage.getItem('carImages');
+      const existingImagesStr = localStorage.getItem('carImagesData');
       let existingImages = [];
       
       if (existingImagesStr) {
         try {
           existingImages = JSON.parse(existingImagesStr);
+          if (!Array.isArray(existingImages)) {
+            existingImages = [];
+          }
         } catch (e) {
           console.error('Error parsing existing images:', e);
           existingImages = [];
         }
       }
       
-      // Remove duplicates by name to avoid storing multiple copies of the same image
-      const imageNames = new Set(existingImages.map((img: any) => img.name));
-      const newImages = images.filter(img => !imageNames.has(img.name));
+      const existingUrls = new Set(existingImages.map((img: any) => img.url));
+      const newImages = images.filter(img => !existingUrls.has(img.url));
       
       const updatedImages = [...existingImages, ...newImages];
-      localStorage.setItem('carImages', JSON.stringify(updatedImages));
+      localStorage.setItem('carImagesData', JSON.stringify(updatedImages));
       console.log('Images saved to localStorage:', updatedImages.length);
     } catch (error) {
       console.error('Error saving uploaded images:', error);
+    }
+  };
+  
+  const saveImageByUrl = (url: string, name: string = ''): boolean => {
+    try {
+      const imageName = name || `image-${Date.now()}`;
+      const imageData = { name: imageName, url: url };
+      
+      saveUploadedImages([imageData]);
+      return true;
+    } catch (error) {
+      console.error('Error saving image by URL:', error);
+      return false;
+    }
+  };
+  
+  const isValidImageUrl = async (url: string): Promise<boolean> => {
+    try {
+      const response = await fetch(url, { method: 'HEAD' });
+      const contentType = response.headers.get('Content-Type') || '';
+      return response.ok && contentType.startsWith('image/');
+    } catch (error) {
+      console.error('Error validating image URL:', error);
+      return false;
     }
   };
   
@@ -220,6 +242,8 @@ export const useCars = () => {
     importCarsData,
     getUploadedImages,
     saveUploadedImages,
+    saveImageByUrl,
+    isValidImageUrl,
     exportOrdersToCsv,
     getOrderCreationDate,
     addToFavorites,

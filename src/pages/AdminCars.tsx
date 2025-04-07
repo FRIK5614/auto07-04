@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useCars } from '@/hooks/useCars';
 import { Button } from '@/components/ui/button';
@@ -13,13 +12,23 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Car } from '@/types/car';
-import { Plus, Pencil, Trash2, Search, Upload, Star, CheckCircle2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Upload, Star, CheckCircle2, Link as LinkIcon, Image, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 const AdminCars = () => {
-  const { cars, addCar, updateCar, deleteCar, saveUploadedImages, getUploadedImages } = useCars();
+  const { 
+    cars, 
+    addCar, 
+    updateCar, 
+    deleteCar, 
+    saveUploadedImages, 
+    getUploadedImages,
+    saveImageByUrl,
+    isValidImageUrl
+  } = useCars();
   const [searchTerm, setSearchTerm] = useState('');
   const [editingCar, setEditingCar] = useState<Partial<Car> | null>(null);
   const [isAddingCar, setIsAddingCar] = useState(false);
@@ -31,6 +40,19 @@ const AdminCars = () => {
   const [previewImages, setPreviewImages] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState('basic');
   const [mainImageIndex, setMainImageIndex] = useState<number>(0);
+  const [imageUrlInput, setImageUrlInput] = useState('');
+  const [savedImages, setSavedImages] = useState<{name: string, url: string}[]>([]);
+  const [urlPopoverOpen, setUrlPopoverOpen] = useState(false);
+
+  useEffect(() => {
+    // Загружаем сохраненные изображения при монтировании компонента
+    const loadSavedImages = () => {
+      const images = getUploadedImages();
+      setSavedImages(images);
+    };
+    
+    loadSavedImages();
+  }, [getUploadedImages]);
 
   const filteredCars = cars
     .filter(car => 
@@ -94,6 +116,8 @@ const AdminCars = () => {
     });
     setActiveTab(isMobile ? 'basic' : 'basic');
     setMainImageIndex(0);
+    setPreviewImages([]);
+    setUploadedImages([]);
     setDialogOpen(true);
   };
 
@@ -102,6 +126,8 @@ const AdminCars = () => {
     setEditingCar({...car});
     setActiveTab(isMobile ? 'basic' : 'additional'); 
     setMainImageIndex(0); // Default to first image
+    setPreviewImages([]);
+    setUploadedImages([]);
     setDialogOpen(true);
   };
 
@@ -133,7 +159,7 @@ const AdminCars = () => {
       if (uploadedImages.length > 0) {
         const imagesToSave = uploadedImages.map((file, index) => ({
           name: file.name,
-          base64: previewImages[index]
+          url: previewImages[index]
         }));
         
         // Save images to local storage
@@ -223,6 +249,10 @@ const AdminCars = () => {
         });
       }
       
+      // Обновляем сохраненные изображения
+      const newImages = getUploadedImages();
+      setSavedImages(newImages);
+      
       setDialogOpen(false);
       setEditingCar(null);
       setUploadedImages([]);
@@ -289,6 +319,57 @@ const AdminCars = () => {
     });
   };
 
+  const handleImageUrlAdd = async () => {
+    if (!imageUrlInput) {
+      toast({
+        variant: "destructive",
+        title: "Ошибка",
+        description: "Пожалуйста, введите URL изображения"
+      });
+      return;
+    }
+    
+    try {
+      // Проверяем, что URL валидный и указывает на изображение
+      const isValid = await isValidImageUrl(imageUrlInput);
+      
+      if (!isValid) {
+        toast({
+          variant: "destructive",
+          title: "Ошибка",
+          description: "Указанный URL не является корректной ссылкой на изображение"
+        });
+        return;
+      }
+      
+      // Добавляем изображение в предпросмотр
+      setPreviewImages(prev => [...prev, imageUrlInput]);
+      
+      // Сохраняем URL в локальное хранилище
+      saveImageByUrl(imageUrlInput);
+      
+      // Обновляем список сохраненных изображений
+      const newImages = getUploadedImages();
+      setSavedImages(newImages);
+      
+      // Очищаем поле ввода
+      setImageUrlInput('');
+      setUrlPopoverOpen(false);
+      
+      toast({
+        title: "Изображение добавлено",
+        description: "Изображение по ссылке успешно добавлено"
+      });
+    } catch (error) {
+      console.error('Error adding image by URL:', error);
+      toast({
+        variant: "destructive",
+        title: "Ошибка",
+        description: "Не удалось добавить изображение по ссылке"
+      });
+    }
+  };
+
   const removePreviewImage = (index: number) => {
     setPreviewImages(prev => prev.filter((_, i) => i !== index));
     setUploadedImages(prev => prev.filter((_, i) => i !== index));
@@ -307,10 +388,28 @@ const AdminCars = () => {
     }
   };
 
-  const setAsMainImage = (index: number, existingImage = true) => {
-    if (existingImage) {
+  const addSavedImageToCar = (imageUrl: string) => {
+    if (editingCar) {
+      const newImage = {
+        id: `img-${Date.now()}-saved`,
+        url: imageUrl,
+        alt: `${editingCar.brand} ${editingCar.model || 'Автомобиль'}`
+      };
+      
+      const updatedImages = [...(editingCar.images || []), newImage];
+      setEditingCar({...editingCar, images: updatedImages});
+      
+      toast({
+        title: "Изображение добавлено",
+        description: "Сохраненное изображение добавлено к автомобилю"
+      });
+    }
+  };
+
+  const setAsMainImage = (index: number, imageType: 'existing' | 'preview' | 'saved' = 'existing') => {
+    if (imageType === 'existing') {
       setMainImageIndex(index);
-    } else {
+    } else if (imageType === 'preview') {
       // Calculate the index for preview images
       const existingImagesCount = editingCar?.images?.length || 0;
       setMainImageIndex(existingImagesCount + index);
@@ -322,7 +421,10 @@ const AdminCars = () => {
     });
   };
 
-  // Mobile layout for car list
+  // На мобильных устройствах используем карточки для отображения автомобилей
+  const renderCarList = () => isMobile ? renderDesktopCarList() : renderDesktopCarList();
+
+  // Mobile layout for car list (using table instead of cards)
   const renderMobileCarList = () => (
     <div className="grid grid-cols-1 gap-4 mt-4">
       {filteredCars.length > 0 ? (
@@ -472,7 +574,7 @@ const AdminCars = () => {
             </div>
           </div>
           
-          {isMobile ? renderMobileCarList() : renderDesktopCarList()}
+          {renderCarList()}
         </CardContent>
       </Card>
       
@@ -792,186 +894,46 @@ const AdminCars = () => {
                 <div className="space-y-4">
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                     <Label>Фотографии автомобиля</Label>
-                    <div className="relative">
-                      <Input
-                        id="image-upload"
-                        type="file"
-                        multiple
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleImageUpload}
-                      />
-                      <Label 
-                        htmlFor="image-upload" 
-                        className="inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 cursor-pointer w-full sm:w-auto"
-                      >
-                        <Upload className="h-4 w-4" />
-                        Загрузить фотографии
-                      </Label>
-                    </div>
-                  </div>
-                  
-                  {/* Current images section */}
-                  {editingCar.images && editingCar.images.length > 0 && (
-                    <div>
-                      <h4 className="text-sm font-medium mb-2">Текущие фотографии</h4>
-                      <p className="text-sm text-muted-foreground mb-3">
-                        Нажмите на звездочку, чтобы выбрать основное фото
-                      </p>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                        {editingCar.images.map((image, index) => (
-                          <div key={image.id} className="relative group">
-                            <div className="relative">
-                              <img 
-                                src={image.url} 
-                                alt={image.alt} 
-                                className={`w-full h-32 object-cover rounded-md border ${index === mainImageIndex ? 'border-primary border-2' : 'border-border'}`}
-                                onError={(e) => {
-                                  const target = e.target as HTMLImageElement;
-                                  target.src = '/placeholder.svg';
-                                }}
-                              />
-                              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30 rounded-md">
-                                <div className="flex gap-2">
-                                  <Button 
-                                    variant={index === mainImageIndex ? "default" : "secondary"}
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    onClick={() => setAsMainImage(index)}
-                                    title="Сделать основным"
-                                  >
-                                    <Star className={`h-4 w-4 ${index === mainImageIndex ? 'text-yellow-300 fill-yellow-300' : ''}`} />
-                                  </Button>
-                                  <Button 
-                                    variant="destructive" 
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    onClick={() => removeCarImage(image.id)}
-                                    title="Удалить"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </div>
-                            </div>
-                            {index === mainImageIndex && (
-                              <Badge className="absolute top-2 left-2 bg-primary">Основное</Badge>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Preview of newly uploaded images */}
-                  {previewImages.length > 0 && (
-                    <div>
-                      <h4 className="text-sm font-medium mb-2">Новые фотографии</h4>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                        {previewImages.map((src, index) => {
-                          const actualIndex = (editingCar.images?.length || 0) + index;
-                          return (
-                            <div key={index} className="relative group">
-                              <div className="relative">
-                                <img 
-                                  src={src} 
-                                  alt={`New upload ${index + 1}`} 
-                                  className={`w-full h-32 object-cover rounded-md border ${actualIndex === mainImageIndex ? 'border-primary border-2' : 'border-border'}`}
-                                />
-                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30 rounded-md">
-                                  <div className="flex gap-2">
-                                    <Button 
-                                      variant={actualIndex === mainImageIndex ? "default" : "secondary"} 
-                                      size="icon"
-                                      className="h-8 w-8"
-                                      onClick={() => setAsMainImage(index, false)}
-                                      title="Сделать основным"
-                                    >
-                                      <Star className={`h-4 w-4 ${actualIndex === mainImageIndex ? 'text-yellow-300 fill-yellow-300' : ''}`} />
-                                    </Button>
-                                    <Button 
-                                      variant="destructive" 
-                                      size="icon"
-                                      className="h-8 w-8"
-                                      onClick={() => removePreviewImage(index)}
-                                      title="Удалить"
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                </div>
-                              </div>
-                              {actualIndex === mainImageIndex && (
-                                <Badge className="absolute top-2 left-2 bg-primary">Основное</Badge>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* If no images, show a placeholder */}
-                  {!editingCar.images?.length && previewImages.length === 0 && (
-                    <div className="border border-dashed border-gray-300 rounded-md p-6 text-center">
-                      <Upload className="mx-auto h-10 w-10 text-gray-400" />
-                      <p className="mt-2 text-sm text-gray-500">
-                        Нет загруженных фотографий. Нажмите "Загрузить фотографии", чтобы добавить.
-                      </p>
-                    </div>
-                  )}
-                  
-                  {/* Main image selected preview */}
-                  {((editingCar.images && editingCar.images.length > 0) || previewImages.length > 0) && (
-                    <div className="mt-4">
-                      <Label className="block mb-2">Предпросмотр основного изображения</Label>
-                      <div className="rounded-md overflow-hidden border border-border">
-                        <img 
-                          src={
-                            mainImageIndex < (editingCar.images?.length || 0)
-                              ? editingCar.images?.[mainImageIndex]?.url
-                              : previewImages[mainImageIndex - (editingCar.images?.length || 0)]
-                          } 
-                          alt="Основное изображение"
-                          className="w-full max-h-64 object-contain bg-gray-100"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.src = '/placeholder.svg';
-                          }}
+                    <div className="flex flex-wrap gap-2">
+                      <div className="relative">
+                        <Input
+                          id="image-upload"
+                          type="file"
+                          multiple
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleImageUpload}
                         />
+                        <Label 
+                          htmlFor="image-upload" 
+                          className="inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 cursor-pointer"
+                        >
+                          <Upload className="h-4 w-4" />
+                          Загрузить фото
+                        </Label>
                       </div>
-                    </div>
-                  )}
-                </div>
-                
-                {isMobile && (
-                  <div className="flex justify-between mt-4">
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setActiveTab('technical')}
-                      className="flex-1 mr-2"
-                    >
-                      Назад
-                    </Button>
-                    <Button onClick={handleSave} className="flex-1 ml-2">Сохранить</Button>
-                  </div>
-                )}
-              </TabsContent>
-            </Tabs>
-          )}
-          
-          {!isMobile && (
-            <DialogFooter className="flex justify-end gap-2 mt-6">
-              <DialogClose asChild>
-                <Button variant="outline">Отмена</Button>
-              </DialogClose>
-              <Button onClick={handleSave}>Сохранить</Button>
-            </DialogFooter>
-          )}
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-};
-
-export default AdminCars;
+                      
+                      <Popover open={urlPopoverOpen} onOpenChange={setUrlPopoverOpen}>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline">
+                            <LinkIcon className="h-4 w-4 mr-2" />
+                            Добавить по URL
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80">
+                          <div className="grid gap-4">
+                            <div className="space-y-2">
+                              <h4 className="font-medium leading-none">Добавление изображения по URL</h4>
+                              <p className="text-sm text-muted-foreground">
+                                Вставьте прямую ссылку на изображение
+                              </p>
+                            </div>
+                            <div className="grid gap-2">
+                              <div className="grid grid-cols-1 items-center gap-2">
+                                <Input
+                                  value={imageUrlInput}
+                                  onChange={(e) => setImageUrlInput(e.target.value)}
+                                  placeholder="https://example.com/image.jpg"
+                                />
+                              </div>
+                              <Button onClick={handleImageUrlAdd}>Добавить</
