@@ -6,7 +6,13 @@ require_once 'config.php';
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
+
+// Обработка предварительных запросов OPTIONS
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
 
 try {
     // Получаем список таблиц в базе данных
@@ -33,13 +39,18 @@ try {
         'message' => 'Проверка таблиц завершена',
         'tables' => $tables,
         'orders_table_exists' => $ordersTableExists,
-        'orders_columns' => $orderColumns
+        'orders_columns' => $orderColumns,
+        'php_version' => phpversion(),
+        'server_name' => $_SERVER['SERVER_NAME'] ?? 'unknown',
+        'remote_addr' => $_SERVER['REMOTE_ADDR'] ?? 'unknown'
     ], JSON_UNESCAPED_UNICODE);
     exit;
 } catch (PDOException $e) {
     echo json_encode([
         'success' => false, 
-        'message' => 'Ошибка проверки таблиц: ' . $e->getMessage()
+        'message' => 'Ошибка проверки таблиц: ' . $e->getMessage(),
+        'php_version' => phpversion(),
+        'server_name' => $_SERVER['SERVER_NAME'] ?? 'unknown'
     ], JSON_UNESCAPED_UNICODE);
     exit;
 }

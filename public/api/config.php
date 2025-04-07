@@ -36,7 +36,10 @@ try {
         'error_code' => $e->getCode(),
         'connection_info' => [
             'host' => $host,
-            'database' => $db_name
+            'database' => $db_name,
+            'php_version' => phpversion(),
+            'server_name' => $_SERVER['SERVER_NAME'] ?? 'unknown',
+            'remote_addr' => $_SERVER['REMOTE_ADDR'] ?? 'unknown'
         ]
     ], JSON_UNESCAPED_UNICODE);
     exit;
