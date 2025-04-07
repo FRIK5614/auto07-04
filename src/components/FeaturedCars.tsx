@@ -8,6 +8,7 @@ import LoadingState from "./LoadingState";
 import ErrorState from "./ErrorState";
 import { useIsMobile } from "@/hooks/use-mobile";
 import useEmblaCarousel from "embla-carousel-react";
+import { useCars } from "@/hooks/useCars";
 
 interface FeaturedCarsProps {
   cars: Car[];
@@ -28,6 +29,7 @@ const FeaturedCars = ({
 }: FeaturedCarsProps) => {
   const [visibleCount, setVisibleCount] = useState(4);
   const isMobile = useIsMobile();
+  const { applySavedImagesToCar } = useCars();
   
   const options = {
     align: "start" as const,
@@ -65,24 +67,8 @@ const FeaturedCars = ({
     }
   }, [visibleCount, emblaApi, isMobile, options]);
 
-  // Function to ensure cars have at least one placeholder image if no images
-  const ensureCarImages = (carsList: Car[]): Car[] => {
-    return carsList.map(car => {
-      if (!car.images || car.images.length === 0) {
-        return {
-          ...car,
-          images: [{
-            id: `placeholder-${car.id}`,
-            url: '/placeholder.svg',
-            alt: `${car.brand} ${car.model}`
-          }]
-        };
-      }
-      return car;
-    });
-  };
-
-  const carsWithImages = ensureCarImages(cars);
+  // Применяем сохраненные изображения к каждому автомобилю
+  const carsWithImages = cars.map(car => applySavedImagesToCar(car));
 
   return (
     <div className="py-8">

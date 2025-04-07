@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+
+import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -18,7 +19,7 @@ const IndexContent = () => {
   const [searchParams] = useSearchParams();
   const [visibleCars, setVisibleCars] = useState(12);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-  const consultFormRef = React.useRef<HTMLDivElement>(null);
+  const consultFormRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const newFilter: any = { ...filter };
@@ -38,7 +39,7 @@ const IndexContent = () => {
     }
     
     setFilter(newFilter);
-  }, [searchParams, setFilter]);
+  }, [searchParams, setFilter, filter]);
 
   const loadMore = () => {
     setVisibleCars(prev => prev + 12);
@@ -73,14 +74,14 @@ const IndexContent = () => {
               <p className="text-lg md:text-xl mb-8 text-blue-100">
                 Более 1000 моделей автомобилей с подробными характеристиками, ценами и возможностью сравнения
               </p>
-              <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
-                <Button size="lg" className="bg-white text-auto-blue-800 hover:bg-blue-50">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                <Button size="lg" className="bg-white text-auto-blue-800 hover:bg-blue-50 w-full">
                   <Car className="mr-2 h-5 w-5" />
                   Все автомобили
                 </Button>
                 <Button 
                   size="lg" 
-                  className="bg-auto-blue-500 text-white hover:bg-auto-blue-600"
+                  className="bg-auto-blue-500 text-white hover:bg-auto-blue-600 w-full"
                   onClick={openFilterModal}
                 >
                   <Settings className="mr-2 h-5 w-5" />
@@ -91,7 +92,7 @@ const IndexContent = () => {
                 <Button 
                   size="lg" 
                   variant="outline"
-                  className="bg-transparent border-white text-white hover:bg-white hover:text-auto-blue-800"
+                  className="bg-transparent border-white text-white hover:bg-white hover:text-auto-blue-800 w-full sm:w-auto"
                   onClick={scrollToConsultForm}
                 >
                   <UserRound className="mr-2 h-5 w-5" />
