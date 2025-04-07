@@ -79,7 +79,6 @@ export const useCars = () => {
     return cars.filter(car => car.bodyType === bodyType);
   };
   
-  // Improved function to get uploaded images with error handling
   const getUploadedImages = (): { name: string, url: string }[] => {
     try {
       const imagesData = localStorage.getItem('carImagesData');
@@ -96,7 +95,6 @@ export const useCars = () => {
         return [];
       }
       
-      // Filter out any invalid entries
       const validImages = parsedData.filter(img => img && img.url && typeof img.url === 'string');
       
       if (validImages.length !== parsedData.length) {
@@ -107,13 +105,11 @@ export const useCars = () => {
       return validImages;
     } catch (error) {
       console.error('Error getting uploaded images:', error);
-      // Reset the storage if corrupted
       localStorage.setItem('carImagesData', JSON.stringify([]));
       return [];
     }
   };
   
-  // Improved function to save uploaded images
   const saveUploadedImages = (images: { name: string, url: string }[]): void => {
     try {
       if (!images || images.length === 0) return;
@@ -182,7 +178,7 @@ export const useCars = () => {
       return false;
     }
   };
-  
+
   const sortCars = (carsToSort: Car[], criterion: string): Car[] => {
     switch (criterion) {
       case 'priceAsc':
@@ -197,7 +193,7 @@ export const useCars = () => {
         return carsToSort;
     }
   };
-  
+
   const getOrderCreationDate = (order: Order): string => {
     try {
       return new Date(order.createdAt).toISOString().slice(0, 19).replace('T', ' ');
@@ -206,7 +202,7 @@ export const useCars = () => {
       return 'Неизвестно';
     }
   };
-  
+
   const exportOrdersToCsv = (): string => {
     if (!orders || orders.length === 0) {
       return '';
@@ -247,9 +243,11 @@ export const useCars = () => {
     return csvRows.join('\n');
   };
   
-  // Improved function to get car saved image
   const getCarSavedImage = (carId: string): { id: string, url: string, alt: string } | null => {
-    if (!carId) return null;
+    if (!carId) {
+      console.error('Invalid car ID provided to getCarSavedImage');
+      return null;
+    }
     
     try {
       const carImagesMapping = localStorage.getItem('carImagesMapping');
@@ -278,10 +276,8 @@ export const useCars = () => {
             alt: `Car Image ${carId}`
           };
         } else {
-          // The mapping exists but the image doesn't - fix this inconsistency
           console.log(`Image mapping exists for car ${carId} but image not found, fixing...`);
           
-          // Try to find a valid image in the saved images
           if (savedImages.length > 0) {
             const newMapping = { ...mappings, [carId]: savedImages[0].url };
             localStorage.setItem('carImagesMapping', JSON.stringify(newMapping));
@@ -292,7 +288,6 @@ export const useCars = () => {
               alt: `Car Image ${carId}`
             };
           } else {
-            // If we don't have any images to map to, remove the invalid mapping
             const { [carId]: _, ...restMappings } = mappings;
             localStorage.setItem('carImagesMapping', JSON.stringify(restMappings));
           }
@@ -305,7 +300,6 @@ export const useCars = () => {
     }
   };
   
-  // Improved function to assign image to car
   const assignImageToCar = (carId: string, imageUrl: string): boolean => {
     if (!carId || !imageUrl) {
       console.error('Invalid parameters for assignImageToCar');
@@ -335,14 +329,12 @@ export const useCars = () => {
     }
   };
   
-  // Improved function to update car image
   const updateCarImage = (carId: string, imageUrl: string): void => {
     if (!carId || !imageUrl) {
       console.error('Invalid parameters for updateCarImage');
       return;
     }
     
-    // Make sure the image exists in our saved images
     const savedImages = getUploadedImages();
     const imageExists = savedImages.some(img => img.url === imageUrl);
     
@@ -351,64 +343,62 @@ export const useCars = () => {
       saveImageByUrl(imageUrl, `car-${carId}-${Date.now()}`);
     }
     
-    // Now assign the image to the car
     assignImageToCar(carId, imageUrl);
   };
   
-  // Improved function to apply saved images to car
   const applySavedImagesToCar = (car: Car): Car => {
     if (!car) return car;
     
     try {
-      // First check if the car already has images
-      if (car.images && car.images.length > 0 && car.images[0] && car.images[0].url) {
-        // The car already has at least one valid image, save it for future reference
-        updateCarImage(car.id, car.images[0].url);
-        return car;
+      const carCopy = JSON.parse(JSON.stringify(car));
+      
+      if (carCopy.images && carCopy.images.length > 0 && 
+          carCopy.images.some(img => img && img.url && typeof img.url === 'string')) {
+        const validImage = carCopy.images.find(img => img && img.url && typeof img.url === 'string');
+        if (validImage) {
+          updateCarImage(carCopy.id, validImage.url);
+        }
+        return carCopy;
       }
       
-      // Try to get a saved image specifically for this car
-      const savedCarImage = getCarSavedImage(car.id);
+      const savedCarImage = getCarSavedImage(carCopy.id);
       
       if (savedCarImage) {
-        console.log(`Applied saved image to car ${car.id}: ${savedCarImage.url}`);
+        console.log(`Applied saved image to car ${carCopy.id}: ${savedCarImage.url}`);
         return {
-          ...car,
+          ...carCopy,
           images: [savedCarImage]
         };
       }
       
-      // If we don't have a specific image for this car, try to use any saved image
       const savedImages = getUploadedImages();
       
       if (savedImages.length > 0) {
-        console.log(`Applying general saved image to car ${car.id}: ${savedImages[0].url}`);
-        assignImageToCar(car.id, savedImages[0].url);
+        console.log(`Applying general saved image to car ${carCopy.id}: ${savedImages[0].url}`);
+        assignImageToCar(carCopy.id, savedImages[0].url);
         
         return {
-          ...car,
+          ...carCopy,
           images: [{
-            id: `saved-${car.id}`,
+            id: `saved-${carCopy.id}`,
             url: savedImages[0].url,
-            alt: `${car.brand} ${car.model}`
+            alt: `${carCopy.brand} ${carCopy.model}`
           }]
         };
       }
       
-      // If we don't have any saved images, use a placeholder
-      console.log(`Using placeholder for car ${car.id}`);
+      console.log(`Using placeholder for car ${carCopy.id}`);
       return {
-        ...car,
+        ...carCopy,
         images: [{
-          id: `placeholder-${car.id}`,
+          id: `placeholder-${carCopy.id}`,
           url: '/placeholder.svg',
-          alt: `${car.brand} ${car.model}`
+          alt: `${carCopy.brand} ${carCopy.model}`
         }]
       };
     } catch (error) {
       console.error('Error applying saved images to car:', error);
       
-      // Return car with placeholder in case of any errors
       return {
         ...car,
         images: [{
@@ -420,9 +410,8 @@ export const useCars = () => {
     }
   };
   
-  // Process all cars with images before returning them
-  const carsWithImages = cars.map(applySavedImagesToCar);
-  const filteredCarsWithImages = filteredCars.map(applySavedImagesToCar);
+  const carsWithImages = cars.map(car => applySavedImagesToCar(car));
+  const filteredCarsWithImages = filteredCars.map(car => applySavedImagesToCar(car));
   
   return {
     cars: carsWithImages,

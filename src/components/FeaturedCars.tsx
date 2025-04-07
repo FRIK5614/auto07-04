@@ -30,6 +30,7 @@ const FeaturedCars = ({
   const [visibleCount, setVisibleCount] = useState(4);
   const isMobile = useIsMobile();
   const { applySavedImagesToCar } = useCars();
+  const [processedCars, setProcessedCars] = useState<Car[]>([]);
   
   const options = {
     align: "start" as const,
@@ -38,6 +39,29 @@ const FeaturedCars = ({
   };
   
   const [emblaRef, emblaApi] = useEmblaCarousel(options);
+  
+  // Process cars with images on component mount and whenever cars change
+  useEffect(() => {
+    const processCarsWithImages = () => {
+      if (!cars || cars.length === 0) {
+        setProcessedCars([]);
+        return;
+      }
+
+      // Create deep copies to avoid reference issues and process each car
+      const carsWithImages = cars.map(car => {
+        // Make a deep copy of the car object
+        const carCopy = JSON.parse(JSON.stringify(car));
+        // Apply saved images to the car
+        return applySavedImagesToCar(carCopy);
+      });
+
+      console.log('FeaturedCars - Processed cars with images:', carsWithImages.length);
+      setProcessedCars(carsWithImages);
+    };
+
+    processCarsWithImages();
+  }, [cars, applySavedImagesToCar]);
   
   useEffect(() => {
     const handleResize = () => {
@@ -66,30 +90,6 @@ const FeaturedCars = ({
       });
     }
   }, [visibleCount, emblaApi, isMobile, options]);
-
-  // Process cars to ensure they have images - modified for better reliability
-  const processedCars = cars.map(car => {
-    // Make a deep copy to avoid reference issues
-    const carWithImages = JSON.parse(JSON.stringify(car));
-    
-    // Apply saved images if available
-    const carWithSavedImages = applySavedImagesToCar(carWithImages);
-    
-    // Double check the car has at least one image after processing
-    if (!carWithSavedImages.images || carWithSavedImages.images.length === 0 || 
-        !carWithSavedImages.images[0] || !carWithSavedImages.images[0].url) {
-      return {
-        ...carWithSavedImages,
-        images: [{
-          id: `placeholder-${carWithSavedImages.id}`,
-          url: '/placeholder.svg',
-          alt: `${carWithSavedImages.brand} ${carWithSavedImages.model}`
-        }]
-      };
-    }
-    
-    return carWithSavedImages;
-  });
 
   return (
     <div className="py-8">

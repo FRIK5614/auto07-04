@@ -28,62 +28,17 @@ const CarCard = ({ car, className }: CarCardProps) => {
     toggleFavorite, 
     toggleCompare, 
     isFavorite, 
-    isInCompare, 
-    applySavedImagesToCar,
-    updateCarImage,
-    getCarSavedImage
+    isInCompare
   } = useCars();
   
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isImageError, setIsImageError] = useState(false);
-  const [processedCar, setProcessedCar] = useState<Car>(car);
   
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true });
-  
-  useEffect(() => {
-    // Create a deep copy to avoid reference issues
-    const carCopy = JSON.parse(JSON.stringify(car));
-    
-    // First check for a saved image specifically for this car
-    const savedImage = getCarSavedImage(carCopy.id);
-    
-    let updatedCar = carCopy;
-    
-    if (savedImage) {
-      // If there's a saved image for this specific car, use it as the first image
-      updatedCar = {
-        ...carCopy,
-        images: [savedImage, ...(carCopy.images || [])]
-      };
-      
-      // Ensure we're saving this image association
-      updateCarImage(updatedCar.id, savedImage.url);
-    } else {
-      // Otherwise apply general saved images logic
-      updatedCar = applySavedImagesToCar(carCopy);
-    }
-    
-    // Final check to make sure we have at least one image
-    if (!updatedCar.images || updatedCar.images.length === 0 || 
-        !updatedCar.images[0] || !updatedCar.images[0].url) {
-      updatedCar = {
-        ...updatedCar,
-        images: [{
-          id: `placeholder-${updatedCar.id}`,
-          url: '/placeholder.svg',
-          alt: `${updatedCar.brand} ${updatedCar.model}`
-        }]
-      };
-    }
-    
-    // Update the processed car state
-    setProcessedCar(updatedCar);
-    
-    // Always make sure to save the current image for future use
-    if (updatedCar.images && updatedCar.images.length > 0 && updatedCar.images[0].url) {
-      updateCarImage(updatedCar.id, updatedCar.images[0].url);
-    }
-  }, [car, applySavedImagesToCar, updateCarImage, getCarSavedImage]);
+
+  // Check that we have valid images
+  const validImages = (car.images || []).filter(img => img && img.url);
+  const hasValidImages = validImages.length > 0;
   
   const handlePrev = () => {
     emblaApi?.scrollPrev();
@@ -104,7 +59,7 @@ const CarCard = ({ car, className }: CarCardProps) => {
   useEffect(() => {
     setCurrentImageIndex(0);
     setIsImageError(false);
-  }, [processedCar.id]);
+  }, [car.id]);
   
   useEffect(() => {
     if (emblaApi) {
@@ -119,10 +74,6 @@ const CarCard = ({ car, className }: CarCardProps) => {
     }
   }, [emblaApi]);
   
-  // Double check that we have valid images before rendering
-  const validImages = (processedCar.images || []).filter(img => img && img.url);
-  const hasValidImages = validImages.length > 0;
-  
   return (
     <Card className={cn("overflow-hidden group h-full flex flex-col", className)}>
       <div className="relative overflow-hidden h-48">
@@ -130,16 +81,16 @@ const CarCard = ({ car, className }: CarCardProps) => {
           <div className="flex h-full">
             {hasValidImages ? validImages.map((image, idx) => (
               <div 
-                key={`${processedCar.id}-img-${idx}`} 
+                key={`${car.id}-img-${idx}`} 
                 className="relative flex-none w-full h-full min-w-0"
               >
-                <Link to={`/car/${processedCar.id}`}>
+                <Link to={`/car/${car.id}`}>
                   <img
                     src={image.url}
-                    alt={image.alt || `${processedCar.brand} ${processedCar.model}`}
+                    alt={image.alt || `${car.brand} ${car.model}`}
                     className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                     onError={(e) => {
-                      console.log(`Image error for car ${processedCar.id}:`, image.url);
+                      console.log(`Image error for car ${car.id}:`, image.url);
                       const target = e.target as HTMLImageElement;
                       target.src = '/placeholder.svg';
                       setIsImageError(true);
@@ -149,10 +100,10 @@ const CarCard = ({ car, className }: CarCardProps) => {
               </div>
             )) : (
               <div className="relative flex-none w-full h-full min-w-0">
-                <Link to={`/car/${processedCar.id}`}>
+                <Link to={`/car/${car.id}`}>
                   <img
                     src="/placeholder.svg"
-                    alt={`${processedCar.brand} ${processedCar.model}`}
+                    alt={`${car.brand} ${car.model}`}
                     className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />
                 </Link>
@@ -190,18 +141,18 @@ const CarCard = ({ car, className }: CarCardProps) => {
         )}
         
         <div className="absolute top-3 left-3 flex flex-col gap-2">
-          {processedCar.isNew && (
+          {car.isNew && (
             <Badge className="bg-blue-600 text-white">Новинка</Badge>
           )}
           
-          {processedCar.country && (
-            <Badge className="bg-green-600 text-white">{processedCar.country}</Badge>
+          {car.country && (
+            <Badge className="bg-green-600 text-white">{car.country}</Badge>
           )}
         </div>
         
-        {processedCar.price.discount && processedCar.price.discount > 0 && (
+        {car.price.discount && car.price.discount > 0 && (
           <Badge variant="outline" className="absolute top-3 right-3 bg-white text-red-600 border-red-600">
-            Скидка {formatPrice(processedCar.price.discount)}
+            Скидка {formatPrice(car.price.discount)}
           </Badge>
         )}
 
@@ -209,7 +160,7 @@ const CarCard = ({ car, className }: CarCardProps) => {
           <div className="absolute bottom-2 left-0 w-full flex justify-center gap-1 z-10">
             {validImages.map((_, idx) => (
               <div 
-                key={`${processedCar.id}-dot-${idx}`} 
+                key={`${car.id}-dot-${idx}`} 
                 className={`w-2 h-2 rounded-full ${
                   idx === currentImageIndex ? "bg-white" : "bg-white/50"
                 }`}
@@ -219,35 +170,36 @@ const CarCard = ({ car, className }: CarCardProps) => {
         )}
       </div>
       
+      
       <CardContent className="flex-1 p-4">
-        <Link to={`/car/${processedCar.id}`} className="hover:text-auto-blue-600 transition-colors">
+        <Link to={`/car/${car.id}`} className="hover:text-auto-blue-600 transition-colors">
           <h3 className="text-lg font-semibold text-auto-gray-900">
-            {processedCar.brand} {processedCar.model}
+            {car.brand} {car.model}
           </h3>
         </Link>
         <p className="text-auto-gray-500 text-sm mb-3">
-          {processedCar.year} • {processedCar.engine.fuelType} • {processedCar.bodyType}
+          {car.year} • {car.engine.fuelType} • {car.bodyType}
         </p>
         
         <div className="grid grid-cols-1 gap-2">
           <div className="flex items-center text-sm text-auto-gray-700">
             <Fuel className="h-4 w-4 mr-2 text-auto-blue-600" />
-            <span className="font-medium">{processedCar.engine.displacement} л, {processedCar.engine.power} л.с.</span>
+            <span className="font-medium">{car.engine.displacement} л, {car.engine.power} л.с.</span>
           </div>
           
           <div className="flex items-center text-sm text-auto-gray-700">
             <Settings className="h-4 w-4 mr-2 text-auto-blue-600" />
-            <span className="font-medium">{processedCar.transmission.type}, {processedCar.drivetrain}</span>
+            <span className="font-medium">{car.transmission.type}, {car.drivetrain}</span>
           </div>
           
           <div className="flex items-center text-sm text-auto-gray-700">
             <Calendar className="h-4 w-4 mr-2 text-auto-blue-600" />
-            <span className="font-medium">{processedCar.year} год выпуска</span>
+            <span className="font-medium">{car.year} год выпуска</span>
           </div>
           
           <div className="flex items-center text-sm text-auto-gray-700">
             <Gauge className="h-4 w-4 mr-2 text-auto-blue-600" />
-            <span className="font-medium">Расход: {processedCar.performance.fuelConsumption.combined} л/100 км</span>
+            <span className="font-medium">Расход: {car.performance.fuelConsumption.combined} л/100 км</span>
           </div>
         </div>
 
@@ -256,27 +208,27 @@ const CarCard = ({ car, className }: CarCardProps) => {
           <div className="grid grid-cols-2 gap-1 text-xs">
             <div className="flex justify-between">
               <span className="text-auto-gray-600">Длина:</span>
-              <span className="font-medium">{processedCar.dimensions.length} мм</span>
+              <span className="font-medium">{car.dimensions.length} мм</span>
             </div>
             <div className="flex justify-between">
               <span className="text-auto-gray-600">Ширина:</span>
-              <span className="font-medium">{processedCar.dimensions.width} мм</span>
+              <span className="font-medium">{car.dimensions.width} мм</span>
             </div>
             <div className="flex justify-between">
               <span className="text-auto-gray-600">Высота:</span>
-              <span className="font-medium">{processedCar.dimensions.height} мм</span>
+              <span className="font-medium">{car.dimensions.height} мм</span>
             </div>
             <div className="flex justify-between">
               <span className="text-auto-gray-600">Колесная база:</span>
-              <span className="font-medium">{processedCar.dimensions.wheelbase} мм</span>
+              <span className="font-medium">{car.dimensions.wheelbase} мм</span>
             </div>
             <div className="flex justify-between">
               <span className="text-auto-gray-600">Объем багажника:</span>
-              <span className="font-medium">{processedCar.dimensions.trunkVolume} л</span>
+              <span className="font-medium">{car.dimensions.trunkVolume} л</span>
             </div>
             <div className="flex justify-between">
               <span className="text-auto-gray-600">Разгон 0-100:</span>
-              <span className="font-medium">{processedCar.performance.acceleration} сек</span>
+              <span className="font-medium">{car.performance.acceleration} сек</span>
             </div>
           </div>
         </div>
@@ -285,18 +237,18 @@ const CarCard = ({ car, className }: CarCardProps) => {
       <CardFooter className="p-4 pt-0 mt-2">
         <div className="w-full">
           <div className="mb-4">
-            {processedCar.price.discount ? (
+            {car.price.discount ? (
               <div className="flex flex-col">
                 <span className="text-2xl font-bold text-auto-blue-700">
-                  {formatPrice(processedCar.price.base - processedCar.price.discount)}
+                  {formatPrice(car.price.base - car.price.discount)}
                 </span>
                 <span className="text-sm text-auto-gray-500 line-through">
-                  {formatPrice(processedCar.price.base)}
+                  {formatPrice(car.price.base)}
                 </span>
               </div>
             ) : (
               <span className="text-2xl font-bold text-auto-blue-700">
-                {formatPrice(processedCar.price.base)}
+                {formatPrice(car.price.base)}
               </span>
             )}
           </div>
@@ -307,7 +259,7 @@ const CarCard = ({ car, className }: CarCardProps) => {
               variant="default" 
               className="col-span-2 bg-auto-blue-600 hover:bg-auto-blue-700 flex items-center justify-center"
             >
-              <Link to={`/car/${processedCar.id}`}>
+              <Link to={`/car/${car.id}`}>
                 <Info className="mr-2 h-4 w-4" />
                 Подробнее
               </Link>
@@ -318,11 +270,11 @@ const CarCard = ({ car, className }: CarCardProps) => {
               size="icon"
               className={cn(
                 "text-auto-gray-700 hover:text-auto-red-500",
-                isFavorite(processedCar.id) && "text-red-500 hover:text-red-700 border-red-500 hover:bg-red-50"
+                isFavorite(car.id) && "text-red-500 hover:text-red-700 border-red-500 hover:bg-red-50"
               )}
-              onClick={() => toggleFavorite(processedCar.id)}
+              onClick={() => toggleFavorite(car.id)}
             >
-              <Heart className="h-5 w-5" fill={isFavorite(processedCar.id) ? "currentColor" : "none"} />
+              <Heart className="h-5 w-5" fill={isFavorite(car.id) ? "currentColor" : "none"} />
             </Button>
             
             <Button
@@ -330,9 +282,9 @@ const CarCard = ({ car, className }: CarCardProps) => {
               size="icon"
               className={cn(
                 "text-auto-gray-700 hover:text-auto-blue-600",
-                isInCompare(processedCar.id) && "text-auto-blue-600 hover:text-auto-blue-700 border-auto-blue-600 hover:bg-auto-blue-50"
+                isInCompare(car.id) && "text-auto-blue-600 hover:text-auto-blue-700 border-auto-blue-600 hover:bg-auto-blue-50"
               )}
-              onClick={() => toggleCompare(processedCar.id)}
+              onClick={() => toggleCompare(car.id)}
             >
               <BarChart2 className="h-5 w-5" />
             </Button>
