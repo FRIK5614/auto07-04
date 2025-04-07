@@ -1,3 +1,4 @@
+
 import { useCars as useGlobalCars } from "../contexts/CarsContext";
 import { Car, Order } from "../types/car";
 import { useToast } from "@/hooks/use-toast";
@@ -402,12 +403,14 @@ export const useCars = () => {
           console.error("Ошибка при сохранении заказа в localStorage:", storageError);
         }
         
-        try {
-          const jsonFilePath = await saveOrderToJson(order);
-          console.log(`Заказ ${order.id} также сохранен в JSON: ${jsonFilePath}`);
-        } catch (jsonError) {
-          console.error('Ошибка сохранения заказа в JSON:', jsonError);
-        }
+        // Исправленный код - убираем проверку на истинность для void типа
+        saveOrderToJson(order)
+          .then(jsonFilePath => {
+            console.log(`Заказ ${order.id} также сохранен в JSON: ${jsonFilePath}`);
+          })
+          .catch(jsonError => {
+            console.error('Ошибка сохранения заказа в JSON:', jsonError);
+          });
         
         return true;
       } else {
@@ -433,9 +436,14 @@ export const useCars = () => {
         localStorage.setItem("orders", JSON.stringify(currentOrders));
         console.log(`Заказ ${order.id} сохранен локально с пометкой об ошибке`);
         
-        saveOrderToJson(failedOrder).catch(jsonError => {
-          console.error("Ошибка при сохранении заказа в JSON:", jsonError);
-        });
+        // Тот же подход с обработкой результата через catch
+        saveOrderToJson(failedOrder)
+          .then(() => {
+            console.log(`Заказ с ошибкой ${order.id} сохранен в JSON`);
+          })
+          .catch(jsonError => {
+            console.error("Ошибка при сохранении заказа в JSON:", jsonError);
+          });
       } catch (storageError) {
         console.error("Не удалось сохранить заказ даже локально:", storageError);
       }
