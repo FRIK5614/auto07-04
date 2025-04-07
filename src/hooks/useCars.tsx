@@ -83,7 +83,7 @@ export const useCars = () => {
     return cars.filter(car => car.bodyType === bodyType);
   };
   
-  // Исправленная функция для получения загруженных изображений
+  // Функция для получения загруженных изображений
   const getUploadedImages = (): { name: string, url: string }[] => {
     try {
       const imagesData = localStorage.getItem('carImages');
@@ -103,7 +103,20 @@ export const useCars = () => {
   // Функция для сохранения изображений
   const saveUploadedImages = (images: { name: string, base64: string }[]): void => {
     try {
-      const existingImages = JSON.parse(localStorage.getItem('carImages') || '[]');
+      // Сначала получаем существующие изображения
+      const existingImagesStr = localStorage.getItem('carImages');
+      let existingImages = [];
+      
+      if (existingImagesStr) {
+        try {
+          existingImages = JSON.parse(existingImagesStr);
+        } catch (e) {
+          console.error('Error parsing existing images:', e);
+          existingImages = [];
+        }
+      }
+      
+      // Объединяем с новыми и сохраняем
       const updatedImages = [...existingImages, ...images];
       localStorage.setItem('carImages', JSON.stringify(updatedImages));
       console.log('Images saved to localStorage:', updatedImages.length);

@@ -57,8 +57,11 @@ const AdminImport: React.FC = () => {
   // При загрузке компонента получаем ранее загруженные изображения
   useEffect(() => {
     if (isAdmin) {
-      const images = getUploadedImages();
-      setUploadedImages(images);
+      const fetchImages = async () => {
+        const images = getUploadedImages();
+        setUploadedImages(images);
+      };
+      fetchImages();
     }
   }, [isAdmin, getUploadedImages]);
 
@@ -310,6 +313,7 @@ const AdminImport: React.FC = () => {
         name: img.name,
         url: img.base64
       }));
+      
       setUploadedImages(prev => [...prev, ...newImages]);
 
       setImportSuccess(true);
@@ -371,7 +375,7 @@ const AdminImport: React.FC = () => {
             </Alert>
           )}
           
-          <Tabs defaultValue="export">
+          <Tabs defaultValue="images">
             <TabsList className="mb-4">
               <TabsTrigger value="export"><FileDown className="mr-2 h-4 w-4" />Экспорт</TabsTrigger>
               <TabsTrigger value="import"><FileUp className="mr-2 h-4 w-4" />Импорт</TabsTrigger>
