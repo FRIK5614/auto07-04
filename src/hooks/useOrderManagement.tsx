@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
+// Определяем базовый URL для API
 const API_BASE_URL = '/api';
 
 export const useOrderManagement = () => {
@@ -17,6 +18,7 @@ export const useOrderManagement = () => {
   
   const { toast } = useToast();
 
+  // Форматирование даты создания заказа
   const getOrderCreationDate = (order: Order) => {
     try {
       return format(new Date(order.createdAt), 'dd.MM.yyyy HH:mm', { locale: ru });
@@ -26,6 +28,7 @@ export const useOrderManagement = () => {
     }
   };
 
+  // Получение заказов с сервера
   const fetchOrdersFromServer = async (): Promise<Order[]> => {
     try {
       const response = await fetch(`${API_BASE_URL}/get_orders.php`);
@@ -43,6 +46,7 @@ export const useOrderManagement = () => {
     }
   };
 
+  // Синхронизация заказов с сервером
   const serverSyncOrders = async (): Promise<boolean> => {
     try {
       console.log('Начало синхронизации заказов с сервером');
@@ -51,7 +55,7 @@ export const useOrderManagement = () => {
       console.log(`Получено ${serverOrders.length} заказов с сервера`);
       
       if (serverOrders.length > 0) {
-        // Исправленная строка - вызов без передачи параметров
+        // Вызываем контекстный метод без параметров
         contextSyncOrders();
         console.log('Заказы успешно синхронизированы с сервером');
       }
@@ -63,6 +67,7 @@ export const useOrderManagement = () => {
     }
   };
 
+  // Обновление статуса заказа на сервере
   const updateOrderStatusOnServer = async (orderId: string, status: Order['status']): Promise<boolean> => {
     try {
       const response = await fetch(`${API_BASE_URL}/update_order_status.php`, {
@@ -88,6 +93,7 @@ export const useOrderManagement = () => {
     }
   };
 
+  // Создание нового заказа
   const createOrder = async (order: Order): Promise<boolean> => {
     try {
       console.log(`Начало создания заказа ${order.id}`);
@@ -101,7 +107,21 @@ export const useOrderManagement = () => {
         body: JSON.stringify(order),
       });
       
-      const result = await response.json();
+      // Проверяем, что ответ получен правильно
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      
+      const responseText = await response.text();
+      console.log('Server response:', responseText);
+      
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('Error parsing server response:', parseError);
+        throw new Error('Invalid JSON response from server');
+      }
       
       if (result.success) {
         console.log(`Заказ ${order.id} успешно создан на сервере`);
@@ -126,12 +146,13 @@ export const useOrderManagement = () => {
     }
   };
 
+  // Обработка заказа с обновлением статуса на сервере
   const processOrderWithServer = async (orderId: string, newStatus: Order['status']): Promise<boolean> => {
     try {
       const serverUpdateSuccess = await updateOrderStatusOnServer(orderId, newStatus);
       
       if (serverUpdateSuccess) {
-        // Execute without checking return value since it's void
+        // Выполняем локальное обновление статуса после успешного обновления на сервере
         contextProcessOrder(orderId, newStatus);
         
         toast({
@@ -141,6 +162,7 @@ export const useOrderManagement = () => {
         
         return true;
       } else {
+        // В случае неудачи на сервере, все равно обновляем локально
         contextProcessOrder(orderId, newStatus);
         
         toast({
@@ -164,6 +186,7 @@ export const useOrderManagement = () => {
     }
   };
 
+  // Экспорт заказов в CSV формат
   const exportOrdersToCsv = () => {
     if (!orders || orders.length === 0) {
       return '';
@@ -206,6 +229,7 @@ export const useOrderManagement = () => {
     return csvRows.join('\n');
   };
   
+  // Метод для синхронизации заказов
   const syncOrders = async (): Promise<boolean> => {
     try {
       const success = await serverSyncOrders();

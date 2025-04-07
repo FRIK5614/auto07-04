@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,25 +54,12 @@ const PurchaseRequestForm = ({ car }: PurchaseRequestFormProps) => {
         syncStatus: 'pending'
       };
 
-      // Отправляем данные на PHP API
-      const apiUrl = '/api/create_order.php';
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(newOrder),
-      });
+      console.log("Создание заказа:", newOrder);
 
-      const result = await response.json();
+      // Сначала локально сохраняем для UI
+      const success = await createOrder(newOrder);
       
-      if (result.success) {
-        // Также сохраняем локально для немедленного отображения
-        const success = await createOrder({
-          ...newOrder,
-          syncStatus: 'synced'
-        });
-        
+      if (success) {
         // Принудительно синхронизируем с сервером
         await syncOrders();
         
@@ -83,7 +71,7 @@ const PurchaseRequestForm = ({ car }: PurchaseRequestFormProps) => {
         setIsSubmitting(false);
         setIsSubmitted(true);
       } else {
-        throw new Error(result.message || "Ошибка при создании заказа");
+        throw new Error("Ошибка при создании заказа");
       }
     } catch (error) {
       console.error("Ошибка при создании заказа:", error);
