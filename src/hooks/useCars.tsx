@@ -5,6 +5,8 @@ import { uploadImage, assignImageToCar as apiAssignImageToCar, saveOrderToJson }
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
+const API_BASE_URL = '/api';
+
 export const useCars = () => {
   const {
     cars,
@@ -293,63 +295,127 @@ export const useCars = () => {
     }
   };
 
+  const fetchOrdersFromServer = async (): Promise<Order[]> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/get_orders.php`);
+      const result = await response.json();
+      
+      if (result.success && Array.isArray(result.data)) {
+        return result.data;
+      } else {
+        console.error('Ошибка получения заказов с сервера:', result.message || 'Неизвестная ошибка');
+        return [];
+      }
+    } catch (error) {
+      console.error('Ошибка при запросе заказов с сервера:', error);
+      return [];
+    }
+  };
+
+  const serverSyncOrders = async (): Promise<boolean> => {
+    try {
+      console.log('Начало синхронизации заказов с сервером');
+      
+      const serverOrders = await fetchOrdersFromServer();
+      console.log(`Получено ${serverOrders.length} заказов с сервера`);
+      
+      if (serverOrders.length > 0) {
+        localStorage.setItem('orders', JSON.stringify(serverOrders));
+        console.log('Заказы успешно синхронизированы с сервером');
+        
+        localStorage.setItem('ordersCSVBackupTime', new Date().toISOString());
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Ошибка синхронизации заказов с сервером:', error);
+      return false;
+    }
+  };
+
+  const updateOrderStatusOnServer = async (orderId: string, status: Order['status']): Promise<boolean> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/update_order_status.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id: orderId, status }),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log(`Статус заказа ${orderId} обновлен на сервере до ${status}`);
+        return true;
+      } else {
+        console.error('Ошибка обновления статуса заказа на сервере:', result.message);
+        return false;
+      }
+    } catch (error) {
+      console.error('Ошибка запроса к серверу при обновле��ии статуса заказа:', error);
+      return false;
+    }
+  };
+
   const createOrder = async (order: Order): Promise<boolean> => {
     try {
       console.log(`Начало создания заказа ${order.id}`);
       
-      // Сохраняем в JSON как основной источник данных
-      const jsonFilePath = await saveOrderToJson(order);
-      console.log(`Заказ ${order.id} сохранен в JSON: ${jsonFilePath}`);
-      
-      const updatedOrder: Order = {
-        ...order,
-        syncStatus: 'synced' as const,
-        jsonFilePath
-      };
-      
-      // Обновляем локальное хранилище с защитой от ошибок
-      try {
-        const savedOrders = localStorage.getItem("orders");
-        let currentOrders: Order[] = [];
-        
-        if (savedOrders) {
-          currentOrders = JSON.parse(savedOrders);
-        }
-        
-        // Проверяем, нет ли уже этого заказа в списке (избегаем дубликатов)
-        const orderIndex = currentOrders.findIndex(o => o.id === updatedOrder.id);
-        if (orderIndex >= 0) {
-          currentOrders[orderIndex] = updatedOrder;
-        } else {
-          currentOrders.push(updatedOrder);
-        }
-        
-        localStorage.setItem("orders", JSON.stringify(currentOrders));
-        console.log(`Заказ ${order.id} сохранен в localStorage`);
-      } catch (storageError) {
-        console.error("Ошибка при сохранении заказа в localStorage:", storageError);
-        // Продолжаем выполнение, т.к. JSON уже сохранен
-      }
-      
-      // Принудительно синхронизируем, чтобы обновить заказы во всех браузерах
-      try {
-        await syncOrders();
-        console.log("Выполнена принудительная синхронизация после создания заказа");
-      } catch (syncError) {
-        console.error("Ошибка синхронизации после создания заказа:", syncError);
-        // Продолжаем выполнение, т.к. основные данные уже сохранены
-      }
-      
-      toast({
-        title: "Заказ создан",
-        description: "Ваш заказ был успешно создан и сохранен"
+      const apiUrl = `${API_BASE_URL}/create_order.php`;
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(order),
       });
       
-      return true;
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log(`Заказ ${order.id} успешно создан на сервере`);
+        
+        try {
+          const savedOrders = localStorage.getItem("orders");
+          let currentOrders: Order[] = [];
+          
+          if (savedOrders) {
+            currentOrders = JSON.parse(savedOrders);
+          }
+          
+          const orderIndex = currentOrders.findIndex(o => o.id === order.id);
+          if (orderIndex >= 0) {
+            currentOrders[orderIndex] = {
+              ...order,
+              syncStatus: 'synced'
+            };
+          } else {
+            currentOrders.push({
+              ...order,
+              syncStatus: 'synced'
+            });
+          }
+          
+          localStorage.setItem("orders", JSON.stringify(currentOrders));
+        } catch (storageError) {
+          console.error("Ошибка при сохранении заказа в localStorage:", storageError);
+        }
+        
+        try {
+          const jsonFilePath = await saveOrderToJson(order);
+          console.log(`Заказ ${order.id} также сохранен в JSON: ${jsonFilePath}`);
+        } catch (jsonError) {
+          console.error('Ошибка сохранения заказа в JSON:', jsonError);
+        }
+        
+        return true;
+      } else {
+        throw new Error(result.message || 'Ошибка при создании заказа на сервере');
+      }
     } catch (error) {
       console.error("Ошибка при создании заказа:", error);
       
-      // В случае ошибки сохранения в JSON, сохраняем локально с пометкой ошибки
       try {
         const savedOrders = localStorage.getItem("orders");
         let currentOrders: Order[] = [];
@@ -360,24 +426,116 @@ export const useCars = () => {
         
         const failedOrder: Order = {
           ...order,
-          syncStatus: 'failed' as const
+          syncStatus: 'failed'
         };
         
         currentOrders.push(failedOrder);
         localStorage.setItem("orders", JSON.stringify(currentOrders));
         console.log(`Заказ ${order.id} сохранен локально с пометкой об ошибке`);
+        
+        await saveOrderToJson(failedOrder);
       } catch (storageError) {
         console.error("Не удалось сохранить заказ даже локально:", storageError);
       }
       
+      return false;
+    }
+  };
+
+  const processOrderWithServer = async (orderId: string, newStatus: Order['status']): Promise<boolean> => {
+    try {
+      const serverUpdateSuccess = await updateOrderStatusOnServer(orderId, newStatus);
+      
+      if (serverUpdateSuccess) {
+        const localResult = processOrder(orderId, newStatus);
+        
+        if (localResult) {
+          toast({
+            title: "Статус заказа обновлен",
+            description: `Заказ #${orderId.substring(0, 8)} теперь в статусе "${newStatus}"`
+          });
+        }
+        
+        return true;
+      } else {
+        processOrder(orderId, newStatus);
+        
+        toast({
+          variant: "destructive",
+          title: "Синхронизация не выполнена",
+          description: "Статус заказа обновлен локально, но не на сервере"
+        });
+        
+        return false;
+      }
+    } catch (error) {
+      console.error("Ошибка при обработке заказа:", error);
+      
       toast({
         variant: "destructive",
-        title: "Ошибка сохранения",
-        description: "Заказ сохранен локально, но возникла ошибка при сохранении в файл"
+        title: "Ошибка обновления статуса",
+        description: "Не удалось обновить статус заказа"
       });
       
       return false;
     }
+  };
+
+  const sortCars = (carsToSort: Car[], criterion: string) => {
+    switch (criterion) {
+      case 'priceAsc':
+        return [...carsToSort].sort((a, b) => (a.price.base - (a.price.discount || 0)) - (b.price.base - (b.price.discount || 0)));
+      case 'priceDesc':
+        return [...carsToSort].sort((a, b) => (b.price.base - (b.price.discount || 0)) - (a.price.base - (a.price.discount || 0)));
+      case 'yearDesc':
+        return [...carsToSort].sort((a, b) => b.year - a.year);
+      case 'yearAsc':
+        return [...carsToSort].sort((a, b) => a.year - b.year);
+      default:
+        return carsToSort;
+    }
+  };
+
+  const exportOrdersToCsv = () => {
+    if (!orders || orders.length === 0) {
+      return '';
+    }
+
+    const headers = [
+      'ID', 'Дата создания', 'Статус', 'Имя клиента', 
+      'Телефон', 'Email', 'ID автомобиля', 'Марка', 'Модель', 'Синхронизация', 'JSON файл'
+    ];
+    
+    const csvRows = [];
+    csvRows.push(headers.join(','));
+    
+    for (const order of orders) {
+      const car = getCarById(order.carId);
+      const row = [
+        order.id,
+        getOrderCreationDate(order),
+        order.status,
+        order.customerName,
+        order.customerPhone,
+        order.customerEmail,
+        order.carId,
+        car ? car.brand : 'Н/Д',
+        car ? car.model : 'Н/Д',
+        order.syncStatus || 'Н/Д',
+        order.jsonFilePath || 'Н/Д'
+      ];
+      
+      const escapedRow = row.map(value => {
+        const strValue = String(value).replace(/"/g, '""');
+        return value.includes(',') || value.includes('"') || value.includes('\n') 
+          ? `"${strValue}"` 
+          : strValue;
+      });
+      
+      csvRows.push(escapedRow.join(','));
+    }
+    
+    return csvRows.join('\n');
   };
 
   return {
@@ -402,25 +560,12 @@ export const useCars = () => {
     deleteCar,
     updateCar,
     addCar,
-    processOrder,
+    processOrder: processOrderWithServer,
     getOrders,
     getMostViewedCars,
     getPopularCarModels,
     getCarsByBodyType,
-    sortCars: (carsToSort: Car[], criterion: string) => {
-      switch (criterion) {
-        case 'priceAsc':
-          return [...carsToSort].sort((a, b) => (a.price.base - (a.price.discount || 0)) - (b.price.base - (b.price.discount || 0)));
-        case 'priceDesc':
-          return [...carsToSort].sort((a, b) => (b.price.base - (b.price.discount || 0)) - (a.price.base - (a.price.discount || 0)));
-        case 'yearDesc':
-          return [...carsToSort].sort((a, b) => b.year - a.year);
-        case 'yearAsc':
-          return [...carsToSort].sort((a, b) => a.year - b.year);
-        default:
-          return carsToSort;
-      }
-    },
+    sortCars,
     exportCarsData,
     importCarsData,
     uploadCarImage,
@@ -433,56 +578,28 @@ export const useCars = () => {
     saveImageByUrl,
     isValidImageUrl,
     createOrder,
-    exportOrdersToCsv: () => {
-      if (!orders || orders.length === 0) {
-        return '';
-      }
-
-      const headers = [
-        'ID', 'Дата создания', 'Статус', 'Имя клиента', 
-        'Телефон', 'Email', 'ID автомобиля', 'Марка', 'Модель', 'Синхронизация', 'JSON файл'
-      ];
-      
-      const csvRows = [];
-      csvRows.push(headers.join(','));
-      
-      for (const order of orders) {
-        const car = getCarById(order.carId);
-        const row = [
-          order.id,
-          getOrderCreationDate(order),
-          order.status,
-          order.customerName,
-          order.customerPhone,
-          order.customerEmail,
-          order.carId,
-          car ? car.brand : 'Н/Д',
-          car ? car.model : 'Н/Д',
-          order.syncStatus || 'Н/Д',
-          order.jsonFilePath || 'Н/Д'
-        ];
-        
-        const escapedRow = row.map(value => {
-          const strValue = String(value).replace(/"/g, '""');
-          return value.includes(',') || value.includes('"') || value.includes('\n') 
-            ? `"${strValue}"` 
-            : strValue;
-        });
-        
-        csvRows.push(escapedRow.join(','));
-      }
-      
-      return csvRows.join('\n');
-    },
+    exportOrdersToCsv,
     getOrderCreationDate,
     syncOrders: async () => {
       try {
-        await syncOrders();
-        toast({
-          title: "Синхронизация завершена",
-          description: "Заказы успешно синхронизированы"
-        });
-        return true;
+        const success = await serverSyncOrders();
+        
+        if (success) {
+          await syncOrders();
+          
+          toast({
+            title: "Синхронизация завершена",
+            description: "Заказы успешно синхронизированы с сервером"
+          });
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Ошибка синхронизации",
+            description: "Не удалось синхронизировать заказы с сервером"
+          });
+        }
+        
+        return success;
       } catch (error) {
         console.error("Ошибка синхронизации заказов:", error);
         toast({
@@ -496,6 +613,7 @@ export const useCars = () => {
     addToFavorites,
     removeFromFavorites,
     addToCompare,
-    removeFromCompare
+    removeFromCompare,
+    fetchOrdersFromServer
   };
 };
