@@ -354,13 +354,13 @@ const AdminImport: React.FC = () => {
     setIsUploading(true);
     const processFiles = async () => {
       const files = selectedFiles;
-      const imagesData: { name: string, base64: string }[] = [];
+      const imagesData: { name: string, url: string }[] = [];
 
       // Считываем все файлы и преобразуем их в base64
       for (const file of files) {
         try {
           const base64 = await readFileAsBase64(file);
-          imagesData.push({ name: file.name, base64 });
+          imagesData.push({ name: file.name, url: base64 }); // Changed from base64 to url to match the expected type
         } catch (error) {
           console.error('Ошибка при чтении файла:', error);
           toast({
@@ -383,7 +383,7 @@ const AdminImport: React.FC = () => {
       // Обновляем список загруженных изображений
       const newImages = imagesData.map(img => ({
         name: img.name,
-        url: img.base64
+        url: img.url
       }));
       
       setUploadedImages(prev => [...prev, ...newImages]);
