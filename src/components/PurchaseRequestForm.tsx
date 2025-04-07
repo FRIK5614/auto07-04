@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +8,7 @@ import { CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCars } from "@/hooks/useCars";
 import { v4 as uuidv4 } from "uuid";
+import { supabase } from "@/integrations/supabase/client";
 
 interface PurchaseRequestFormProps {
   car?: Car;
@@ -16,7 +16,7 @@ interface PurchaseRequestFormProps {
 
 const PurchaseRequestForm = ({ car }: PurchaseRequestFormProps) => {
   const { toast } = useToast();
-  const { addCar, processOrder } = useCars();
+  const { processOrder } = useCars();
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -33,7 +33,7 @@ const PurchaseRequestForm = ({ car }: PurchaseRequestFormProps) => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
@@ -46,13 +46,19 @@ const PurchaseRequestForm = ({ car }: PurchaseRequestFormProps) => {
       customerEmail: formData.email,
       status: 'new',
       createdAt: new Date().toISOString(),
-      message: formData.message  // Changed from 'notes' to 'message' to match the Order type
+      message: formData.message
     };
 
-    // Добавляем заказ через существующую функцию
-    setTimeout(() => {
-      try {
-        // Получаем текущие заказы из localStorage
+    try {
+      // Сохраняем заказ в Supabase
+      const { error } = await supabase
+        .from('orders')
+        .insert([newOrder]);
+
+      if (error) {
+        console.error("Ошибка при сохранении заказа в Supabase:", error);
+        
+        // Резервное сохранение в localStorage, если Supabase недоступен
         const savedOrders = localStorage.getItem("orders");
         let currentOrders: Order[] = [];
         
@@ -60,28 +66,31 @@ const PurchaseRequestForm = ({ car }: PurchaseRequestFormProps) => {
           currentOrders = JSON.parse(savedOrders);
         }
         
-        // Добавляем новый заказ
         currentOrders.push(newOrder);
-        
-        // Сохраняем обновленный список
         localStorage.setItem("orders", JSON.stringify(currentOrders));
         
-        setIsSubmitting(false);
-        setIsSubmitted(true);
+        toast({
+          title: "Заявка отправлена",
+          description: "Мы свяжемся с вами в ближайшее время (сохранено локально)",
+        });
+      } else {
         toast({
           title: "Заявка отправлена",
           description: "Мы свяжемся с вами в ближайшее время",
         });
-      } catch (error) {
-        console.error("Ошибка при создании заказа:", error);
-        toast({
-          variant: "destructive",
-          title: "Ошибка отправки заявки",
-          description: "Пожалуйста, попробуйте еще раз",
-        });
-        setIsSubmitting(false);
       }
-    }, 1000);
+      
+      setIsSubmitting(false);
+      setIsSubmitted(true);
+    } catch (error) {
+      console.error("Ошибка при создании заказа:", error);
+      toast({
+        variant: "destructive",
+        title: "Ошибка отправки заявки",
+        description: "Пожалуйста, попробуйте еще раз",
+      });
+      setIsSubmitting(false);
+    }
   };
 
   if (isSubmitted) {

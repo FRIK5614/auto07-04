@@ -1,8 +1,8 @@
-
 import { useCars as useGlobalCars } from "../contexts/CarsContext";
 import { Car, Order } from "../types/car";
 import { useToast } from "@/hooks/use-toast";
 import { uploadImage, assignImageToCar as apiAssignImageToCar } from "../services/api";
+import { supabase } from "@/integrations/supabase/client";
 
 export const useCars = () => {
   const {
@@ -169,7 +169,6 @@ export const useCars = () => {
     }
   };
 
-  // Adding functions to handle uploaded images in localStorage
   const saveUploadedImages = (images: {name: string, url: string}[]): void => {
     try {
       const existingImagesData = localStorage.getItem('carImages');
@@ -179,7 +178,6 @@ export const useCars = () => {
         existingImages = JSON.parse(existingImagesData);
       }
       
-      // Combine existing and new images, avoiding duplicates by name
       const combinedImages = [...existingImages];
       
       for (const newImage of images) {
@@ -207,13 +205,10 @@ export const useCars = () => {
     }
   };
   
-  // Function to save image by URL
   const saveImageByUrl = async (imageUrl: string): Promise<boolean> => {
     try {
-      // Extract filename from URL or generate one
       const filename = imageUrl.split('/').pop() || `image-${Date.now()}.jpg`;
       
-      // Save to localStorage
       saveUploadedImages([{
         name: filename,
         url: imageUrl
@@ -226,11 +221,8 @@ export const useCars = () => {
     }
   };
   
-  // Function to validate image URL
   const isValidImageUrl = async (url: string): Promise<boolean> => {
     try {
-      // In a real implementation, this would make a HEAD request to check the content type
-      // For the simulation, we'll just check if the URL might be an image based on extension
       const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
       const hasImageExtension = imageExtensions.some(ext => url.toLowerCase().includes(ext));
       
@@ -290,7 +282,6 @@ export const useCars = () => {
   const carsWithImages = cars.map(car => applySavedImagesToCar(car));
   const filteredCarsWithImages = filteredCars.map(car => applySavedImagesToCar(car));
   
-  // Helper function for formatting order date
   const getOrderCreationDate = (order: Order) => {
     try {
       return new Date(order.createdAt).toISOString().slice(0, 19).replace('T', ' ');
@@ -299,7 +290,25 @@ export const useCars = () => {
       return 'Неизвестно';
     }
   };
-  
+
+  const createOrder = async (order: Order): Promise<boolean> => {
+    try {
+      const { error } = await supabase.from('orders').insert([order]);
+      
+      if (error) {
+        console.error("Error creating order in Supabase:", error);
+        processOrder(order.id, order.status);
+        return false;
+      }
+      
+      processOrder(order.id, order.status);
+      return true;
+    } catch (error) {
+      console.error("Error creating order:", error);
+      return false;
+    }
+  };
+
   return {
     cars: carsWithImages,
     filteredCars: filteredCarsWithImages,
@@ -352,6 +361,7 @@ export const useCars = () => {
     getUploadedImages,
     saveImageByUrl,
     isValidImageUrl,
+    createOrder,
     exportOrdersToCsv: () => {
       if (!orders || orders.length === 0) {
         return '';
