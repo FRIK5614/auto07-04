@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CarImage } from '@/types/car';
 import { useToast } from '@/hooks/use-toast';
-import { X, Upload, Link as LinkIcon, Star, Loader2, Image as ImageIcon } from 'lucide-react';
+import { X, Upload, Link as LinkIcon, Star, Loader2, Image as ImageIcon, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface CarImageUploaderProps {

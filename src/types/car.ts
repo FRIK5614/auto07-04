@@ -1,8 +1,8 @@
-
 export interface CarImage {
   id: string;
   url: string;
   alt: string;
+  isMain?: boolean; // Добавляем флаг основного изображения
 }
 
 export interface CarPrice {

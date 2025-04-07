@@ -4,6 +4,7 @@ import { Order } from "../types/car";
 import { useToast } from "@/hooks/use-toast";
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import { useState } from "react";
 
 // Определяем базовый URL для API - теперь это внешний домен
 const API_BASE_URL = 'https://metallika29.ru/public/api';
@@ -11,10 +12,9 @@ const API_BASE_URL = 'https://metallika29.ru/public/api';
 export const useOrderManagement = () => {
   const {
     getCarById,
-    orders,
-    setOrders: setContextOrders
   } = useGlobalCars();
   
+  const [orders, setOrders] = useState<Order[]>([]);
   const { toast } = useToast();
 
   // Форматирование даты создания заказа
@@ -34,6 +34,7 @@ export const useOrderManagement = () => {
       const result = await response.json();
       
       if (result.success && Array.isArray(result.data)) {
+        setOrders(result.data);
         return result.data;
       } else {
         console.error('Ошибка получения заказов с сервера:', result.message || 'Неизвестная ошибка');
@@ -54,7 +55,7 @@ export const useOrderManagement = () => {
       console.log(`Получено ${serverOrders.length} заказов с сервера`);
       
       if (serverOrders.length > 0) {
-        setContextOrders(serverOrders);
+        setOrders(serverOrders);
         console.log('Заказы успешно обновлены из базы данных');
         
         toast({
@@ -193,53 +194,11 @@ export const useOrderManagement = () => {
     }
   };
 
-  // Экспорт заказов в CSV формат
-  const exportOrdersToCsv = () => {
-    if (!orders || orders.length === 0) {
-      return '';
-    }
-
-    const headers = [
-      'ID', 'Дата создания', 'Статус', 'Имя клиента', 
-      'Телефон', 'Email', 'ID автомобиля', 'Марка', 'Модель'
-    ];
-    
-    const csvRows = [];
-    csvRows.push(headers.join(','));
-    
-    for (const order of orders) {
-      const car = getCarById(order.carId);
-      const row = [
-        order.id,
-        getOrderCreationDate(order),
-        order.status,
-        order.customerName,
-        order.customerPhone,
-        order.customerEmail,
-        order.carId,
-        car ? car.brand : 'Н/Д',
-        car ? car.model : 'Н/Д'
-      ];
-      
-      const escapedRow = row.map(value => {
-        const strValue = String(value).replace(/"/g, '""');
-        return value.includes(',') || value.includes('"') || value.includes('\n') 
-          ? `"${strValue}"` 
-          : strValue;
-      });
-      
-      csvRows.push(escapedRow.join(','));
-    }
-    
-    return csvRows.join('\n');
-  };
-
   return {
     orders,
     getOrders: () => orders,
     createOrder,
     processOrder,
-    exportOrdersToCsv,
     getOrderCreationDate,
     syncOrders,
     fetchOrdersFromServer
