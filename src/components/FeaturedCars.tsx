@@ -67,8 +67,25 @@ const FeaturedCars = ({
     }
   }, [visibleCount, emblaApi, isMobile, options]);
 
-  // Применяем сохраненные изображения к каждому автомобилю перед рендерингом
-  const carsWithImages = cars.map(car => applySavedImagesToCar(car));
+  // Process cars to ensure they have images
+  const processedCars = cars.map(car => {
+    // First try to apply any saved images
+    const carWithImages = applySavedImagesToCar(car);
+    
+    // Make sure the car has at least one image
+    if (!carWithImages.images || carWithImages.images.length === 0) {
+      return {
+        ...carWithImages,
+        images: [{
+          id: `placeholder-${carWithImages.id}`,
+          url: '/placeholder.svg',
+          alt: `${carWithImages.brand} ${carWithImages.model}`
+        }]
+      };
+    }
+    
+    return carWithImages;
+  });
 
   return (
     <div className="py-8">
@@ -84,7 +101,7 @@ const FeaturedCars = ({
         
         {loading ? (
           <LoadingState count={visibleCount} type="card" />
-        ) : !error && carsWithImages.length === 0 ? (
+        ) : !error && processedCars.length === 0 ? (
           <div className="bg-white rounded-lg shadow p-6 text-center">
             <p className="text-auto-gray-600">В этой категории нет автомобилей</p>
           </div>
@@ -92,7 +109,7 @@ const FeaturedCars = ({
           <div className="relative">
             <div className="overflow-hidden" ref={emblaRef}>
               <div className="flex">
-                {carsWithImages.map((car) => (
+                {processedCars.map((car) => (
                   <div 
                     key={car.id} 
                     className={isMobile ? "flex-[0_0_100%]" : `flex-[0_0_${100/visibleCount}%]`}

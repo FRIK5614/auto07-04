@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Car } from "@/types/car";
@@ -31,7 +30,8 @@ const CarCard = ({ car, className }: CarCardProps) => {
     isFavorite, 
     isInCompare, 
     applySavedImagesToCar,
-    updateCarImage
+    updateCarImage,
+    getCarSavedImage
   } = useCars();
   
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -40,16 +40,37 @@ const CarCard = ({ car, className }: CarCardProps) => {
   
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true });
   
-  // Обновляем изображения при изменении car
   useEffect(() => {
-    const updatedCar = applySavedImagesToCar(car);
+    const savedImage = getCarSavedImage(car.id);
+    
+    let updatedCar = car;
+    
+    if (savedImage) {
+      updatedCar = {
+        ...car,
+        images: [savedImage, ...(car.images || [])]
+      };
+    } else {
+      updatedCar = applySavedImagesToCar(car);
+    }
+    
+    if (!updatedCar.images || updatedCar.images.length === 0) {
+      updatedCar = {
+        ...updatedCar,
+        images: [{
+          id: `placeholder-${updatedCar.id}`,
+          url: '/placeholder.svg',
+          alt: `${updatedCar.brand} ${updatedCar.model}`
+        }]
+      };
+    }
+    
     setProcessedCar(updatedCar);
     
-    // Сохраняем изображение в привязку, если оно есть
     if (updatedCar.images && updatedCar.images.length > 0) {
       updateCarImage(updatedCar.id, updatedCar.images[0].url);
     }
-  }, [car, applySavedImagesToCar, updateCarImage]);
+  }, [car, applySavedImagesToCar, updateCarImage, getCarSavedImage]);
   
   const handlePrev = () => {
     emblaApi?.scrollPrev();
