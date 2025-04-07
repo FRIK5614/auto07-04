@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Car } from "@/types/car";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -26,6 +27,7 @@ const formatPrice = (price: number) => {
 const CarCard = ({ car, className }: CarCardProps) => {
   const { toggleFavorite, toggleCompare, isFavorite, isInCompare } = useCars();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isImageError, setIsImageError] = useState(false);
   
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true });
   
@@ -44,6 +46,18 @@ const CarCard = ({ car, className }: CarCardProps) => {
       setCurrentImageIndex(index);
     }
   };
+
+  // Make sure the car has at least one image
+  useEffect(() => {
+    setIsImageError(false);
+    if (!car.images || car.images.length === 0) {
+      car.images = [{
+        id: `placeholder-${car.id}`,
+        url: '/placeholder.svg',
+        alt: `${car.brand} ${car.model}`
+      }];
+    }
+  }, [car]);
   
   return (
     <Card className={cn("overflow-hidden group h-full flex flex-col", className)}>
@@ -60,6 +74,11 @@ const CarCard = ({ car, className }: CarCardProps) => {
                     src={image.url}
                     alt={image.alt}
                     className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = '/placeholder.svg';
+                      setIsImageError(true);
+                    }}
                   />
                 </Link>
               </div>

@@ -30,7 +30,7 @@ const FeaturedCars = ({
   const isMobile = useIsMobile();
   
   const options = {
-    align: "start" as const, // исправляем ошибку типа здесь
+    align: "start" as const,
     loop: false,
     slidesToScroll: isMobile ? 1 : visibleCount,
   };
@@ -63,7 +63,26 @@ const FeaturedCars = ({
         slidesToScroll: isMobile ? 1 : visibleCount
       });
     }
-  }, [visibleCount, emblaApi, isMobile]);
+  }, [visibleCount, emblaApi, isMobile, options]);
+
+  // Function to ensure cars have at least one placeholder image if no images
+  const ensureCarImages = (carsList: Car[]): Car[] => {
+    return carsList.map(car => {
+      if (!car.images || car.images.length === 0) {
+        return {
+          ...car,
+          images: [{
+            id: `placeholder-${car.id}`,
+            url: '/placeholder.svg',
+            alt: `${car.brand} ${car.model}`
+          }]
+        };
+      }
+      return car;
+    });
+  };
+
+  const carsWithImages = ensureCarImages(cars);
 
   return (
     <div className="py-8">
@@ -79,7 +98,7 @@ const FeaturedCars = ({
         
         {loading ? (
           <LoadingState count={visibleCount} type="card" />
-        ) : !error && cars.length === 0 ? (
+        ) : !error && carsWithImages.length === 0 ? (
           <div className="bg-white rounded-lg shadow p-6 text-center">
             <p className="text-auto-gray-600">В этой категории нет автомобилей</p>
           </div>
@@ -87,7 +106,7 @@ const FeaturedCars = ({
           <div className="relative">
             <div className="overflow-hidden" ref={emblaRef}>
               <div className="flex">
-                {cars.map((car) => (
+                {carsWithImages.map((car) => (
                   <div 
                     key={car.id} 
                     className={isMobile ? "flex-[0_0_100%]" : `flex-[0_0_${100/visibleCount}%]`}

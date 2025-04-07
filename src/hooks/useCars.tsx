@@ -97,24 +97,24 @@ export const useCars = () => {
       if (!images || images.length === 0) return;
       
       const existingImagesStr = localStorage.getItem('carImagesData');
-      let existingImages = [];
+      let existingImages: { name: string, url: string }[] = [];
       
       if (existingImagesStr) {
         try {
-          existingImages = JSON.parse(existingImagesStr);
-          if (!Array.isArray(existingImages)) {
-            existingImages = [];
-          }
+          const parsed = JSON.parse(existingImagesStr);
+          existingImages = Array.isArray(parsed) ? parsed : [];
         } catch (e) {
           console.error('Error parsing existing images:', e);
           existingImages = [];
         }
       }
       
-      const existingUrls = new Set(existingImages.map((img: any) => img.url));
+      const existingUrls = new Set(existingImages.map(img => img.url));
+      
       const newImages = images.filter(img => !existingUrls.has(img.url));
       
       const updatedImages = [...existingImages, ...newImages];
+      
       localStorage.setItem('carImagesData', JSON.stringify(updatedImages));
       console.log('Images saved to localStorage:', updatedImages.length);
     } catch (error) {
@@ -210,9 +210,40 @@ export const useCars = () => {
     return csvRows.join('\n');
   };
   
+  const applySavedImagesToCar = (car: Car): Car => {
+    if (car.images && car.images.length > 0) {
+      return car;
+    }
+    
+    const savedImages = getUploadedImages();
+    
+    if (savedImages.length === 0) {
+      return {
+        ...car,
+        images: [{
+          id: `placeholder-${car.id}`,
+          url: '/placeholder.svg',
+          alt: `${car.brand} ${car.model}`
+        }]
+      };
+    }
+    
+    return {
+      ...car,
+      images: [{
+        id: `saved-${Date.now()}`,
+        url: savedImages[0].url,
+        alt: `${car.brand} ${car.model}`
+      }]
+    };
+  };
+  
+  const carsWithImages = cars.map(applySavedImagesToCar);
+  const filteredCarsWithImages = filteredCars.map(applySavedImagesToCar);
+  
   return {
-    cars,
-    filteredCars,
+    cars: carsWithImages,
+    filteredCars: filteredCarsWithImages,
     favoriteCars,
     comparisonCars,
     compareCarsIds: compareCars,
@@ -249,6 +280,7 @@ export const useCars = () => {
     addToFavorites,
     removeFromFavorites,
     addToCompare,
-    removeFromCompare
+    removeFromCompare,
+    applySavedImagesToCar
   };
 };
