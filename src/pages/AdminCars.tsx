@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useCars } from '@/hooks/useCars';
 import { Button } from '@/components/ui/button';
@@ -14,9 +15,10 @@ import { Label } from '@/components/ui/label';
 import { Car } from '@/types/car';
 import { Plus, Pencil, Trash2, Search, Car as CarIcon, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const AdminCars = () => {
-  const { cars, addCar, updateCar, deleteCar } = useCars();
+  const { cars, addCar, updateCar, deleteCar, saveUploadedImages, getUploadedImages } = useCars();
   const [searchTerm, setSearchTerm] = useState('');
   const [editingCar, setEditingCar] = useState<Partial<Car> | null>(null);
   const [isAddingCar, setIsAddingCar] = useState(false);
@@ -25,6 +27,7 @@ const AdminCars = () => {
   
   const [uploadedImages, setUploadedImages] = useState<File[]>([]);
   const [previewImages, setPreviewImages] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState('basic');
 
   const filteredCars = cars
     .filter(car => 
@@ -92,6 +95,7 @@ const AdminCars = () => {
   const handleEditClick = (car: Car) => {
     setIsAddingCar(false);
     setEditingCar({...car});
+    setActiveTab('additional'); // Set default tab to "additional" when editing
     setDialogOpen(true);
   };
 
@@ -118,7 +122,16 @@ const AdminCars = () => {
     try {
       const carImages = [...(editingCar.images || [])];
       
-      if (previewImages.length > 0) {
+      // Store uploaded images in localStorage and add them to the car
+      if (uploadedImages.length > 0) {
+        const imagesToSave = uploadedImages.map((file, index) => ({
+          name: file.name,
+          base64: previewImages[index]
+        }));
+        
+        saveUploadedImages(imagesToSave);
+        
+        // Add the new images to the car's images array
         previewImages.forEach((url, index) => {
           carImages.push({
             id: `img-${Date.now()}-${index}`,
@@ -233,10 +246,9 @@ const AdminCars = () => {
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files) return;
+    if (!files || files.length === 0) return;
     
     const newUploadedImages: File[] = [];
-    const newPreviewImages: string[] = [];
     
     Array.from(files).forEach(file => {
       newUploadedImages.push(file);
@@ -244,10 +256,7 @@ const AdminCars = () => {
       const reader = new FileReader();
       reader.onload = (event) => {
         if (event.target?.result) {
-          newPreviewImages.push(event.target.result as string);
-          if (newPreviewImages.length === files.length) {
-            setPreviewImages(prev => [...prev, ...newPreviewImages]);
-          }
+          setPreviewImages(prev => [...prev, event.target.result as string]);
         }
       };
       reader.readAsDataURL(file);
@@ -255,7 +264,13 @@ const AdminCars = () => {
     
     setUploadedImages(prev => [...prev, ...newUploadedImages]);
     
+    // Clear the input so the same file can be selected again
     e.target.value = '';
+    
+    toast({
+      title: "Фотографии загружены",
+      description: `Загружено ${files.length} фото`
+    });
   };
 
   const removePreviewImage = (index: number) => {
@@ -304,6 +319,7 @@ const AdminCars = () => {
               <TableCaption>Список автомобилей в каталоге</TableCaption>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Фото</TableHead>
                   <TableHead>Марка</TableHead>
                   <TableHead>Модель</TableHead>
                   <TableHead>Год</TableHead>
@@ -315,6 +331,16 @@ const AdminCars = () => {
                 {filteredCars.length > 0 ? (
                   filteredCars.map((car) => (
                     <TableRow key={car.id}>
+                      <TableCell>
+                        <Avatar>
+                          <AvatarImage 
+                            src={car.images && car.images[0] ? car.images[0].url : '/placeholder.svg'} 
+                            alt={car.brand} 
+                            className="object-cover"
+                          />
+                          <AvatarFallback>{car.brand.substring(0, 2)}</AvatarFallback>
+                        </Avatar>
+                      </TableCell>
                       <TableCell className="font-medium">{car.brand}</TableCell>
                       <TableCell>{car.model}</TableCell>
                       <TableCell>{car.year}</TableCell>
@@ -347,7 +373,7 @@ const AdminCars = () => {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
                       {searchTerm ? 'Нет результатов по запросу' : 'Нет автомобилей в каталоге'}
                     </TableCell>
                   </TableRow>
@@ -370,7 +396,7 @@ const AdminCars = () => {
           </DialogHeader>
           
           {editingCar && (
-            <Tabs defaultValue="basic" className="w-full">
+            <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid grid-cols-3 mb-4">
                 <TabsTrigger value="basic">Основное</TabsTrigger>
                 <TabsTrigger value="technical">Технические данные</TabsTrigger>

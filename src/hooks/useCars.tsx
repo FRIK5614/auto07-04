@@ -83,7 +83,7 @@ export const useCars = () => {
     return cars.filter(car => car.bodyType === bodyType);
   };
   
-  // Функция для получения загруженных изображений
+  // Function to get uploaded images
   const getUploadedImages = (): { name: string, url: string }[] => {
     try {
       const imagesData = localStorage.getItem('carImages');
@@ -100,10 +100,12 @@ export const useCars = () => {
     }
   };
   
-  // Функция для сохранения изображений
+  // Function to save uploaded images
   const saveUploadedImages = (images: { name: string, base64: string }[]): void => {
     try {
-      // Сначала получаем существующие изображения
+      if (!images || images.length === 0) return;
+      
+      // First get existing images
       const existingImagesStr = localStorage.getItem('carImages');
       let existingImages = [];
       
@@ -116,7 +118,7 @@ export const useCars = () => {
         }
       }
       
-      // Объединяем с новыми и сохраняем
+      // Merge with new ones and save
       const updatedImages = [...existingImages, ...images];
       localStorage.setItem('carImages', JSON.stringify(updatedImages));
       console.log('Images saved to localStorage:', updatedImages.length);
@@ -141,19 +143,19 @@ export const useCars = () => {
     }
   };
   
-  // Экспорт заказов в CSV
+  // Export orders to CSV
   const exportOrdersToCsv = (): string => {
     if (!orders || orders.length === 0) {
       return '';
     }
 
-    // Заголовки CSV
+    // CSV headers
     const headers = [
       'ID', 'Дата создания', 'Статус', 'Имя клиента', 
       'Телефон', 'Email', 'ID автомобиля', 'Марка', 'Модель'
     ];
     
-    // Формируем строки CSV
+    // Form CSV rows
     const csvRows = [];
     csvRows.push(headers.join(','));
     
@@ -171,7 +173,7 @@ export const useCars = () => {
         car ? car.model : 'Н/Д'
       ];
       
-      // Экранируем запятые и кавычки
+      // Escape commas and quotes
       const escapedRow = row.map(value => {
         const strValue = String(value).replace(/"/g, '""');
         return value.includes(',') || value.includes('"') || value.includes('\n') 
@@ -182,7 +184,7 @@ export const useCars = () => {
       csvRows.push(escapedRow.join(','));
     }
     
-    // Возвращаем CSV контент
+    // Return CSV content
     return csvRows.join('\n');
   };
   
