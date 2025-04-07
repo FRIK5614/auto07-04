@@ -67,7 +67,7 @@ const FeaturedCars = ({
     }
   }, [visibleCount, emblaApi, isMobile, options]);
 
-  // Применяем сохраненные изображения к каждому автомобилю
+  // Применяем сохраненные изображения к каждому автомобилю перед рендерингом
   const carsWithImages = cars.map(car => applySavedImagesToCar(car));
 
   return (

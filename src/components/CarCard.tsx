@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Car } from "@/types/car";
@@ -24,16 +25,31 @@ const formatPrice = (price: number) => {
 };
 
 const CarCard = ({ car, className }: CarCardProps) => {
-  const { toggleFavorite, toggleCompare, isFavorite, isInCompare, applySavedImagesToCar } = useCars();
+  const { 
+    toggleFavorite, 
+    toggleCompare, 
+    isFavorite, 
+    isInCompare, 
+    applySavedImagesToCar,
+    updateCarImage
+  } = useCars();
+  
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isImageError, setIsImageError] = useState(false);
   const [processedCar, setProcessedCar] = useState<Car>(car);
   
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true });
   
+  // Обновляем изображения при изменении car
   useEffect(() => {
-    setProcessedCar(applySavedImagesToCar(car));
-  }, [car, applySavedImagesToCar]);
+    const updatedCar = applySavedImagesToCar(car);
+    setProcessedCar(updatedCar);
+    
+    // Сохраняем изображение в привязку, если оно есть
+    if (updatedCar.images && updatedCar.images.length > 0) {
+      updateCarImage(updatedCar.id, updatedCar.images[0].url);
+    }
+  }, [car, applySavedImagesToCar, updateCarImage]);
   
   const handlePrev = () => {
     emblaApi?.scrollPrev();
@@ -194,7 +210,7 @@ const CarCard = ({ car, className }: CarCardProps) => {
               <span className="font-medium">{processedCar.dimensions.length} мм</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-auto-gray-600">Ширин��:</span>
+              <span className="text-auto-gray-600">Ширина:</span>
               <span className="font-medium">{processedCar.dimensions.width} мм</span>
             </div>
             <div className="flex justify-between">

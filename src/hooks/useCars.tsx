@@ -210,19 +210,90 @@ export const useCars = () => {
     return csvRows.join('\n');
   };
   
+  const getCarSavedImage = (carId: string): { id: string, url: string, alt: string } | null => {
+    try {
+      const carImagesMapping = localStorage.getItem('carImagesMapping');
+      if (carImagesMapping) {
+        const mappings = JSON.parse(carImagesMapping);
+        if (mappings[carId]) {
+          const savedImages = getUploadedImages();
+          const imageUrl = mappings[carId];
+          const foundImage = savedImages.find(img => img.url === imageUrl);
+          
+          if (foundImage) {
+            return {
+              id: `saved-${carId}`,
+              url: foundImage.url,
+              alt: `Car Image ${carId}`
+            };
+          }
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting car saved image:', error);
+      return null;
+    }
+  };
+  
+  const assignImageToCar = (carId: string, imageUrl: string): boolean => {
+    try {
+      const carImagesMapping = localStorage.getItem('carImagesMapping');
+      let mappings = {};
+      
+      if (carImagesMapping) {
+        try {
+          mappings = JSON.parse(carImagesMapping);
+        } catch (e) {
+          console.error('Error parsing car images mapping:', e);
+        }
+      }
+      
+      mappings[carId] = imageUrl;
+      localStorage.setItem('carImagesMapping', JSON.stringify(mappings));
+      console.log(`Image ${imageUrl} assigned to car ${carId}`);
+      return true;
+    } catch (error) {
+      console.error('Error assigning image to car:', error);
+      return false;
+    }
+  };
+  
+  const updateCarImage = (carId: string, imageUrl: string): void => {
+    const savedImages = getUploadedImages();
+    const imageExists = savedImages.some(img => img.url === imageUrl);
+    
+    if (!imageExists) {
+      saveImageByUrl(imageUrl);
+    }
+    
+    assignImageToCar(carId, imageUrl);
+  };
+  
   const applySavedImagesToCar = (car: Car): Car => {
     if (car.images && car.images.length > 0) {
       return car;
     }
     
+    const savedCarImage = getCarSavedImage(car.id);
+    
+    if (savedCarImage) {
+      return {
+        ...car,
+        images: [savedCarImage]
+      };
+    }
+    
     const savedImages = getUploadedImages();
     
-    if (savedImages.length === 0) {
+    if (savedImages.length > 0) {
+      assignImageToCar(car.id, savedImages[0].url);
+      
       return {
         ...car,
         images: [{
-          id: `placeholder-${car.id}`,
-          url: '/placeholder.svg',
+          id: `saved-${car.id}`,
+          url: savedImages[0].url,
           alt: `${car.brand} ${car.model}`
         }]
       };
@@ -231,8 +302,8 @@ export const useCars = () => {
     return {
       ...car,
       images: [{
-        id: `saved-${Date.now()}`,
-        url: savedImages[0].url,
+        id: `placeholder-${car.id}`,
+        url: '/placeholder.svg',
         alt: `${car.brand} ${car.model}`
       }]
     };
@@ -281,6 +352,9 @@ export const useCars = () => {
     removeFromFavorites,
     addToCompare,
     removeFromCompare,
-    applySavedImagesToCar
+    applySavedImagesToCar,
+    updateCarImage,
+    assignImageToCar,
+    getCarSavedImage
   };
 };
