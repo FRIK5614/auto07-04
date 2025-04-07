@@ -13,9 +13,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Car } from '@/types/car';
-import { Plus, Pencil, Trash2, Search, Car as CarIcon, Upload } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Upload, Star, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const AdminCars = () => {
   const { cars, addCar, updateCar, deleteCar, saveUploadedImages, getUploadedImages } = useCars();
@@ -24,10 +25,12 @@ const AdminCars = () => {
   const [isAddingCar, setIsAddingCar] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   
   const [uploadedImages, setUploadedImages] = useState<File[]>([]);
   const [previewImages, setPreviewImages] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState('basic');
+  const [mainImageIndex, setMainImageIndex] = useState<number>(0);
 
   const filteredCars = cars
     .filter(car => 
@@ -89,13 +92,16 @@ const AdminCars = () => {
       isNew: true,
       country: 'Россия'
     });
+    setActiveTab(isMobile ? 'basic' : 'basic');
+    setMainImageIndex(0);
     setDialogOpen(true);
   };
 
   const handleEditClick = (car: Car) => {
     setIsAddingCar(false);
     setEditingCar({...car});
-    setActiveTab('additional'); // Set default tab to "additional" when editing
+    setActiveTab(isMobile ? 'basic' : 'additional'); 
+    setMainImageIndex(0); // Default to first image
     setDialogOpen(true);
   };
 
@@ -120,6 +126,7 @@ const AdminCars = () => {
     }
 
     try {
+      // Start with existing car images or empty array
       const carImages = [...(editingCar.images || [])];
       
       // Store uploaded images in localStorage and add them to the car
@@ -129,6 +136,7 @@ const AdminCars = () => {
           base64: previewImages[index]
         }));
         
+        // Save images to local storage
         saveUploadedImages(imagesToSave);
         
         // Add the new images to the car's images array
@@ -141,12 +149,20 @@ const AdminCars = () => {
         });
       }
 
+      // If there are no images, add a placeholder
       if (carImages.length === 0) {
         carImages.push({
           id: `img-${Date.now()}`,
           url: '/placeholder.svg',
           alt: 'Car Image'
         });
+      }
+
+      // Set the main image as the first one by rearranging the array
+      if (mainImageIndex > 0 && mainImageIndex < carImages.length) {
+        const mainImage = carImages[mainImageIndex];
+        carImages.splice(mainImageIndex, 1);
+        carImages.unshift(mainImage);
       }
 
       const completeCar: Car = {
@@ -280,13 +296,155 @@ const AdminCars = () => {
 
   const removeCarImage = (imageId: string) => {
     if (editingCar && editingCar.images) {
+      const imageIndex = editingCar.images.findIndex(img => img.id === imageId);
+      if (imageIndex === mainImageIndex) {
+        setMainImageIndex(0); // Reset main image if it's being removed
+      } else if (imageIndex < mainImageIndex) {
+        setMainImageIndex(mainImageIndex - 1); // Adjust main image index if needed
+      }
       const updatedImages = editingCar.images.filter(img => img.id !== imageId);
       setEditingCar({...editingCar, images: updatedImages});
     }
   };
 
+  const setAsMainImage = (index: number, existingImage = true) => {
+    if (existingImage) {
+      setMainImageIndex(index);
+    } else {
+      // Calculate the index for preview images
+      const existingImagesCount = editingCar?.images?.length || 0;
+      setMainImageIndex(existingImagesCount + index);
+    }
+
+    toast({
+      title: "Основное изображение",
+      description: "Изображение установлено в качестве основного"
+    });
+  };
+
+  // Mobile layout for car list
+  const renderMobileCarList = () => (
+    <div className="grid grid-cols-1 gap-4 mt-4">
+      {filteredCars.length > 0 ? (
+        filteredCars.map((car) => (
+          <Card key={car.id} className="overflow-hidden">
+            <div className="aspect-video w-full relative">
+              <img 
+                src={car.images && car.images[0] ? car.images[0].url : '/placeholder.svg'} 
+                alt={`${car.brand} ${car.model}`}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = '/placeholder.svg';
+                }}
+              />
+            </div>
+            <CardHeader className="p-4 pb-2">
+              <CardTitle className="text-xl">{car.brand} {car.model}</CardTitle>
+              <CardDescription>{car.year} год</CardDescription>
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+              <div className="text-xl font-semibold">
+                {new Intl.NumberFormat('ru-RU', {
+                  style: 'currency',
+                  currency: 'RUB',
+                  maximumFractionDigits: 0
+                }).format(car.price.base)}
+              </div>
+            </CardContent>
+            <CardFooter className="p-4 pt-0 flex justify-between">
+              <Button variant="outline" onClick={() => handleEditClick(car)}>
+                <Pencil className="h-4 w-4 mr-2" />
+                Изменить
+              </Button>
+              <Button variant="outline" onClick={() => handleDeleteClick(car.id)}>
+                <Trash2 className="h-4 w-4 mr-2" />
+                Удалить
+              </Button>
+            </CardFooter>
+          </Card>
+        ))
+      ) : (
+        <Card className="p-6 text-center text-muted-foreground">
+          {searchTerm ? 'Нет результатов по запросу' : 'Нет автомобилей в каталоге'}
+        </Card>
+      )}
+    </div>
+  );
+
+  // Desktop layout for car list
+  const renderDesktopCarList = () => (
+    <ScrollArea className="h-[calc(100vh-300px)]">
+      <Table>
+        <TableCaption>Список автомобилей в каталоге</TableCaption>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Фото</TableHead>
+            <TableHead>Марка</TableHead>
+            <TableHead>Модель</TableHead>
+            <TableHead>Год</TableHead>
+            <TableHead>Цена</TableHead>
+            <TableHead className="text-right">Действия</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {filteredCars.length > 0 ? (
+            filteredCars.map((car) => (
+              <TableRow key={car.id}>
+                <TableCell>
+                  <Avatar>
+                    <AvatarImage 
+                      src={car.images && car.images[0] ? car.images[0].url : '/placeholder.svg'} 
+                      alt={car.brand} 
+                      className="object-cover"
+                    />
+                    <AvatarFallback>{car.brand.substring(0, 2)}</AvatarFallback>
+                  </Avatar>
+                </TableCell>
+                <TableCell className="font-medium">{car.brand}</TableCell>
+                <TableCell>{car.model}</TableCell>
+                <TableCell>{car.year}</TableCell>
+                <TableCell>
+                  {new Intl.NumberFormat('ru-RU', {
+                    style: 'currency',
+                    currency: 'RUB',
+                    maximumFractionDigits: 0
+                  }).format(car.price.base)}
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleEditClick(car)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleDeleteClick(car.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
+                {searchTerm ? 'Нет результатов по запросу' : 'Нет автомобилей в каталоге'}
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </ScrollArea>
+  );
+
   return (
-    <div className="container mx-auto py-6 w-full">
+    <div className="container mx-auto py-6 w-full px-4 sm:px-6">
       <Card className="w-full">
         <CardHeader>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -314,73 +472,7 @@ const AdminCars = () => {
             </div>
           </div>
           
-          <ScrollArea className="h-[calc(100vh-300px)] sm:h-auto">
-            <Table>
-              <TableCaption>Список автомобилей в каталоге</TableCaption>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Фото</TableHead>
-                  <TableHead>Марка</TableHead>
-                  <TableHead>Модель</TableHead>
-                  <TableHead>Год</TableHead>
-                  <TableHead>Цена</TableHead>
-                  <TableHead className="text-right">Действия</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredCars.length > 0 ? (
-                  filteredCars.map((car) => (
-                    <TableRow key={car.id}>
-                      <TableCell>
-                        <Avatar>
-                          <AvatarImage 
-                            src={car.images && car.images[0] ? car.images[0].url : '/placeholder.svg'} 
-                            alt={car.brand} 
-                            className="object-cover"
-                          />
-                          <AvatarFallback>{car.brand.substring(0, 2)}</AvatarFallback>
-                        </Avatar>
-                      </TableCell>
-                      <TableCell className="font-medium">{car.brand}</TableCell>
-                      <TableCell>{car.model}</TableCell>
-                      <TableCell>{car.year}</TableCell>
-                      <TableCell>
-                        {new Intl.NumberFormat('ru-RU', {
-                          style: 'currency',
-                          currency: 'RUB',
-                          maximumFractionDigits: 0
-                        }).format(car.price.base)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => handleEditClick(car)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => handleDeleteClick(car.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
-                      {searchTerm ? 'Нет результатов по запросу' : 'Нет автомобилей в каталоге'}
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </ScrollArea>
+          {isMobile ? renderMobileCarList() : renderDesktopCarList()}
         </CardContent>
       </Card>
       
@@ -397,10 +489,10 @@ const AdminCars = () => {
           
           {editingCar && (
             <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid grid-cols-3 mb-4">
+              <TabsList className={`grid ${isMobile ? "grid-cols-1" : "grid-cols-3"} mb-4 w-full`}>
                 <TabsTrigger value="basic">Основное</TabsTrigger>
                 <TabsTrigger value="technical">Технические данные</TabsTrigger>
-                <TabsTrigger value="additional">Дополнительно</TabsTrigger>
+                <TabsTrigger value="additional">Фотографии</TabsTrigger>
               </TabsList>
               
               <TabsContent value="basic" className="space-y-4">
@@ -547,6 +639,19 @@ const AdminCars = () => {
                     rows={4}
                   />
                 </div>
+                
+                {isMobile && (
+                  <div className="flex justify-between mt-4">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setActiveTab('technical')}
+                      className="flex-1 mr-2"
+                    >
+                      Далее
+                    </Button>
+                    <Button onClick={handleSave} className="flex-1 ml-2">Сохранить</Button>
+                  </div>
+                )}
               </TabsContent>
               
               <TabsContent value="technical" className="space-y-4">
@@ -662,11 +767,30 @@ const AdminCars = () => {
                     />
                   </div>
                 </div>
+                
+                {isMobile && (
+                  <div className="flex justify-between mt-4">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setActiveTab('basic')}
+                      className="flex-1 mr-2"
+                    >
+                      Назад
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setActiveTab('additional')}
+                      className="flex-1 ml-2"
+                    >
+                      Далее
+                    </Button>
+                  </div>
+                )}
               </TabsContent>
               
               <TabsContent value="additional" className="space-y-4">
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                     <Label>Фотографии автомобиля</Label>
                     <div className="relative">
                       <Input
@@ -679,7 +803,7 @@ const AdminCars = () => {
                       />
                       <Label 
                         htmlFor="image-upload" 
-                        className="inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 cursor-pointer"
+                        className="inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 cursor-pointer w-full sm:w-auto"
                       >
                         <Upload className="h-4 w-4" />
                         Загрузить фотографии
@@ -687,106 +811,163 @@ const AdminCars = () => {
                     </div>
                   </div>
                   
+                  {/* Current images section */}
                   {editingCar.images && editingCar.images.length > 0 && (
                     <div>
                       <h4 className="text-sm font-medium mb-2">Текущие фотографии</h4>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        Нажмите на звездочку, чтобы выбрать основное фото
+                      </p>
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                        {editingCar.images.map((image) => (
+                        {editingCar.images.map((image, index) => (
                           <div key={image.id} className="relative group">
-                            <img 
-                              src={image.url} 
-                              alt={image.alt} 
-                              className="w-full h-32 object-cover rounded-md border border-border"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                target.src = '/placeholder.svg';
-                              }}
-                            />
-                            <Button 
-                              variant="destructive" 
-                              size="icon"
-                              className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={() => removeCarImage(image.id)}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
+                            <div className="relative">
+                              <img 
+                                src={image.url} 
+                                alt={image.alt} 
+                                className={`w-full h-32 object-cover rounded-md border ${index === mainImageIndex ? 'border-primary border-2' : 'border-border'}`}
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.src = '/placeholder.svg';
+                                }}
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30 rounded-md">
+                                <div className="flex gap-2">
+                                  <Button 
+                                    variant={index === mainImageIndex ? "default" : "secondary"}
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={() => setAsMainImage(index)}
+                                    title="Сделать основным"
+                                  >
+                                    <Star className={`h-4 w-4 ${index === mainImageIndex ? 'text-yellow-300 fill-yellow-300' : ''}`} />
+                                  </Button>
+                                  <Button 
+                                    variant="destructive" 
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={() => removeCarImage(image.id)}
+                                    title="Удалить"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                            {index === mainImageIndex && (
+                              <Badge className="absolute top-2 left-2 bg-primary">Основное</Badge>
+                            )}
                           </div>
                         ))}
                       </div>
                     </div>
                   )}
                   
+                  {/* Preview of newly uploaded images */}
                   {previewImages.length > 0 && (
                     <div>
                       <h4 className="text-sm font-medium mb-2">Новые фотографии</h4>
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                        {previewImages.map((src, index) => (
-                          <div key={index} className="relative group">
-                            <img 
-                              src={src} 
-                              alt={`New upload ${index + 1}`} 
-                              className="w-full h-32 object-cover rounded-md border border-border"
-                            />
-                            <Button 
-                              variant="destructive" 
-                              size="icon"
-                              className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={() => removePreviewImage(index)}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        ))}
+                        {previewImages.map((src, index) => {
+                          const actualIndex = (editingCar.images?.length || 0) + index;
+                          return (
+                            <div key={index} className="relative group">
+                              <div className="relative">
+                                <img 
+                                  src={src} 
+                                  alt={`New upload ${index + 1}`} 
+                                  className={`w-full h-32 object-cover rounded-md border ${actualIndex === mainImageIndex ? 'border-primary border-2' : 'border-border'}`}
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30 rounded-md">
+                                  <div className="flex gap-2">
+                                    <Button 
+                                      variant={actualIndex === mainImageIndex ? "default" : "secondary"} 
+                                      size="icon"
+                                      className="h-8 w-8"
+                                      onClick={() => setAsMainImage(index, false)}
+                                      title="Сделать основным"
+                                    >
+                                      <Star className={`h-4 w-4 ${actualIndex === mainImageIndex ? 'text-yellow-300 fill-yellow-300' : ''}`} />
+                                    </Button>
+                                    <Button 
+                                      variant="destructive" 
+                                      size="icon"
+                                      className="h-8 w-8"
+                                      onClick={() => removePreviewImage(index)}
+                                      title="Удалить"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                              {actualIndex === mainImageIndex && (
+                                <Badge className="absolute top-2 left-2 bg-primary">Основное</Badge>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
                   
-                  {editingCar.images && editingCar.images[0] && editingCar.images[0].url && (
-                    <div className="mt-2 rounded-md overflow-hidden border border-border">
-                      <img 
-                        src={editingCar.images[0].url} 
-                        alt={editingCar.images[0].alt} 
-                        className="w-full max-h-48 object-cover"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = '/placeholder.svg';
-                        }}
-                      />
+                  {/* If no images, show a placeholder */}
+                  {!editingCar.images?.length && previewImages.length === 0 && (
+                    <div className="border border-dashed border-gray-300 rounded-md p-6 text-center">
+                      <Upload className="mx-auto h-10 w-10 text-gray-400" />
+                      <p className="mt-2 text-sm text-gray-500">
+                        Нет загруженных фотографий. Нажмите "Загрузить фотографии", чтобы добавить.
+                      </p>
                     </div>
                   )}
                   
-                  <div className="space-y-2">
-                    <Label htmlFor="mainImage">Ссылка на основное изображение</Label>
-                    <Input
-                      id="mainImage"
-                      value={editingCar.images && editingCar.images[0] ? editingCar.images[0].url : ''}
-                      onChange={(e) => {
-                        const currentImages = editingCar.images || [];
-                        if (currentImages.length === 0) {
-                          setEditingCar({
-                            ...editingCar,
-                            images: [{ id: `img-${Date.now()}`, url: e.target.value, alt: `${editingCar.brand} ${editingCar.model}` }]
-                          });
-                        } else {
-                          const updatedImages = [...currentImages];
-                          updatedImages[0] = { ...updatedImages[0], url: e.target.value };
-                          setEditingCar({ ...editingCar, images: updatedImages });
-                        }
-                      }}
-                      placeholder="https://example.com/image.jpg"
-                    />
-                  </div>
+                  {/* Main image selected preview */}
+                  {((editingCar.images && editingCar.images.length > 0) || previewImages.length > 0) && (
+                    <div className="mt-4">
+                      <Label className="block mb-2">Предпросмотр основного изображения</Label>
+                      <div className="rounded-md overflow-hidden border border-border">
+                        <img 
+                          src={
+                            mainImageIndex < (editingCar.images?.length || 0)
+                              ? editingCar.images?.[mainImageIndex]?.url
+                              : previewImages[mainImageIndex - (editingCar.images?.length || 0)]
+                          } 
+                          alt="Основное изображение"
+                          className="w-full max-h-64 object-contain bg-gray-100"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = '/placeholder.svg';
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
+                
+                {isMobile && (
+                  <div className="flex justify-between mt-4">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setActiveTab('technical')}
+                      className="flex-1 mr-2"
+                    >
+                      Назад
+                    </Button>
+                    <Button onClick={handleSave} className="flex-1 ml-2">Сохранить</Button>
+                  </div>
+                )}
               </TabsContent>
             </Tabs>
           )}
           
-          <DialogFooter className="flex flex-col sm:flex-row gap-2">
-            <DialogClose asChild>
-              <Button variant="outline">Отмена</Button>
-            </DialogClose>
-            <Button onClick={handleSave}>Сохранить</Button>
-          </DialogFooter>
+          {!isMobile && (
+            <DialogFooter className="flex justify-end gap-2 mt-6">
+              <DialogClose asChild>
+                <Button variant="outline">Отмена</Button>
+              </DialogClose>
+              <Button onClick={handleSave}>Сохранить</Button>
+            </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
     </div>

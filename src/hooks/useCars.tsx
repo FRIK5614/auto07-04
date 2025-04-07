@@ -1,3 +1,4 @@
+
 import { useCars as useGlobalCars } from "../contexts/CarsContext";
 import { Car, Order } from "../types/car";
 
@@ -111,7 +112,11 @@ export const useCars = () => {
         }
       }
       
-      const updatedImages = [...existingImages, ...images];
+      // Remove duplicates by name to avoid storing multiple copies of the same image
+      const imageNames = new Set(existingImages.map((img: any) => img.name));
+      const newImages = images.filter(img => !imageNames.has(img.name));
+      
+      const updatedImages = [...existingImages, ...newImages];
       localStorage.setItem('carImages', JSON.stringify(updatedImages));
       console.log('Images saved to localStorage:', updatedImages.length);
     } catch (error) {
