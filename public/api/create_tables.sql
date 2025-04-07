@@ -1,5 +1,5 @@
 
--- Создание таблицы заказов
+-- Create orders table
 CREATE TABLE IF NOT EXISTS orders (
     id VARCHAR(50) PRIMARY KEY,
     carId VARCHAR(50) NOT NULL,

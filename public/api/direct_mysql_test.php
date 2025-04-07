@@ -1,43 +1,55 @@
 
 <?php
-header('Content-Type: application/json');
+// Force UTF-8 encoding
+header('Content-Type: application/json; charset=utf-8');
 
 try {
-    // Настройки подключения к базе данных
+    // Database connection settings
     $host = 'localhost';
     $db_name = 'amwomenr_autocatalog';
     $username = 'amwomenr_autocatalog';
     $password = 'Aa023126151';
     
-    // Прямое подключение к MySQL без использования PDO
+    // Direct connection to MySQL without using PDO
     $conn = mysqli_connect($host, $username, $password, $db_name);
     
     if (!$conn) {
-        throw new Exception("Ошибка подключения: " . mysqli_connect_error());
+        throw new Exception("Connection error: " . mysqli_connect_error());
     }
     
-    // Выполняем простой запрос для тестирования
-    $result = mysqli_query($conn, "SELECT 'Тест соединения' AS test_value");
+    // Set character set to UTF-8
+    mysqli_set_charset($conn, 'utf8mb4');
+    
+    // Execute a simple query for testing
+    $result = mysqli_query($conn, "SELECT 'Connection test successful' AS test_value");
     $row = mysqli_fetch_assoc($result);
     $test_value = $row['test_value'];
     
-    // Закрываем соединение
+    // Get server information
+    $server_version = mysqli_get_server_info($conn);
+    
+    // Close connection
     mysqli_close($conn);
     
     echo json_encode([
         'success' => true,
-        'message' => 'Прямое подключение к MySQL успешно',
+        'message' => 'Direct MySQL connection successful',
         'test_value' => $test_value,
         'connection_info' => [
             'host' => $host,
             'database' => $db_name,
-            'driver' => 'mysqli'
+            'driver' => 'mysqli',
+            'server_version' => $server_version
         ]
-    ]);
+    ], JSON_UNESCAPED_UNICODE);
 } catch (Exception $e) {
     echo json_encode([
         'success' => false,
-        'message' => 'Ошибка прямого подключения: ' . $e->getMessage()
-    ]);
+        'message' => 'Direct connection error: ' . $e->getMessage(),
+        'error_details' => [
+            'error_code' => mysqli_connect_errno(),
+            'php_version' => phpversion()
+        ]
+    ], JSON_UNESCAPED_UNICODE);
 }
 ?>
