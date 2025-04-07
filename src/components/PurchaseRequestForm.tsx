@@ -1,11 +1,11 @@
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Car, Order } from "@/types/car";
-import { CheckCircle, Camera, Upload, X } from "lucide-react";
+import { CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCars } from "@/hooks/useCars";
 import { v4 as uuidv4 } from "uuid";
@@ -25,41 +25,12 @@ const PurchaseRequestForm = ({ car }: PurchaseRequestFormProps) => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
-        toast({
-          variant: "destructive",
-          title: "Файл слишком большой",
-          description: "Пожалуйста, загрузите файл размером до 5 МБ",
-        });
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewImage(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const clearFileInput = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-    setPreviewImage(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -76,7 +47,6 @@ const PurchaseRequestForm = ({ car }: PurchaseRequestFormProps) => {
       status: 'new',
       createdAt: new Date().toISOString(),
       message: formData.message,
-      image: previewImage || undefined,
       syncStatus: 'pending' // Изначально помечаем как ожидающий синхронизации
     };
 
@@ -126,7 +96,6 @@ const PurchaseRequestForm = ({ car }: PurchaseRequestFormProps) => {
               email: "",
               message: car ? `Интересует автомобиль ${car.brand} ${car.model}` : "",
             });
-            setPreviewImage(null);
           }} 
           variant="outline"
         >
@@ -190,40 +159,6 @@ const PurchaseRequestForm = ({ car }: PurchaseRequestFormProps) => {
             placeholder="Дополнительная информация или вопросы"
             className="min-h-[100px]"
           />
-        </div>
-
-        <div>
-          <Label htmlFor="image" className="flex items-center gap-2 mb-2">
-            <Camera className="h-4 w-4" />
-            Приложить фото (необязательно)
-          </Label>
-          <div className="flex flex-col gap-2">
-            <Input
-              id="image"
-              name="image"
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              accept="image/*"
-              className="file:mr-4 file:px-3 file:py-1 file:rounded file:border-0 file:bg-auto-blue-100 file:text-auto-blue-700 hover:file:bg-auto-blue-200"
-            />
-            {previewImage && (
-              <div className="relative mt-2 inline-block">
-                <img 
-                  src={previewImage} 
-                  alt="Предпросмотр" 
-                  className="h-40 object-cover rounded-md" 
-                />
-                <button
-                  type="button"
-                  onClick={clearFileInput}
-                  className="absolute top-2 right-2 bg-white rounded-full p-1 shadow hover:bg-red-50"
-                >
-                  <X className="h-4 w-4 text-red-500" />
-                </button>
-              </div>
-            )}
-          </div>
         </div>
         
         <Button 

@@ -1,3 +1,4 @@
+
 export interface CarImage {
   id: string;
   url: string;
@@ -96,7 +97,6 @@ export interface Order {
   message?: string;
   status: 'new' | 'processing' | 'completed' | 'canceled';
   createdAt: string;
-  image?: string; // Field for storing image in base64 format
   syncStatus?: 'pending' | 'synced' | 'failed'; // Synchronization status
   jsonFilePath?: string; // Path to the JSON file where the order is saved
 }
