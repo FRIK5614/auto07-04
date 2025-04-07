@@ -7,6 +7,13 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import LoadingState from "./LoadingState";
 import ErrorState from "./ErrorState";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { 
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious
+} from "@/components/ui/carousel";
 
 interface FeaturedCarsProps {
   cars: Car[];
@@ -25,10 +32,9 @@ const FeaturedCars = ({
   error = null,
   onRetry 
 }: FeaturedCarsProps) => {
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [visibleCount, setVisibleCount] = useState(4);
   const isMobile = useIsMobile();
-
+  
   // Determine how many cards to show based on viewport
   useEffect(() => {
     const handleResize = () => {
@@ -49,15 +55,6 @@ const FeaturedCars = ({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Always move one car at a time
-  const handlePrevious = () => {
-    setCurrentIndex((prev) => Math.max(0, prev - 1));
-  };
-
-  const handleNext = () => {
-    setCurrentIndex((prev) => Math.min(cars.length - visibleCount, prev + 1));
-  };
-
   return (
     <div className="py-8">
       <div className="container mx-auto px-4">
@@ -66,29 +63,6 @@ const FeaturedCars = ({
             <h2 className="text-2xl md:text-3xl font-bold text-auto-gray-900">{title}</h2>
             {subtitle && <p className="text-auto-gray-600 mt-1">{subtitle}</p>}
           </div>
-          
-          {!loading && !error && cars.length > 0 && (
-            <div className="flex space-x-2 mt-4 md:mt-0">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={handlePrevious}
-                disabled={currentIndex === 0}
-                className="rounded-full h-10 w-10 bg-blue-600 hover:bg-blue-700 text-white border-none"
-              >
-                <ChevronLeft className="h-5 w-5 text-white" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={handleNext}
-                disabled={currentIndex >= cars.length - visibleCount}
-                className="rounded-full h-10 w-10 bg-blue-600 hover:bg-blue-700 text-white border-none"
-              >
-                <ChevronRight className="h-5 w-5 text-white" />
-              </Button>
-            </div>
-          )}
         </div>
         
         {error && <ErrorState message={error} onRetry={onRetry} />}
@@ -100,24 +74,25 @@ const FeaturedCars = ({
             <p className="text-auto-gray-600">В этой категории нет автомобилей</p>
           </div>
         ) : !error && (
-          <div className="relative overflow-hidden">
-            <div
-              className="flex transition-transform duration-500 ease-in-out"
-              style={{
-                transform: `translateX(-${currentIndex * 100}%)`,
-              }}
-            >
+          <Carousel 
+            opts={{
+              align: "start",
+              loop: false,
+            }}
+            className="w-full"
+          >
+            <CarouselContent className="-ml-4 md:-ml-6">
               {cars.map((car) => (
-                <div
-                  key={car.id}
-                  className="px-2"
-                  style={{ width: '100%', flexShrink: 0 }}
-                >
+                <CarouselItem key={car.id} className={isMobile ? "pl-4 basis-full" : `pl-4 md:pl-6 ${visibleCount === 4 ? 'basis-1/4' : visibleCount === 3 ? 'basis-1/3' : visibleCount === 2 ? 'basis-1/2' : 'basis-full'}`}>
                   <CarCard car={car} className="h-full" />
-                </div>
+                </CarouselItem>
               ))}
+            </CarouselContent>
+            <div className="flex justify-end space-x-2 mt-4">
+              <CarouselPrevious className="static transform-none h-10 w-10 bg-blue-600 hover:bg-blue-700 text-white border-none rounded-full" />
+              <CarouselNext className="static transform-none h-10 w-10 bg-blue-600 hover:bg-blue-700 text-white border-none rounded-full" />
             </div>
-          </div>
+          </Carousel>
         )}
       </div>
     </div>

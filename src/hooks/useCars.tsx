@@ -64,7 +64,7 @@ export const useCars = () => {
       .slice(0, limit);
   };
   
-  // Получение списка загруженных изображений
+  // Get uploaded images
   const getUploadedImages = (): { name: string, url: string }[] => {
     try {
       const imagesData = localStorage.getItem('carImages');
@@ -76,7 +76,7 @@ export const useCars = () => {
         url: img.base64
       }));
     } catch (error) {
-      console.error('Ошибка при получении загруженных изображений:', error);
+      console.error('Error getting uploaded images:', error);
       return [];
     }
   };
