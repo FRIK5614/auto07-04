@@ -104,7 +104,7 @@ export const useSettings = () => {
       
       toast({
         variant: "destructive",
-        title: "Ошибка при обновлении настройки",
+        title: "Ошибка обновления настройки",
         description: message
       });
       
@@ -112,7 +112,6 @@ export const useSettings = () => {
     }
   };
 
-  // Загружаем настройки при монтировании компонента
   useEffect(() => {
     fetchSettings();
   }, []);
@@ -122,10 +121,6 @@ export const useSettings = () => {
     loading,
     error,
     fetchSettings,
-    updateSetting,
-    // Хелпер для получения конкретной настройки
-    getSetting: <T>(key: string, defaultValue: T): T => {
-      return settings[key] !== undefined ? settings[key] : defaultValue;
-    }
+    updateSetting
   };
 };
