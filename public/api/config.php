@@ -2,9 +2,9 @@
 <?php
 // Настройки подключения к базе данных
 $host = 'localhost';
-$db_name = 'metallika29_autocatalog'; // Изменено на имя БД вашего хостинга
-$username = 'metallika29_auto'; // Изменено на пользователя вашего хостинга
-$password = 'Auto123456'; // Рекомендуется использовать безопасный пароль
+$db_name = 'amwomenr_autocatalog';
+$username = 'amwomenr_autocatalog';
+$password = 'Aa023126151';
 $charset = 'utf8mb4';
 
 // Создание PDO соединения
