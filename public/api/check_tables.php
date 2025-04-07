@@ -3,7 +3,10 @@
 require_once 'config.php';
 
 // Явно указываем заголовок Content-Type для JSON
-header('Content-Type: application/json');
+header('Content-Type: application/json; charset=utf-8');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
 
 try {
     // Получаем список таблиц в базе данных
@@ -25,38 +28,19 @@ try {
         }
     }
     
-    // Создаем таблицу заказов, если она не существует
-    if (!$ordersTableExists) {
-        $pdo->exec("CREATE TABLE orders (
-            id VARCHAR(50) PRIMARY KEY,
-            carId VARCHAR(50) NOT NULL,
-            customerName VARCHAR(100) NOT NULL,
-            customerPhone VARCHAR(50) NOT NULL,
-            customerEmail VARCHAR(100),
-            status VARCHAR(20) NOT NULL,
-            createdAt DATETIME NOT NULL,
-            message TEXT
-        )");
-        $ordersTableExists = true;
-        $stmt = $pdo->query("DESCRIBE orders");
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $orderColumns[] = $row;
-        }
-    }
-    
     echo json_encode([
         'success' => true, 
         'message' => 'Проверка таблиц завершена',
         'tables' => $tables,
         'orders_table_exists' => $ordersTableExists,
         'orders_columns' => $orderColumns
-    ]);
+    ], JSON_UNESCAPED_UNICODE);
     exit;
 } catch (PDOException $e) {
     echo json_encode([
         'success' => false, 
         'message' => 'Ошибка проверки таблиц: ' . $e->getMessage()
-    ]);
+    ], JSON_UNESCAPED_UNICODE);
     exit;
 }
 ?>

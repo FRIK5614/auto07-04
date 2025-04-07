@@ -2,6 +2,9 @@
 <?php
 // Force UTF-8 encoding
 header('Content-Type: application/json; charset=utf-8');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
 
 try {
     // Database connection settings
@@ -22,6 +25,11 @@ try {
     
     // Execute a simple query for testing
     $result = mysqli_query($conn, "SELECT 'Connection test successful' AS test_value");
+    
+    if (!$result) {
+        throw new Exception("Query error: " . mysqli_error($conn));
+    }
+    
     $row = mysqli_fetch_assoc($result);
     $test_value = $row['test_value'];
     

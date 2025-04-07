@@ -7,6 +7,17 @@ $username = 'amwomenr_autocatalog';
 $password = 'Aa023126151';
 $charset = 'utf8mb4';
 
+// Настройка CORS для API
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
+
+// Обработка предварительных запросов OPTIONS 
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
+
 // Создание PDO соединения
 try {
     $dsn = "mysql:host=$host;dbname=$db_name;charset=$charset";
@@ -18,8 +29,16 @@ try {
     $pdo = new PDO($dsn, $username, $password, $options);
 } catch (PDOException $e) {
     // Явно указываем заголовок для JSON ответа при ошибке
-    header('Content-Type: application/json');
-    echo json_encode(['success' => false, 'message' => 'Ошибка подключения к базе данных: ' . $e->getMessage()]);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode([
+        'success' => false, 
+        'message' => 'Ошибка подключения к базе данных: ' . $e->getMessage(),
+        'error_code' => $e->getCode(),
+        'connection_info' => [
+            'host' => $host,
+            'database' => $db_name
+        ]
+    ], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
@@ -38,16 +57,5 @@ function sanitizeInput($data) {
     $data = stripslashes($data);
     $data = htmlspecialchars($data);
     return $data;
-}
-
-// Настройка CORS для API
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
-
-// Обработка предварительных запросов OPTIONS 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit;
 }
 ?>

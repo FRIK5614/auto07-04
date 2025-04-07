@@ -8,5 +8,7 @@ CREATE TABLE IF NOT EXISTS orders (
     customerEmail VARCHAR(100),
     status VARCHAR(20) NOT NULL,
     createdAt DATETIME NOT NULL,
-    message TEXT
+    message TEXT,
+    syncStatus VARCHAR(20) DEFAULT 'pending',
+    jsonFilePath VARCHAR(255)
 );
