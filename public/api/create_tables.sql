@@ -79,3 +79,53 @@ CREATE TABLE IF NOT EXISTS car_images (
   FOREIGN KEY (carId) REFERENCES cars(id) ON DELETE CASCADE,
   INDEX idx_carId (carId)
 );
+
+-- Создаем таблицу для избранных автомобилей пользователей
+CREATE TABLE IF NOT EXISTS user_favorites (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  userId VARCHAR(255) NOT NULL,
+  carId VARCHAR(255) NOT NULL,
+  createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY unique_user_car (userId, carId),
+  FOREIGN KEY (carId) REFERENCES cars(id) ON DELETE CASCADE,
+  INDEX idx_userId (userId),
+  INDEX idx_carId (carId)
+);
+
+-- Создаем таблицу для сравнения автомобилей пользователями
+CREATE TABLE IF NOT EXISTS user_comparisons (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  userId VARCHAR(255) NOT NULL,
+  carId VARCHAR(255) NOT NULL,
+  createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY unique_user_car (userId, carId),
+  FOREIGN KEY (carId) REFERENCES cars(id) ON DELETE CASCADE,
+  INDEX idx_userId (userId),
+  INDEX idx_carId (carId)
+);
+
+-- Создаем таблицу для просмотров автомобилей пользователями
+CREATE TABLE IF NOT EXISTS car_views (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  carId VARCHAR(255) NOT NULL,
+  userId VARCHAR(255) NOT NULL,
+  viewedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (carId) REFERENCES cars(id) ON DELETE CASCADE,
+  INDEX idx_carId (carId),
+  INDEX idx_userId (userId)
+);
+
+-- Создаем таблицу для импортированных данных из внешних источников
+CREATE TABLE IF NOT EXISTS imported_cars (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  externalId VARCHAR(255) NOT NULL,
+  source VARCHAR(100) NOT NULL,
+  carId VARCHAR(255),
+  importedData JSON,
+  importedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  lastUpdatedAt TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY unique_external_source (externalId, source),
+  FOREIGN KEY (carId) REFERENCES cars(id) ON DELETE SET NULL,
+  INDEX idx_source (source),
+  INDEX idx_carId (carId)
+);

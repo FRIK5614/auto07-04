@@ -2,7 +2,6 @@
 import { useCars as useGlobalCars } from "../contexts/CarsContext";
 import { Order } from "../types/car";
 import { useToast } from "@/hooks/use-toast";
-import { saveOrderToJson } from "../services/api";
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
@@ -52,10 +51,10 @@ export const useOrderManagement = () => {
       console.log(`Получено ${serverOrders.length} заказов с сервера`);
       
       if (serverOrders.length > 0) {
-        localStorage.setItem('orders', JSON.stringify(serverOrders));
+        // Теперь мы обновляем контекст через contextSyncOrders
+        // вместо localStorage
+        contextSyncOrders(serverOrders);
         console.log('Заказы успешно синхронизированы с сервером');
-        
-        localStorage.setItem('ordersCSVBackupTime', new Date().toISOString());
       }
       
       return true;
@@ -108,40 +107,8 @@ export const useOrderManagement = () => {
       if (result.success) {
         console.log(`Заказ ${order.id} успешно создан на сервере`);
         
-        try {
-          const savedOrders = localStorage.getItem("orders");
-          let currentOrders: Order[] = [];
-          
-          if (savedOrders) {
-            currentOrders = JSON.parse(savedOrders);
-          }
-          
-          const orderIndex = currentOrders.findIndex(o => o.id === order.id);
-          if (orderIndex >= 0) {
-            currentOrders[orderIndex] = {
-              ...order,
-              syncStatus: 'synced'
-            };
-          } else {
-            currentOrders.push({
-              ...order,
-              syncStatus: 'synced'
-            });
-          }
-          
-          localStorage.setItem("orders", JSON.stringify(currentOrders));
-        } catch (storageError) {
-          console.error("Ошибка при сохранении заказа в localStorage:", storageError);
-        }
-        
-        // Using .then and .catch for void type handling
-        saveOrderToJson(order)
-          .then(jsonFilePath => {
-            console.log(`Заказ ${order.id} также сохранен в JSON: ${jsonFilePath}`);
-          })
-          .catch(jsonError => {
-            console.error('Ошибка сохранения заказа в JSON:', jsonError);
-          });
+        // После успешного создания заказа на сервере, синхронизируем заказы
+        await serverSyncOrders();
         
         return true;
       } else {
@@ -150,40 +117,16 @@ export const useOrderManagement = () => {
     } catch (error) {
       console.error("Ошибка при создании заказа:", error);
       
-      try {
-        const savedOrders = localStorage.getItem("orders");
-        let currentOrders: Order[] = [];
-        
-        if (savedOrders) {
-          currentOrders = JSON.parse(savedOrders);
-        }
-        
-        const failedOrder: Order = {
-          ...order,
-          syncStatus: 'failed'
-        };
-        
-        currentOrders.push(failedOrder);
-        localStorage.setItem("orders", JSON.stringify(currentOrders));
-        console.log(`Заказ ${order.id} сохранен локально с пометкой об ошибке`);
-        
-        // Using .then and .catch for void type handling
-        saveOrderToJson(failedOrder)
-          .then(() => {
-            console.log(`Заказ с ошибкой ${order.id} сохранен в JSON`);
-          })
-          .catch(jsonError => {
-            console.error("Ошибка при сохранении заказа в JSON:", jsonError);
-          });
-      } catch (storageError) {
-        console.error("Не удалось сохранить заказ даже локально:", storageError);
-      }
+      toast({
+        variant: "destructive",
+        title: "Ошибка создания заказа",
+        description: "Не удалось создать заказ. Пожалуйста, попробуйте позже."
+      });
       
       return false;
     }
   };
 
-  // Fix: Don't check void type for truthiness
   const processOrderWithServer = async (orderId: string, newStatus: Order['status']): Promise<boolean> => {
     try {
       const serverUpdateSuccess = await updateOrderStatusOnServer(orderId, newStatus);
@@ -269,8 +212,6 @@ export const useOrderManagement = () => {
       const success = await serverSyncOrders();
       
       if (success) {
-        await contextSyncOrders();
-        
         toast({
           title: "Синхронизация завершена",
           description: "Заказы успешно синхронизированы с сервером"
