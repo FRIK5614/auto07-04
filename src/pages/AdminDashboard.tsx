@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useCars } from '@/hooks/useCars';
@@ -8,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, Database, CloudSync } from 'lucide-react';
+import { RefreshCw, Database, CloudUpload } from 'lucide-react';
 import { checkJsonFilesAvailability } from '@/services/api';
 
 const AdminDashboard: React.FC = () => {
@@ -19,7 +18,6 @@ const AdminDashboard: React.FC = () => {
   const [jsonFileStatus, setJsonFileStatus] = useState<'checking' | 'available' | 'unavailable'>('checking');
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'success' | 'error'>('idle');
   
-  // Проверка статуса JSON-файлов
   useEffect(() => {
     const checkJsonStatus = async () => {
       try {
@@ -34,19 +32,16 @@ const AdminDashboard: React.FC = () => {
     checkJsonStatus();
   }, []);
   
-  // Redirect non-admin users to login
   useEffect(() => {
     if (!isAdmin) {
       navigate('/admin/login');
     }
   }, [isAdmin, navigate]);
   
-  // Initialize empty arrays as fallbacks to prevent rendering errors
   const safeCars = cars || [];
   const safeOrders = orders || [];
   
   useEffect(() => {
-    // Log data to debug
     console.log('Admin Dashboard Data:', { cars: safeCars, orders: safeOrders, loading });
     
     if (safeCars.length === 0 && !loading && isAdmin) {
@@ -77,7 +72,6 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  // Show loading state
   if (loading) {
     return (
       <div className="container mx-auto p-6">
@@ -107,7 +101,6 @@ const AdminDashboard: React.FC = () => {
     { name: 'Ошибки', value: safeOrders.filter(order => order.syncStatus === 'failed').length }
   ];
 
-  // If not admin, don't render anything (we'll redirect)
   if (!isAdmin) {
     return null;
   }
@@ -124,7 +117,7 @@ const AdminDashboard: React.FC = () => {
             disabled={syncStatus === 'syncing'}
             className="flex items-center gap-1.5"
           >
-            <CloudSync className={`h-4 w-4 ${syncStatus === 'syncing' ? 'animate-spin' : ''}`} />
+            <CloudUpload className={`h-4 w-4 ${syncStatus === 'syncing' ? 'animate-spin' : ''}`} />
             <span>
               {syncStatus === 'syncing' 
                 ? 'Синхронизация...' 

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useCars } from '@/hooks/useCars';
 import { useAdmin } from '@/contexts/AdminContext';
@@ -22,7 +21,7 @@ import {
   Car,
   Calendar,
   User,
-  CloudSync
+  CloudUpload
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -42,7 +41,6 @@ const OrderStatusBadge = ({ status }: { status: Order['status'] }) => {
   }
 };
 
-// Бейдж для отображения статуса синхронизации
 const SyncStatusBadge = ({ status }: { status?: string }) => {
   switch (status) {
     case 'synced':
@@ -56,7 +54,6 @@ const SyncStatusBadge = ({ status }: { status?: string }) => {
   }
 };
 
-// Компонент для отображения карточки заказа на мобильных устройствах
 const OrderCard = ({ order, car, onStatusChange }: { 
   order: Order; 
   car: ReturnType<typeof useCars>['getCarById'] extends (id: string) => infer R ? R : never;
@@ -108,7 +105,7 @@ const OrderCard = ({ order, car, onStatusChange }: {
           </div>
           
           <div className="flex items-center gap-1.5">
-            <CloudSync className="h-4 w-4 text-muted-foreground" />
+            <CloudUpload className="h-4 w-4 text-muted-foreground" />
             <div className="flex items-center gap-1">
               <span className="text-sm">Синхронизация:</span>
               <SyncStatusBadge status={order.syncStatus} />
@@ -170,7 +167,6 @@ const AdminOrders: React.FC = () => {
   const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
   const [isSyncing, setIsSyncing] = useState(false);
 
-  // Загружаем время последнего бэкапа
   useEffect(() => {
     const backupTime = localStorage.getItem("ordersCSVBackupTime");
     if (backupTime) {
@@ -178,13 +174,12 @@ const AdminOrders: React.FC = () => {
     }
   }, []);
 
-  // Автоматически выбираем режим отображения на основе ширины экрана
   useEffect(() => {
     const handleResize = () => {
       setViewMode(window.innerWidth >= 768 ? 'table' : 'card');
     };
     
-    handleResize(); // Установить начальное значение
+    handleResize();
     window.addEventListener('resize', handleResize);
     
     return () => {
@@ -192,17 +187,13 @@ const AdminOrders: React.FC = () => {
     };
   }, []);
 
-  // Refresh orders data periodically to sync between different admin users
   useEffect(() => {
-    // Check for updated orders in localStorage every 5 seconds
     const intervalId = setInterval(() => {
-      // Обновляем время последнего бэкапа
       const backupTime = localStorage.getItem("ordersCSVBackupTime");
       if (backupTime) {
         setLastBackupTime(backupTime);
       }
       
-      // Проверяем наличие новых заказов из JSON
       syncOrders().catch(error => {
         console.error("Auto-sync failed:", error);
       });
@@ -219,7 +210,6 @@ const AdminOrders: React.FC = () => {
     console.log('Orders in AdminOrders:', orders);
   }, [isAdmin, navigate, orders]);
 
-  // Функция для экспорта заказов в CSV
   const exportOrdersToCSV = () => {
     if (!orders || orders.length === 0) {
       toast({
@@ -232,12 +222,10 @@ const AdminOrders: React.FC = () => {
 
     const csvContent = exportOrdersToCsv();
     
-    // Создаем файл для загрузки
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const filename = `orders_export_${format(new Date(), 'yyyy-MM-dd')}.csv`;
     
-    // Создаем ссылку для скачивания и имитируем клик
     const link = document.createElement('a');
     link.setAttribute('href', url);
     link.setAttribute('download', filename);
@@ -251,7 +239,6 @@ const AdminOrders: React.FC = () => {
     });
   };
 
-  // Функция принудительной синхронизации заказов
   const handleSyncOrders = async () => {
     try {
       setIsSyncing(true);
@@ -348,7 +335,7 @@ const AdminOrders: React.FC = () => {
                 className="flex items-center gap-1.5"
                 disabled={isSyncing}
               >
-                <CloudSync className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                <CloudUpload className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
                 <span className="hidden sm:inline">Синхронизировать</span>
                 <span className="inline sm:hidden">Синхр.</span>
               </Button>
