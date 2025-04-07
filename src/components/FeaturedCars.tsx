@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Car } from "@/types/car";
 import CarCard from "@/components/CarCard";
@@ -28,6 +29,7 @@ const FeaturedCars = ({
   const [visibleCount, setVisibleCount] = useState(4);
   const isMobile = useIsMobile();
   
+  // Fix TypeScript error by using proper types for Embla options
   const options = {
     align: "start" as const,
     loop: false,

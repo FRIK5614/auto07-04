@@ -5,7 +5,7 @@ import { Car } from "@/types/car";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Heart, BarChart2, Info } from "lucide-react";
+import { Heart, BarChart2, Info, Fuel, Calendar, Gauge, SteeringWheel } from "lucide-react";
 import { useCars } from "@/hooks/useCars";
 import { cn } from "@/lib/utils";
 import useEmblaCarousel from "embla-carousel-react";
@@ -135,30 +135,60 @@ const CarCard = ({ car, className }: CarCardProps) => {
             {car.brand} {car.model}
           </h3>
         </Link>
-        <p className="text-auto-gray-500 text-sm">
+        <p className="text-auto-gray-500 text-sm mb-3">
           {car.year} • {car.engine.fuelType} • {car.bodyType}
         </p>
         
-        <div className="mt-4 space-y-2 text-sm">
-          <div className="grid grid-cols-2 items-center">
-            <span className="text-auto-gray-600">Двигатель:</span>
-            <span className="text-right font-medium">
-              {car.engine.displacement} л, {car.engine.power} л.с.
-            </span>
+        <div className="grid grid-cols-1 gap-2">
+          <div className="flex items-center text-sm text-auto-gray-700">
+            <Fuel className="h-4 w-4 mr-2 text-auto-blue-600" />
+            <span className="font-medium">{car.engine.displacement} л, {car.engine.power} л.с.</span>
           </div>
           
-          <div className="grid grid-cols-2 items-center">
-            <span className="text-auto-gray-600">КПП:</span>
-            <span className="text-right font-medium">
-              {car.transmission.type}
-            </span>
+          <div className="flex items-center text-sm text-auto-gray-700">
+            <SteeringWheel className="h-4 w-4 mr-2 text-auto-blue-600" />
+            <span className="font-medium">{car.transmission.type}, {car.drivetrain}</span>
           </div>
           
-          <div className="grid grid-cols-2 items-center">
-            <span className="text-auto-gray-600">Привод:</span>
-            <span className="text-right font-medium">
-              {car.drivetrain}
-            </span>
+          <div className="flex items-center text-sm text-auto-gray-700">
+            <Calendar className="h-4 w-4 mr-2 text-auto-blue-600" />
+            <span className="font-medium">{car.year} год выпуска</span>
+          </div>
+          
+          <div className="flex items-center text-sm text-auto-gray-700">
+            <Gauge className="h-4 w-4 mr-2 text-auto-blue-600" />
+            <span className="font-medium">Расход: {car.performance.fuelConsumption.combined} л/100 км</span>
+          </div>
+        </div>
+
+        {/* Additional technical specs */}
+        <div className="mt-3 pt-3 border-t border-gray-200">
+          <h4 className="font-semibold text-sm mb-2 text-auto-gray-800">Технические характеристики:</h4>
+          <div className="grid grid-cols-2 gap-1 text-xs">
+            <div className="flex justify-between">
+              <span className="text-auto-gray-600">Длина:</span>
+              <span className="font-medium">{car.dimensions.length} мм</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-auto-gray-600">Ширина:</span>
+              <span className="font-medium">{car.dimensions.width} мм</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-auto-gray-600">Высота:</span>
+              <span className="font-medium">{car.dimensions.height} мм</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-auto-gray-600">Колесная база:</span>
+              <span className="font-medium">{car.dimensions.wheelbase} мм</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-auto-gray-600">Объем багажника:</span>
+              <span className="font-medium">{car.dimensions.trunkVolume} л</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-auto-gray-600">Разгон 0-100:</span>
+              <span className="font-medium">{car.performance.acceleration} сек</span>
+            </div>
           </div>
         </div>
       </CardContent>
