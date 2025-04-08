@@ -217,7 +217,7 @@ const Catalog: React.FC = () => {
                       <SelectValue placeholder="Все страны" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Все страны</SelectItem>
+                      <SelectItem value="all">Все страны</SelectItem>
                       {availableCountries.map((country) => (
                         <SelectItem key={country} value={country}>{country}</SelectItem>
                       ))}
