@@ -1,4 +1,3 @@
-
 export interface CarImage {
   id: string;
   url: string;
@@ -10,7 +9,7 @@ export interface CarPrice {
   base: number;
   withOptions?: number;
   discount?: number;
-  special?: number;
+  special?: number | boolean;
 }
 
 export interface CarEngine {
@@ -63,7 +62,7 @@ export interface Car {
     base: number;
     withOptions?: number;
     discount?: number;
-    special?: boolean;
+    special?: boolean | number;
   };
   engine: {
     type: string;

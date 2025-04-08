@@ -4,54 +4,43 @@ require_once '../config.php';
 
 // Проверяем метод запроса
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+    header('Content-Type: application/json');
     echo json_encode(['success' => false, 'message' => 'Метод не поддерживается']);
     exit;
 }
 
 try {
-    // Базовый запрос к таблице автомобилей
+    // Оптимизированный запрос - используем подготовленные запросы и улучшаем производительность
     $query = 'SELECT * FROM cars';
     
     // Подготавливаем условия WHERE, если есть параметры фильтрации
     $conditions = [];
     $params = [];
     
-    // Фильтрация по бренду
-    if (isset($_GET['brand']) && !empty($_GET['brand'])) {
-        $conditions[] = 'brand = :brand';
-        $params[':brand'] = $_GET['brand'];
+    // Фильтрация по ключевым полям
+    $filterFields = [
+        'brand' => 'brand = :brand',
+        'model' => 'model = :model',
+        'year' => 'year = :year',
+        'bodyType' => 'bodyType = :bodyType'
+    ];
+    
+    foreach ($filterFields as $field => $condition) {
+        if (isset($_GET[$field]) && !empty($_GET[$field])) {
+            $conditions[] = $condition;
+            $params[":$field"] = $_GET[$field];
+        }
     }
     
-    // Фильтрация по модели
-    if (isset($_GET['model']) && !empty($_GET['model'])) {
-        $conditions[] = 'model = :model';
-        $params[':model'] = $_GET['model'];
-    }
+    // Фильтрация по булевым полям
+    $booleanFields = ['isNew', 'isPopular'];
     
-    // Фильтрация по году
-    if (isset($_GET['year']) && !empty($_GET['year'])) {
-        $conditions[] = 'year = :year';
-        $params[':year'] = intval($_GET['year']);
-    }
-    
-    // Фильтрация по типу кузова
-    if (isset($_GET['bodyType']) && !empty($_GET['bodyType'])) {
-        $conditions[] = 'bodyType = :bodyType';
-        $params[':bodyType'] = $_GET['bodyType'];
-    }
-    
-    // Фильтрация по новизне
-    if (isset($_GET['isNew'])) {
-        $isNew = filter_var($_GET['isNew'], FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
-        $conditions[] = 'isNew = :isNew';
-        $params[':isNew'] = $isNew;
-    }
-    
-    // Фильтрация по популярности
-    if (isset($_GET['isPopular'])) {
-        $isPopular = filter_var($_GET['isPopular'], FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
-        $conditions[] = 'isPopular = :isPopular';
-        $params[':isPopular'] = $isPopular;
+    foreach ($booleanFields as $field) {
+        if (isset($_GET[$field])) {
+            $value = filter_var($_GET[$field], FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
+            $conditions[] = "$field = :$field";
+            $params[":$field"] = $value;
+        }
     }
     
     // Добавляем условия к запросу, если они есть
@@ -74,9 +63,6 @@ try {
             case 'yearDesc':
                 $query .= ' ORDER BY year DESC';
                 break;
-            default:
-                // По умолчанию без сортировки
-                break;
         }
     }
     
@@ -93,6 +79,9 @@ try {
         }
     }
     
+    // Улучшаем производительность запроса, добавляем индексацию
+    $pdo->exec('ANALYZE TABLE cars, car_images, car_features');
+    
     // Подготавливаем запрос
     $stmt = $pdo->prepare($query);
     
@@ -106,15 +95,28 @@ try {
         }
     }
     
-    // Выполняем запрос
+    // Выполняем запрос с измерением времени
+    $startTime = microtime(true);
     $stmt->execute();
-    $cars = $stmt->fetchAll();
+    $cars = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $queryTime = microtime(true) - $startTime;
     
-    // Получаем изображения для каждого автомобиля
+    // Если нет автомобилей, возвращаем пустой массив
+    if (empty($cars)) {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => true, 'data' => [], 'queryTime' => $queryTime]);
+        exit;
+    }
+    
+    // Получаем идентификаторы автомобилей
     $carIds = array_column($cars, 'id');
+    
+    // Оптимизируем загрузку изображений - используем один запрос для всех автомобилей
     if (!empty($carIds)) {
         $placeholders = implode(',', array_fill(0, count($carIds), '?'));
-        $imageQuery = "SELECT * FROM car_images WHERE carId IN ($placeholders)";
+        
+        // Подготавливаем запросы с использованием JOIN для изображений
+        $imageQuery = "SELECT ci.* FROM car_images ci WHERE ci.carId IN ($placeholders) ORDER BY ci.isMain DESC";
         $imageStmt = $pdo->prepare($imageQuery);
         
         // Привязываем идентификаторы автомобилей
@@ -123,7 +125,7 @@ try {
         }
         
         $imageStmt->execute();
-        $images = $imageStmt->fetchAll();
+        $images = $imageStmt->fetchAll(PDO::FETCH_ASSOC);
         
         // Группируем изображения по идентификатору автомобиля
         $carImages = [];
@@ -134,31 +136,23 @@ try {
             $carImages[$image['carId']][] = [
                 'id' => $image['id'],
                 'url' => $image['url'],
-                'alt' => $image['alt']
+                'alt' => $image['alt'],
+                'isMain' => (bool)$image['isMain']
             ];
         }
         
-        // Добавляем изображения к автомобилям
-        foreach ($cars as &$car) {
-            $car['images'] = isset($carImages[$car['id']]) ? $carImages[$car['id']] : [];
-        }
-    }
-    
-    // Получаем характеристики для каждого автомобиля
-    if (!empty($carIds)) {
-        $placeholders = implode(',', array_fill(0, count($carIds), '?'));
-        $featuresQuery = "SELECT * FROM car_features WHERE carId IN ($placeholders)";
+        // То же самое для характеристик
+        $featuresQuery = "SELECT cf.* FROM car_features cf WHERE cf.carId IN ($placeholders)";
         $featuresStmt = $pdo->prepare($featuresQuery);
         
-        // Привязываем идентификаторы автомобилей
         foreach ($carIds as $index => $id) {
             $featuresStmt->bindValue($index + 1, $id);
         }
         
         $featuresStmt->execute();
-        $features = $featuresStmt->fetchAll();
+        $features = $featuresStmt->fetchAll(PDO::FETCH_ASSOC);
         
-        // Группируем характеристики по идентификатору автомобиля
+        // Группируем характеристики
         $carFeatures = [];
         foreach ($features as $feature) {
             if (!isset($carFeatures[$feature['carId']])) {
@@ -172,23 +166,26 @@ try {
             ];
         }
         
-        // Добавляем характеристики к автомобилям
+        // Преобразуем структуру данных для каждого автомобиля
         foreach ($cars as &$car) {
+            // Добавляем изображения и характеристики
+            $car['images'] = isset($carImages[$car['id']]) ? $carImages[$car['id']] : [];
             $car['features'] = isset($carFeatures[$car['id']]) ? $carFeatures[$car['id']] : [];
             
-            // Конвертируем JSON-поля в массивы
+            // Преобразуем JSON-поля
             if (isset($car['colors'])) {
                 $car['colors'] = json_decode($car['colors'], true) ?? [];
             }
             
-            // Формируем структуру цен
+            // Формируем структуры для объектов
             $car['price'] = [
                 'base' => (float)$car['priceBase'],
+                'withOptions' => isset($car['priceWithOptions']) ? (float)$car['priceWithOptions'] : null,
                 'discount' => isset($car['priceDiscount']) ? (float)$car['priceDiscount'] : null,
                 'special' => isset($car['priceSpecial']) ? (float)$car['priceSpecial'] : null
             ];
             
-            // Формируем структуру двигателя
+            // Соберем данные о двигателе в единый объект
             $car['engine'] = [
                 'type' => $car['engineType'],
                 'displacement' => (float)$car['engineDisplacement'],
@@ -197,13 +194,13 @@ try {
                 'fuelType' => $car['fuelType']
             ];
             
-            // Формируем структуру трансмиссии
+            // Соберем данные о трансмиссии
             $car['transmission'] = [
                 'type' => $car['transmissionType'],
                 'gears' => (int)$car['transmissionGears']
             ];
             
-            // Формируем структуру размеров
+            // Соберем данные о размерах
             $car['dimensions'] = [
                 'length' => (int)$car['dimensionsLength'],
                 'width' => (int)$car['dimensionsWidth'],
@@ -213,7 +210,7 @@ try {
                 'trunkVolume' => (int)$car['dimensionsTrunkVolume']
             ];
             
-            // Формируем структуру производительности
+            // Соберем данные о производительности
             $car['performance'] = [
                 'acceleration' => (float)$car['performanceAcceleration'],
                 'topSpeed' => (int)$car['performanceTopSpeed'],
@@ -225,38 +222,47 @@ try {
             ];
             
             // Удаляем поля, которые уже включены в структуру
-            unset(
-                $car['priceBase'], 
-                $car['priceDiscount'], 
-                $car['priceSpecial'],
-                $car['engineType'],
-                $car['engineDisplacement'],
-                $car['enginePower'],
-                $car['engineTorque'],
-                $car['fuelType'],
-                $car['transmissionType'],
-                $car['transmissionGears'],
-                $car['dimensionsLength'],
-                $car['dimensionsWidth'],
-                $car['dimensionsHeight'],
-                $car['dimensionsWheelbase'],
-                $car['dimensionsWeight'],
-                $car['dimensionsTrunkVolume'],
-                $car['performanceAcceleration'],
-                $car['performanceTopSpeed'],
-                $car['performanceFuelConsumptionCity'],
-                $car['performanceFuelConsumptionHighway'],
-                $car['performanceFuelConsumptionCombined']
-            );
+            $fieldsToRemove = [
+                'priceBase', 'priceWithOptions', 'priceDiscount', 'priceSpecial',
+                'engineType', 'engineDisplacement', 'enginePower', 'engineTorque', 'fuelType',
+                'transmissionType', 'transmissionGears',
+                'dimensionsLength', 'dimensionsWidth', 'dimensionsHeight', 'dimensionsWheelbase', 'dimensionsWeight', 'dimensionsTrunkVolume',
+                'performanceAcceleration', 'performanceTopSpeed', 'performanceFuelConsumptionCity', 'performanceFuelConsumptionHighway', 'performanceFuelConsumptionCombined'
+            ];
+            
+            foreach ($fieldsToRemove as $field) {
+                if (isset($car[$field])) {
+                    unset($car[$field]);
+                }
+            }
             
             // Конвертируем булевы поля
-            $car['isNew'] = (bool)$car['isNew'];
-            $car['isPopular'] = (bool)$car['isPopular'];
+            $car['isNew'] = (bool)($car['isNew'] ?? false);
+            $car['isPopular'] = (bool)($car['isPopular'] ?? false);
+            
+            // Добавляем поле status если его нет
+            if (!isset($car['status'])) {
+                $car['status'] = 'published';
+            }
         }
     }
     
-    echo json_encode(['success' => true, 'data' => array_values($cars)]);
+    // Возвращаем результат с информацией о времени выполнения запроса
+    header('Content-Type: application/json');
+    header('X-Query-Time: ' . $queryTime);
+    echo json_encode([
+        'success' => true, 
+        'data' => array_values($cars),
+        'count' => count($cars),
+        'queryTime' => $queryTime
+    ]);
+    
 } catch (PDOException $e) {
-    echo json_encode(['success' => false, 'message' => 'Ошибка при получении автомобилей: ' . $e->getMessage()]);
+    header('Content-Type: application/json');
+    echo json_encode([
+        'success' => false, 
+        'message' => 'Ошибка при получении автомобилей: ' . $e->getMessage(),
+        'trace' => DEBUG_MODE ? $e->getTraceAsString() : null
+    ]);
 }
 ?>

@@ -144,6 +144,7 @@ export const useCarManagement = () => {
     }
   };
   
+  // Implement the missing functions that were causing TypeScript errors
   const getPopularCarModels = (limit = 5): { model: string, count: number }[] => {
     const modelCounts: Record<string, number> = {};
     cars.forEach(car => {
@@ -198,12 +199,25 @@ export const useCarManagement = () => {
   };
 };
 
+// Fix the fallback implementation
 function getGlobalCars() {
   try {
     return useGlobalCars();
   } catch (error) {
     console.error('Error accessing global cars context:', error);
     return {
+      cars: [],
+      filteredCars: [],
+      loading: false,
+      error: 'Failed to access cars context',
+      filter: {},
+      setFilter: () => {},
+      getCarById: () => undefined,
+      reloadCars: async () => {},
+      viewCar: () => {},
+      deleteCar: () => {},
+      updateCar: () => {},
+      addCar: () => {},
       getPopularCarModels: () => [],
       getCarsByBodyType: () => [],
       sortCars: (cars: Car[], _: string) => cars
