@@ -12,7 +12,6 @@ import AdminOrders from './pages/AdminOrders';
 import AdminImport from './pages/AdminImport';
 import AdminSettings from './pages/AdminSettings';
 import NotFound from './pages/NotFound';
-import Header from './components/Header';
 import Footer from './components/Footer';
 import AdminLayout from './components/AdminLayout';
 import { AdminProvider } from './contexts/AdminContext';
@@ -20,6 +19,7 @@ import { CarsProvider } from './contexts/CarsContext';
 import { Toaster } from './components/ui/toaster';
 import Catalog from './pages/Catalog';
 import HotDeals from './pages/HotDeals';
+import Header from './components/Header';
 
 function App() {
   return (
@@ -27,7 +27,7 @@ function App() {
       <CarsProvider>
         <AdminProvider>
           <div className="flex flex-col min-h-screen">
-            <Header />
+            {/* Удаляем Header отсюда, так как он уже включен в компоненты страниц */}
             <main className="flex-grow">
               <Routes>
                 <Route path="/" element={<Index />} />

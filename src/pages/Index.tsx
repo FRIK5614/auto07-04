@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import FeaturedCars from "@/components/FeaturedCars";
@@ -13,14 +13,28 @@ import { Button } from "@/components/ui/button";
 import { useCars } from "@/hooks/useCars";
 import { CarsProvider } from "@/contexts/CarsContext";
 import { ChevronDown, Car, CarFront, Settings, UserRound } from "lucide-react";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
 
 const IndexContent = () => {
-  const { cars, filteredCars, setFilter, filter } = useCars();
+  const { cars, filteredCars, setFilter, filter, sortCars, reloadCars } = useCars();
   const [searchParams] = useSearchParams();
   const [visibleCars, setVisibleCars] = useState(12);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const consultFormRef = useRef<HTMLDivElement>(null);
+  const [sortedCars, setSortedCars] = useState(filteredCars);
+  const [sortOption, setSortOption] = useState('default');
+  
+  // Загрузить автомобили при первом рендере
+  useEffect(() => {
+    reloadCars();
+  }, [reloadCars]);
 
+  // Обновить фильтр при изменении параметров URL
   useEffect(() => {
     const newFilter: any = { ...filter };
     
@@ -41,12 +55,23 @@ const IndexContent = () => {
     setFilter(newFilter);
   }, [searchParams, setFilter, filter]);
 
+  // Сортировка автомобилей
+  useEffect(() => {
+    if (typeof sortCars === 'function') {
+      const sorted = sortCars([...filteredCars], sortOption);
+      setSortedCars(sorted);
+    } else {
+      setSortedCars(filteredCars);
+    }
+  }, [filteredCars, sortCars, sortOption]);
+
   const loadMore = () => {
     setVisibleCars(prev => prev + 12);
   };
-
-  const newCars = cars.filter(car => car.isNew);
-  const popularCars = cars.filter(car => car.isPopular);
+  
+  // Фильтруем новые и популярные автомобили
+  const newCars = cars.filter(car => car.isNew && car.status === 'published');
+  const popularCars = cars.filter(car => car.isPopular && car.status === 'published');
 
   const openFilterModal = () => {
     setIsFilterModalOpen(true);
@@ -58,6 +83,30 @@ const IndexContent = () => {
 
   const scrollToConsultForm = () => {
     consultFormRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+  
+  // Обработчик изменения сортировки
+  const handleSortChange = (option: string) => {
+    setSortOption(option);
+  };
+  
+  // Текст для отображения текущей сортировки
+  const getSortLabel = (option: string) => {
+    switch (option) {
+      case 'priceAsc': return 'По цене (возр.)';
+      case 'priceDesc': return 'По цене (убыв.)';
+      case 'yearDesc': return 'По году (новые)';
+      case 'yearAsc': return 'По году (старые)';
+      default: return 'По умолчанию';
+    }
+  };
+
+  // Добавляем данные для демонстрации, если автомобилей мало
+  const ensureData = (cars: any[], label: string) => {
+    if (cars.length < 3) {
+      console.log(`Недостаточно автомобилей для секции "${label}". Текущее количество:`, cars.length);
+    }
+    return cars;
   };
 
   return (
@@ -75,9 +124,15 @@ const IndexContent = () => {
                 Более 1000 моделей автомобилей с подробными характеристиками, ценами и возможностью сравнения
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                <Button size="lg" className="bg-white text-auto-blue-800 hover:bg-blue-50 w-full">
-                  <Car className="mr-2 h-5 w-5" />
-                  Все автомобили
+                <Button 
+                  size="lg" 
+                  className="bg-white text-auto-blue-800 hover:bg-blue-50 w-full"
+                  asChild
+                >
+                  <Link to="/catalog">
+                    <Car className="mr-2 h-5 w-5" />
+                    Все автомобили
+                  </Link>
                 </Button>
                 <Button 
                   size="lg" 
@@ -172,7 +227,7 @@ const IndexContent = () => {
         </div>
       </section>
 
-      {newCars.length > 0 && (
+      {ensureData(newCars, "Новые поступления").length > 0 && (
         <FeaturedCars 
           cars={newCars} 
           title="Новые поступления" 
@@ -180,7 +235,7 @@ const IndexContent = () => {
         />
       )}
       
-      {popularCars.length > 0 && (
+      {ensureData(popularCars, "Популярные модели").length > 0 && (
         <FeaturedCars 
           cars={popularCars} 
           title="Популярные модели" 
@@ -198,7 +253,7 @@ const IndexContent = () => {
             </div>
             
             <div className="md:w-3/4 lg:w-4/5">
-              {filteredCars.length === 0 ? (
+              {sortedCars.length === 0 ? (
                 <div className="flex flex-col items-center justify-center bg-white p-8 rounded-lg text-center">
                   <Car className="h-16 w-16 text-auto-gray-300 mb-4" />
                   <h3 className="text-xl font-semibold text-auto-gray-700 mb-2">Автомобили не найдены</h3>
@@ -210,23 +265,44 @@ const IndexContent = () => {
                 <>
                   <div className="mb-4 flex justify-between items-center">
                     <p className="text-auto-gray-600">
-                      Найдено автомобилей: <span className="font-semibold">{filteredCars.length}</span>
+                      Найдено автомобилей: <span className="font-semibold">{sortedCars.length}</span>
                     </p>
                     <div className="flex items-center">
                       <span className="text-sm text-auto-gray-600 mr-2">Сортировать:</span>
-                      <Button variant="outline" size="sm" className="flex items-center">
-                        По умолчанию <ChevronDown className="ml-2 h-4 w-4" />
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" className="flex items-center">
+                            {getSortLabel(sortOption)} <ChevronDown className="ml-2 h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleSortChange('default')}>
+                            По умолчанию
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleSortChange('priceAsc')}>
+                            По цене (возр.)
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleSortChange('priceDesc')}>
+                            По цене (убыв.)
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleSortChange('yearDesc')}>
+                            По году (новые)
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleSortChange('yearAsc')}>
+                            По году (старые)
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredCars.slice(0, visibleCars).map(car => (
+                    {sortedCars.slice(0, visibleCars).map(car => (
                       <CarCard key={car.id} car={car} />
                     ))}
                   </div>
                   
-                  {visibleCars < filteredCars.length && (
+                  {visibleCars < sortedCars.length && (
                     <div className="mt-8 flex justify-center">
                       <Button 
                         onClick={loadMore} 
@@ -293,7 +369,6 @@ const IndexContent = () => {
       </section>
 
       <ComparePanel />
-      <Footer />
     </div>
   );
 };

@@ -67,8 +67,8 @@ export const useSettings = () => {
         body: JSON.stringify({
           key: setting.key,
           value: String(setting.value),
-          group: setting.group,
-          type: setting.type
+          group: setting.group || 'main',
+          type: setting.type || 'text'
         }),
       });
       
@@ -90,6 +90,12 @@ export const useSettings = () => {
       } else {
         console.error('Ошибка обновления настройки:', result.message);
         
+        // Пробуем альтернативный метод для телеграм настроек
+        if (setting.group === 'notifications' || setting.key === 'telegramToken' || 
+            setting.key === 'telegramChannel' || setting.key === 'adminNotifyList') {
+          return await updateTelegramSetting(setting);
+        }
+        
         toast({
           variant: "destructive",
           title: "Ошибка обновления настройки",
@@ -102,9 +108,77 @@ export const useSettings = () => {
       const message = err instanceof Error ? err.message : 'Неизвестная ошибка';
       console.error('Ошибка при запросе обновления настройки:', err);
       
+      // Пробуем альтернативный метод для телеграм настроек
+      if (setting.group === 'notifications' || setting.key === 'telegramToken' || 
+          setting.key === 'telegramChannel' || setting.key === 'adminNotifyList') {
+        return await updateTelegramSetting(setting);
+      }
+      
       toast({
         variant: "destructive",
         title: "Ошибка обновления настройки",
+        description: message
+      });
+      
+      return false;
+    }
+  };
+  
+  // Специальная функция для обновления настроек телеграм
+  const updateTelegramSetting = async (setting: SiteSetting): Promise<boolean> => {
+    try {
+      const telegramSettings: Record<string, string> = {};
+      
+      // Определяем, какую настройку обновляем
+      if (setting.key === 'adminNotifyList') {
+        telegramSettings.adminNotifyList = String(setting.value);
+      } else if (setting.key === 'telegramToken') {
+        telegramSettings.telegramToken = String(setting.value);
+      } else if (setting.key === 'telegramChannel') {
+        telegramSettings.telegramChannel = String(setting.value);
+      }
+      
+      const response = await fetch(`${API_BASE_URL}/settings/update_telegram_settings.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(telegramSettings),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        // Обновляем локальный state
+        setSettings(prev => ({
+          ...prev,
+          [setting.key]: setting.value
+        }));
+        
+        toast({
+          title: "Настройки Telegram обновлены",
+          description: `Настройка "${setting.key}" успешно обновлена`
+        });
+        
+        return true;
+      } else {
+        console.error('Ошибка обновления настройки Telegram:', result.message);
+        
+        toast({
+          variant: "destructive",
+          title: "Ошибка обновления настройки",
+          description: result.message || 'Не удалось обновить настройку Telegram'
+        });
+        
+        return false;
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Неизвестная ошибка';
+      console.error('Ошибка при запросе обновления настройки Telegram:', err);
+      
+      toast({
+        variant: "destructive",
+        title: "Ошибка обновления настройки Telegram",
         description: message
       });
       

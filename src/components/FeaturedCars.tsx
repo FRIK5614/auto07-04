@@ -24,34 +24,56 @@ const FeaturedCars: React.FC<FeaturedCarsProps> = ({
   const [filteredCars, setFilteredCars] = useState<Car[]>([]);
   
   useEffect(() => {
-    // If cars are directly provided, use them, otherwise filter would work from context
+    // Логируем входящие данные для отладки
+    console.log(`FeaturedCars (${title}) - Входящие данные:`, {
+      filter,
+      limit,
+      carsLength: cars.length,
+      isNew: cars.filter(c => c.isNew).length,
+      isPopular: cars.filter(c => c.isPopular).length,
+      status: cars.filter(c => c.status === 'published').length
+    });
+  
+    // If cars are directly provided, use them
     if (cars && cars.length > 0) {
-      let result = cars;
+      let result = [...cars]; // Создаем копию массива
       
       // Применяем фильтр, если он указан и если мы не получили уже отфильтрованные данные напрямую
       if (filter === 'new') {
-        result = result.filter(car => car.isNew);
+        result = result.filter(car => car.isNew === true);
       } else if (filter === 'popular') {
-        result = result.filter(car => car.isPopular);
+        result = result.filter(car => car.isPopular === true);
       }
       
       // Выводим только опубликованные автомобили
-      result = result.filter(car => car.status === 'published');
+      result = result.filter(car => car.status === 'published' || car.status === undefined);
       
       // Ограничиваем количество
       result = result.slice(0, limit);
       
-      console.info(`${title} - Cars count: ${result.length}`);
+      console.log(`FeaturedCars (${title}) - Отфильтровано:`, {
+        resultLength: result.length,
+        filterType: filter
+      });
+      
       setFilteredCars(result);
+    } else {
+      console.log(`FeaturedCars (${title}) - Нет автомобилей для отображения`);
+      setFilteredCars([]);
     }
   }, [cars, filter, limit, title]);
   
   // Проверяем количество автомобилей после фильтрации
   const showMoreButton = cars.filter(car => {
-    if (filter === 'new') return car.isNew && car.status === 'published';
-    if (filter === 'popular') return car.isPopular && car.status === 'published';
-    return car.status === 'published';
+    if (filter === 'new') return car.isNew === true && (car.status === 'published' || car.status === undefined);
+    if (filter === 'popular') return car.isPopular === true && (car.status === 'published' || car.status === undefined);
+    return car.status === 'published' || car.status === undefined;
   }).length > limit;
+  
+  // Если нет автомобилей для отображения, не рендерим компонент
+  if (filteredCars.length === 0) {
+    return null;
+  }
   
   return (
     <div className="py-12 bg-gray-50">
@@ -61,17 +83,11 @@ const FeaturedCars: React.FC<FeaturedCarsProps> = ({
           <p className="text-gray-600">{subtitle}</p>
         </div>
         
-        {filteredCars.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredCars.map((car) => (
-              <CarCard key={car.id} car={car} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8">
-            <p className="text-gray-500">Нет автомобилей для отображения</p>
-          </div>
-        )}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredCars.map((car) => (
+            <CarCard key={car.id} car={car} />
+          ))}
+        </div>
         
         {showMoreButton && (
           <div className="flex justify-center mt-8">

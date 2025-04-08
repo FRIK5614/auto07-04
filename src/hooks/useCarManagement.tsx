@@ -27,7 +27,9 @@ export const useCarManagement = () => {
     try {
       const carWithStatus = {
         ...car,
-        status: car.status || 'published'
+        status: car.status || 'published',
+        isNew: car.isNew === undefined ? false : car.isNew,
+        isPopular: car.isPopular === undefined ? false : car.isPopular
       };
       
       console.log('Updating car with status:', carWithStatus);
@@ -47,7 +49,9 @@ export const useCarManagement = () => {
     try {
       const carWithStatus = {
         ...car,
-        status: car.status || 'published'
+        status: car.status || 'published',
+        isNew: car.isNew === undefined ? false : car.isNew,
+        isPopular: car.isPopular === undefined ? false : car.isPopular
       };
       
       console.log('Adding car with status:', carWithStatus);
@@ -144,7 +148,7 @@ export const useCarManagement = () => {
     }
   };
   
-  // Implement the missing functions that were causing TypeScript errors
+  // Реализуем функции сортировки
   const getPopularCarModels = (limit = 5): { model: string, count: number }[] => {
     const modelCounts: Record<string, number> = {};
     cars.forEach(car => {
@@ -163,11 +167,21 @@ export const useCarManagement = () => {
   };
   
   const sortCars = (carsToSort: Car[], criterion: string) => {
+    console.log('Сортировка по критерию:', criterion);
+    
     switch (criterion) {
       case 'priceAsc':
-        return [...carsToSort].sort((a, b) => (a.price.base - (a.price.discount || 0)) - (b.price.base - (b.price.discount || 0)));
+        return [...carsToSort].sort((a, b) => {
+          const priceA = a.price.base - (a.price.discount || 0);
+          const priceB = b.price.base - (b.price.discount || 0);
+          return priceA - priceB;
+        });
       case 'priceDesc':
-        return [...carsToSort].sort((a, b) => (b.price.base - (b.price.discount || 0)) - (a.price.base - (a.price.discount || 0)));
+        return [...carsToSort].sort((a, b) => {
+          const priceA = a.price.base - (a.price.discount || 0);
+          const priceB = b.price.base - (b.price.discount || 0);
+          return priceB - priceA;
+        });
       case 'yearDesc':
         return [...carsToSort].sort((a, b) => b.year - a.year);
       case 'yearAsc':
@@ -191,6 +205,18 @@ export const useCarManagement = () => {
     return Array.from(countries);
   };
 
+  const getNewCars = (limit?: number): Car[] => {
+    const newCars = cars.filter(car => car.isNew === true && car.status !== 'draft');
+    console.log(`Найдено ${newCars.length} новых автомобилей`);
+    return limit ? newCars.slice(0, limit) : newCars;
+  };
+  
+  const getPopularCars = (limit?: number): Car[] => {
+    const popularCars = cars.filter(car => car.isPopular === true && car.status !== 'draft');
+    console.log(`Найдено ${popularCars.length} популярных автомобилей`);
+    return limit ? popularCars.slice(0, limit) : popularCars;
+  };
+
   return {
     cars,
     filteredCars,
@@ -211,6 +237,8 @@ export const useCarManagement = () => {
     exportCarsData,
     importCarsData,
     getCarsByCountry,
-    getAvailableCountries
+    getAvailableCountries,
+    getNewCars,
+    getPopularCars
   };
 };
