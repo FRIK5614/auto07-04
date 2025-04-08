@@ -11,18 +11,28 @@ import { Order } from '@/types/car';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { 
-  CheckCircle, 
+  Check, 
   Clock, 
-  XCircle, 
+  X, 
   AlertCircle, 
   RefreshCw,
   Phone,
   Mail,
-  Car,
+  Trash2,
   Calendar,
   User
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const OrderStatusBadge = ({ status }: { status: Order['status'] }) => {
   switch (status) {
@@ -31,18 +41,24 @@ const OrderStatusBadge = ({ status }: { status: Order['status'] }) => {
     case 'processing':
       return <Badge variant="secondary" className="whitespace-nowrap"><Clock className="w-3 h-3 mr-1" /> В обработке</Badge>;
     case 'completed':
-      return <Badge className="bg-green-500 whitespace-nowrap"><CheckCircle className="w-3 h-3 mr-1" /> Завершен</Badge>;
+      return <Badge className="bg-green-500 whitespace-nowrap"><Check className="w-3 h-3 mr-1" /> Завершен</Badge>;
     case 'canceled':
-      return <Badge variant="destructive" className="whitespace-nowrap"><XCircle className="w-3 h-3 mr-1" /> Отменен</Badge>;
+      return <Badge variant="destructive" className="whitespace-nowrap"><X className="w-3 h-3 mr-1" /> Отменен</Badge>;
     default:
       return <Badge variant="outline">{status}</Badge>;
   }
 };
 
-const OrderCard = ({ order, car, onStatusChange }: { 
+const OrderCard = ({ 
+  order, 
+  car, 
+  onStatusChange, 
+  onDeleteOrder 
+}: { 
   order: Order; 
   car: ReturnType<typeof useCars>['getCarById'] extends (id: string) => infer R ? R : never;
   onStatusChange: (orderId: string, status: Order['status']) => void;
+  onDeleteOrder: (orderId: string) => void;
 }) => {
   return (
     <Card className="mb-4 overflow-hidden">
@@ -83,7 +99,12 @@ const OrderCard = ({ order, car, onStatusChange }: {
           </div>
           
           <div className="flex items-center gap-1.5 pt-1">
-            <Car className="h-4 w-4 text-muted-foreground" />
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground">
+              <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2-2c-.7-.6-1.7-1-3-1H6c-1.1 0-2 .9-2 2v7c0 1.1.9 2 2 2h1" />
+              <path d="M9 17h6" />
+              <circle cx="9" cy="17" r="2" />
+              <circle cx="15" cy="17" r="2" />
+            </svg>
             <span>
               {car ? `${car.brand} ${car.model}` : 'Автомобиль не найден'}
             </span>
@@ -127,6 +148,14 @@ const OrderCard = ({ order, car, onStatusChange }: {
                 Отменить
               </Button>
             )}
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-none"
+              onClick={() => onDeleteOrder(order.id)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
           </div>
         </div>
       </CardContent>
@@ -135,12 +164,14 @@ const OrderCard = ({ order, car, onStatusChange }: {
 };
 
 const AdminOrders: React.FC = () => {
-  const { orders, getCarById, processOrder, syncOrders } = useCars();
+  const { orders, getCarById, processOrder, syncOrders, deleteOrder } = useCars();
   const { isAdmin } = useAdmin();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
   const [isSyncing, setIsSyncing] = useState(false);
+  const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   useEffect(() => {
     const handleResize = () => {
@@ -172,8 +203,6 @@ const AdminOrders: React.FC = () => {
     };
     
     loadOrders(); // Загружаем заказы при первой загрузке страницы
-    
-    // Удаляем автоматическую синхронизацию каждые 30 секунд
   }, [isAdmin, navigate, syncOrders]);
 
   if (!isAdmin) {
@@ -202,6 +231,32 @@ const AdminOrders: React.FC = () => {
 
   const handleStatusChange = (orderId: string, newStatus: Order['status']) => {
     processOrder(orderId, newStatus);
+  };
+
+  const confirmDeleteOrder = (orderId: string) => {
+    setOrderToDelete(orderId);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const executeDeleteOrder = () => {
+    if (orderToDelete) {
+      try {
+        deleteOrder(orderToDelete);
+        toast({
+          title: "Заказ удален",
+          description: "Заказ был успешно удален"
+        });
+      } catch (error) {
+        console.error("Error deleting order:", error);
+        toast({
+          variant: "destructive",
+          title: "Ошибка при удалении",
+          description: "Не удалось удалить заказ"
+        });
+      }
+      setOrderToDelete(null);
+      setIsDeleteDialogOpen(false);
+    }
   };
 
   if (!orders || orders.length === 0) {
@@ -290,6 +345,7 @@ const AdminOrders: React.FC = () => {
                       order={order} 
                       car={car} 
                       onStatusChange={handleStatusChange} 
+                      onDeleteOrder={confirmDeleteOrder}
                     />
                   );
                 })}
@@ -357,6 +413,14 @@ const AdminOrders: React.FC = () => {
                                   Отменить
                                 </Button>
                               )}
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-8 p-0"
+                                onClick={() => confirmDeleteOrder(order.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -369,6 +433,24 @@ const AdminOrders: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удаление заказа</AlertDialogTitle>
+            <AlertDialogDescription>
+              Вы уверены, что хотите удалить заказ? Это действие нельзя отменить.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction onClick={executeDeleteOrder} className="bg-red-500 hover:bg-red-600">
+              Удалить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

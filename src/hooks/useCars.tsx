@@ -22,12 +22,12 @@ export const useCars = () => {
     return carManagement.reloadCars();
   };
   
-  // Fixed: Add exportCarsData with proper Car[] return type
-  const exportCarsData = () => {
+  // Make sure exportCarsData returns Car[]
+  const exportCarsData = (): Car[] => {
     return carManagement.exportCarsData();
   };
   
-  // Fixed: Add importCarsData with proper typing
+  // Import cars data with proper typing
   const importCarsData = (data: Car[] | Car): { success: number, failed: number } => {
     return carManagement.importCarsData(data);
   };

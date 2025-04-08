@@ -1,3 +1,4 @@
+
 export interface CarImage {
   id: string;
   url: string;
@@ -71,6 +72,11 @@ export interface Car {
   isPopular?: boolean;
   country?: string; // Country field for car origin
   viewCount?: number; // Track number of views
+  mileage?: number; // New field for mileage
+  exteriorColor?: string; // New field for specific exterior color
+  interiorColor?: string; // New field for interior color
+  trim?: string; // New field for trim level/configuration
+  status?: 'published' | 'draft'; // Publication status
 }
 
 export interface CarFilter {

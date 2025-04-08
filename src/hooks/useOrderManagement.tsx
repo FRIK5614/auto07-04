@@ -1,213 +1,125 @@
 
-import { useCars as useGlobalCars } from "../contexts/CarsContext";
-import { Order } from "../types/car";
+import { useState, useCallback } from 'react';
+import { Order } from '@/types/car';
 import { useToast } from "@/hooks/use-toast";
-import { format } from 'date-fns';
-import { ru } from 'date-fns/locale';
-import { useState } from "react";
-
-// Определяем базовый URL для API - теперь это внешний домен
-const API_BASE_URL = 'https://metallika29.ru/public/api';
+import { api } from '@/services/api';
 
 export const useOrderManagement = () => {
-  const {
-    getCarById,
-  } = useGlobalCars();
-  
   const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
   const { toast } = useToast();
 
-  // Форматирование даты создания заказа
-  const getOrderCreationDate = (order: Order) => {
+  const syncOrders = useCallback(async (showNotification = true) => {
+    setLoading(true);
     try {
-      return format(new Date(order.createdAt), 'dd.MM.yyyy HH:mm', { locale: ru });
-    } catch (error) {
-      console.error('Error formatting order date:', error);
-      return 'Неизвестно';
-    }
-  };
-
-  // Получение заказов с сервера
-  const fetchOrdersFromServer = async (): Promise<Order[]> => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/get_orders.php`);
-      const result = await response.json();
+      console.info('Начало синхронизации заказов с JSON...');
+      const response = await api.get('/get_orders.php');
       
-      if (result.success && Array.isArray(result.data)) {
-        setOrders(result.data);
-        return result.data;
-      } else {
-        console.error('Ошибка получения заказов с сервера:', result.message || 'Неизвестная ошибка');
-        return [];
-      }
-    } catch (error) {
-      console.error('Ошибка при запросе заказов с сервера:', error);
-      return [];
-    }
-  };
-
-  // Синхронизация заказов с сервером - теперь без автоматического уведомления
-  const syncOrders = async (showToast = false): Promise<boolean> => {
-    try {
-      const serverOrders = await fetchOrdersFromServer();
-      
-      if (serverOrders.length > 0) {
-        setOrders(serverOrders);
+      if (response.success && Array.isArray(response.orders)) {
+        console.info(`Получено ${response.orders.length} заказов из JSON-файлов`);
+        setOrders(response.orders);
         
-        if (showToast) {
+        if (showNotification) {
           toast({
             title: "Заказы обновлены",
-            description: `Получено ${serverOrders.length} заказов из базы данных`
+            description: `Загружено заказов: ${response.orders.length}`
           });
         }
+        
+        console.info('Синхронизация заказов успешно завершена');
+        return response.orders;
+      } else {
+        throw new Error(response.message || 'Ошибка при получении заказов');
       }
-      
-      return true;
     } catch (error) {
-      console.error('Ошибка получения заказов из базы данных:', error);
+      console.error('Ошибка при синхронизации заказов:', error);
       
-      if (showToast) {
+      if (showNotification) {
         toast({
           variant: "destructive",
-          title: "Ошибка обновления",
-          description: "Не удалось получить заказы из базы данных"
+          title: "Ошибка синхронизации",
+          description: "Не удалось синхронизировать заказы"
         });
       }
       
-      return false;
+      throw error;
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [toast]);
 
-  // Обновление статуса заказа на сервере
-  const updateOrderStatusOnServer = async (orderId: string, status: Order['status']): Promise<boolean> => {
+  const processOrder = useCallback(async (orderId: string, newStatus: Order['status']) => {
+    setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/update_order_status.php`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ id: orderId, status }),
+      const response = await api.post('/update_order_status.php', {
+        orderId,
+        status: newStatus
       });
       
-      const result = await response.json();
-      
-      if (result.success) {
-        console.log(`Статус заказа ${orderId} обновлен на сервере до ${status}`);
-        return true;
-      } else {
-        console.error('Ошибка обновления статуса заказа на сервере:', result.message);
-        return false;
-      }
-    } catch (error) {
-      console.error('Ошибка запроса к серверу при обновлении статуса заказа:', error);
-      return false;
-    }
-  };
-
-  // Создание нового заказа
-  const createOrder = async (order: Order): Promise<boolean> => {
-    try {
-      console.log(`Начало создания заказа ${order.id}`);
-      
-      const apiUrl = `${API_BASE_URL}/create_order.php`;
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(order),
-      });
-      
-      // Проверяем, что ответ получен правильно
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-      
-      const responseText = await response.text();
-      console.log('Server response:', responseText);
-      
-      let result;
-      try {
-        result = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error('Error parsing server response:', parseError);
-        throw new Error('Invalid JSON response from server');
-      }
-      
-      if (result.success) {
-        console.log(`Заказ ${order.id} успешно создан на сервере`);
-        
-        // После успешного создания заказа на сервере, синхронизируем заказы
-        await syncOrders(true);
-        
-        return true;
-      } else {
-        throw new Error(result.message || 'Ошибка при создании заказа на сервере');
-      }
-    } catch (error) {
-      console.error("Ошибка при создании заказа:", error);
-      
-      toast({
-        variant: "destructive",
-        title: "Ошибка создания заказа",
-        description: "Не удалось создать заказ. Пожалуйста, попробуйте позже."
-      });
-      
-      return false;
-    }
-  };
-
-  // Обработка заказа с обновлением статуса на сервере
-  const processOrder = async (orderId: string, newStatus: Order['status']): Promise<boolean> => {
-    try {
-      const serverUpdateSuccess = await updateOrderStatusOnServer(orderId, newStatus);
-      
-      if (serverUpdateSuccess) {
-        // Обновляем заказы после успешного обновления на сервере
-        await syncOrders(true);
-        
-        // Также обновляем локальный заказ для мгновенного обновления UI
-        setOrders(prevOrders => 
-          prevOrders.map(order => 
+      if (response.success) {
+        // Обновляем локальный список заказов
+        setOrders(current => 
+          current.map(order => 
             order.id === orderId ? { ...order, status: newStatus } : order
           )
         );
         
         toast({
           title: "Статус заказа обновлен",
-          description: `Заказ #${orderId.substring(0, 8)} теперь в статусе "${newStatus}"`
+          description: `Заказ ${orderId.substring(0, 8)} помечен как "${newStatus}"`
         });
         
         return true;
       } else {
-        toast({
-          variant: "destructive",
-          title: "Ошибка обновления статуса",
-          description: "Не удалось обновить статус заказа на сервере"
-        });
-        
-        return false;
+        throw new Error(response.message || 'Не удалось обновить статус заказа');
       }
     } catch (error) {
-      console.error("Ошибка при обработке заказа:", error);
-      
+      console.error('Ошибка при обновлении заказа:', error);
       toast({
         variant: "destructive",
-        title: "Ошибка обновления статуса",
+        title: "Ошибка",
         description: "Не удалось обновить статус заказа"
       });
-      
       return false;
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [toast]);
+
+  // New function to delete an order
+  const deleteOrder = useCallback(async (orderId: string) => {
+    setLoading(true);
+    try {
+      // Since we don't have a backend endpoint for deletion, we'll handle it client-side
+      // In a real app, you'd make an API call to delete the order
+      
+      // Remove the order from the local state
+      setOrders(current => current.filter(order => order.id !== orderId));
+      
+      toast({
+        title: "Заказ удален",
+        description: `Заказ ${orderId.substring(0, 8)} успешно удален`
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Ошибка при удалении заказа:', error);
+      toast({
+        variant: "destructive",
+        title: "Ошибка",
+        description: "Не удалось удалить заказ"
+      });
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
 
   return {
     orders,
-    getOrders: () => orders,
-    createOrder,
-    processOrder,
-    getOrderCreationDate,
+    loading,
     syncOrders,
-    fetchOrdersFromServer
+    processOrder,
+    deleteOrder
   };
 };

@@ -1,9 +1,10 @@
+
 import React, { useEffect, useState } from 'react';
 import { useAdmin } from '@/contexts/AdminContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { useCars } from '@/hooks/useCars';
 import { Button } from '@/components/ui/button';
-import { Plus, Delete, Edit, Save, FileDown, FileUp, X, Car } from 'lucide-react';
+import { Plus, Trash2, Edit, Save, FileDown, FileUp, X, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,6 +13,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Form, FormField, FormItem, FormLabel, FormControl } from '@/components/ui/form';
 import CarImageUploader from '@/components/CarImageUploader';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
 
 import { Car as CarType } from '@/types/car';
 
@@ -31,6 +34,7 @@ const AdminCars: React.FC = () => {
   const [selectedCar, setSelectedCar] = useState<CarType | null>(null);
   const [activeTab, setActiveTab] = useState('basic');
   const [loading, setLoading] = useState(false);
+  const [carStatus, setCarStatus] = useState<'published' | 'draft'>('published');
 
   useEffect(() => {
     if (!isAdmin) {
@@ -43,21 +47,44 @@ const AdminCars: React.FC = () => {
   const handleAddCar = () => {
     const newCar: CarType = {
       id: `car_${Date.now()}`,
-      brand: 'Новая марка',
-      model: 'Новая модель',
+      brand: '',
+      model: '',
       year: new Date().getFullYear(),
       bodyType: 'седан',
       colors: ['#FFFFFF'],
       price: { base: 0 },
-      engine: { type: 'бензин', displacement: 2.0, power: 150, torque: 200, fuelType: 'АИ-95' },
+      engine: { 
+        type: 'бензин', 
+        displacement: 2.0, 
+        power: 150, 
+        torque: 200, 
+        fuelType: 'АИ-95' 
+      },
       transmission: { type: 'автомат', gears: 6 },
       drivetrain: 'передний',
-      dimensions: { length: 4500, width: 1800, height: 1400, wheelbase: 2700, weight: 1500, trunkVolume: 450 },
-      performance: { acceleration: 9.0, topSpeed: 220, fuelConsumption: { city: 10.0, highway: 6.0, combined: 8.0 } },
+      dimensions: { 
+        length: 4500, 
+        width: 1800, 
+        height: 1400, 
+        wheelbase: 2700, 
+        weight: 1500, 
+        trunkVolume: 450 
+      },
+      performance: { 
+        acceleration: 9.0, 
+        topSpeed: 220, 
+        fuelConsumption: { 
+          city: 10.0, 
+          highway: 6.0, 
+          combined: 8.0 
+        } 
+      },
       features: [],
       images: [],
-      description: 'Описание нового автомобиля',
+      description: '',
       isNew: true,
+      mileage: 0, // New field for mileage
+      status: 'published', // New status field
     };
 
     try {
@@ -80,23 +107,73 @@ const AdminCars: React.FC = () => {
 
   const handleDeleteCar = (carId: string) => {
     if (window.confirm('Вы уверены, что хотите удалить этот автомобиль?')) {
-      deleteCar(carId);
-      toast({
-        title: "Успешно",
-        description: "Автомобиль удален"
-      });
+      try {
+        deleteCar(carId);
+        toast({
+          title: "Успешно",
+          description: "Автомобиль удален"
+        });
+        loadCars();
+      } catch (error) {
+        console.error('Error deleting car:', error);
+        toast({
+          variant: "destructive",
+          title: "Ошибка",
+          description: "Произошла ошибка при удалении автомобиля"
+        });
+      }
     }
   };
 
   const handleEditCar = (car: CarType) => {
     setSelectedCar(car);
+    setCarStatus(car.status || 'published');
   };
 
   const handleSaveCar = async () => {
     if (selectedCar) {
+      // Validate required fields
+      const requiredFields = [
+        { field: 'brand', label: 'Марка' },
+        { field: 'model', label: 'Модель' },
+        { field: 'year', label: 'Год выпуска' },
+        { field: 'bodyType', label: 'Тип кузова' },
+        { field: 'transmission.type', label: 'Тип трансмиссии' },
+        { field: 'drivetrain', label: 'Привод' },
+        { field: 'engine.type', label: 'Тип двигателя' },
+        { field: 'engine.displacement', label: 'Объем двигателя' },
+        { field: 'price.base', label: 'Цена' }
+      ];
+
+      const missingFields = requiredFields.filter(({ field }) => {
+        const parts = field.split('.');
+        let value = selectedCar as any;
+        for (const part of parts) {
+          value = value[part];
+          if (value === undefined || value === null || value === '') {
+            return true;
+          }
+        }
+        return false;
+      });
+
+      if (missingFields.length > 0) {
+        toast({
+          variant: "destructive",
+          title: "Ошибка валидации",
+          description: `Пожалуйста, заполните обязательные поля: ${missingFields.map(f => f.label).join(', ')}`
+        });
+        return;
+      }
+
       setLoading(true);
       try {
-        await updateCar(selectedCar);
+        // Add status field
+        const updatedCar = {
+          ...selectedCar,
+          status: carStatus
+        };
+        await updateCar(updatedCar);
         toast({
           title: "Успешно",
           description: "Автомобиль обновлен"
@@ -247,6 +324,9 @@ const AdminCars: React.FC = () => {
         title: "Экспорт завершен",
         description: "Данные автомобилей экспортированы в JSON файл"
       });
+
+      // Force reload cars from backend to ensure they appear on the main page
+      loadCars();
     } catch (error) {
       console.error('Error exporting cars:', error);
       toast({
@@ -292,8 +372,14 @@ const AdminCars: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {cars.map((car) => (
           <div key={car.id} className="bg-white shadow rounded-md p-4">
-            <h2 className="text-lg font-semibold">{car.brand} {car.model}</h2>
+            <div className="flex justify-between items-start">
+              <h2 className="text-lg font-semibold">{car.brand} {car.model}</h2>
+              <Badge variant={car.status === 'published' ? 'default' : 'secondary'}>
+                {car.status === 'published' ? 'Опубликован' : 'Черновик'}
+              </Badge>
+            </div>
             <p className="text-gray-600">Год: {car.year}</p>
+            <p className="text-gray-600">Цена: {car.price.base.toLocaleString()} ₽</p>
             {car.images && car.images.length > 0 && (
               <img 
                 src={car.images.find(img => img.isMain)?.url || car.images[0]?.url} 
@@ -315,7 +401,7 @@ const AdminCars: React.FC = () => {
                 size="sm" 
                 onClick={() => handleDeleteCar(car.id)}
               >
-                <Delete className="mr-2 h-4 w-4" />
+                <Trash2 className="mr-2 h-4 w-4" />
                 Удалить
               </Button>
             </div>
@@ -328,7 +414,7 @@ const AdminCars: React.FC = () => {
           <div className="relative top-10 mx-auto p-5 border shadow-lg rounded-md bg-white w-11/12 md:w-3/4 lg:w-2/3 xl:w-1/2 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-semibold">
-                Редактировать автомобиль: {selectedCar.brand} {selectedCar.model}
+                {selectedCar.brand ? `Редактировать: ${selectedCar.brand} ${selectedCar.model}` : 'Новый автомобиль'}
               </h3>
               <Button 
                 variant="ghost" 
@@ -338,6 +424,25 @@ const AdminCars: React.FC = () => {
                 <X className="h-5 w-5" />
               </Button>
             </div>
+
+            <div className="mb-4 p-2 border rounded-md bg-gray-50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">Статус:</span>
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      checked={carStatus === 'published'} 
+                      onCheckedChange={(checked) => setCarStatus(checked ? 'published' : 'draft')}
+                    />
+                    <span>{carStatus === 'published' ? 'Опубликован' : 'Черновик'}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <Badge className="bg-red-500">* Обязательные поля</Badge>
+                </div>
+              </div>
+            </div>
             
             <Tabs 
               defaultValue="basic" 
@@ -346,8 +451,8 @@ const AdminCars: React.FC = () => {
               className="w-full"
             >
               <TabsList className="grid grid-cols-5">
-                <TabsTrigger value="basic">Основное</TabsTrigger>
-                <TabsTrigger value="engine">Двигатель</TabsTrigger>
+                <TabsTrigger value="basic">Основное*</TabsTrigger>
+                <TabsTrigger value="engine">Двигатель*</TabsTrigger>
                 <TabsTrigger value="dimensions">Размеры</TabsTrigger>
                 <TabsTrigger value="performance">Производительность</TabsTrigger>
                 <TabsTrigger value="images">Фотографии</TabsTrigger>
@@ -356,32 +461,37 @@ const AdminCars: React.FC = () => {
               <TabsContent value="basic" className="pt-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <FormLabel>Бренд</FormLabel>
+                    <FormLabel>Марка <span className="text-red-500">*</span></FormLabel>
                     <Input
                       value={selectedCar.brand}
                       onChange={(e) => handleBasicChange(e, 'brand')}
+                      placeholder="Например: Genesis"
+                      required
                     />
                   </div>
                   
                   <div>
-                    <FormLabel>Модель</FormLabel>
+                    <FormLabel>Модель <span className="text-red-500">*</span></FormLabel>
                     <Input
                       value={selectedCar.model}
                       onChange={(e) => handleBasicChange(e, 'model')}
+                      placeholder="Например: GV80 2.5T"
+                      required
                     />
                   </div>
                   
                   <div>
-                    <FormLabel>Год</FormLabel>
+                    <FormLabel>Год выпуска <span className="text-red-500">*</span></FormLabel>
                     <Input
                       type="number"
                       value={selectedCar.year}
                       onChange={(e) => handleBasicChange(e, 'year')}
+                      required
                     />
                   </div>
                   
                   <div>
-                    <FormLabel>Тип кузова</FormLabel>
+                    <FormLabel>Тип кузова <span className="text-red-500">*</span></FormLabel>
                     <Select 
                       value={selectedCar.bodyType} 
                       onValueChange={(value) => handleSelectChange('bodyType', value)}
@@ -404,7 +514,7 @@ const AdminCars: React.FC = () => {
                   </div>
                   
                   <div>
-                    <FormLabel>Привод</FormLabel>
+                    <FormLabel>Привод <span className="text-red-500">*</span></FormLabel>
                     <Select 
                       value={selectedCar.drivetrain} 
                       onValueChange={(value) => handleSelectChange('drivetrain', value)}
@@ -421,6 +531,15 @@ const AdminCars: React.FC = () => {
                   </div>
                   
                   <div>
+                    <FormLabel>Комплектация</FormLabel>
+                    <Input
+                      value={selectedCar.trim || ''}
+                      onChange={(e) => handleBasicChange(e, 'trim')}
+                      placeholder="Например: Prestige"
+                    />
+                  </div>
+
+                  <div>
                     <FormLabel>Страна производитель</FormLabel>
                     <Input
                       value={selectedCar.country || ''}
@@ -428,13 +547,23 @@ const AdminCars: React.FC = () => {
                       placeholder="Например: Германия"
                     />
                   </div>
+
+                  <div>
+                    <FormLabel>Пробег (км)</FormLabel>
+                    <Input
+                      type="number"
+                      value={selectedCar.mileage || 0}
+                      onChange={(e) => handleBasicChange(e, 'mileage')}
+                    />
+                  </div>
                   
                   <div>
-                    <FormLabel>Базовая цена</FormLabel>
+                    <FormLabel>Цена <span className="text-red-500">*</span></FormLabel>
                     <Input
                       type="number"
                       value={selectedCar.price.base}
                       onChange={(e) => handlePriceChange(e, 'base')}
+                      required
                     />
                   </div>
                   
@@ -446,6 +575,15 @@ const AdminCars: React.FC = () => {
                       onChange={(e) => handlePriceChange(e, 'discount')}
                     />
                   </div>
+
+                  <div>
+                    <FormLabel>Цвет</FormLabel>
+                    <Input
+                      value={selectedCar.exteriorColor || ''}
+                      onChange={(e) => handleBasicChange(e, 'exteriorColor')}
+                      placeholder="Например: Белый металлик"
+                    />
+                  </div>
                   
                   <div className="col-span-2">
                     <FormLabel>Описание</FormLabel>
@@ -453,6 +591,7 @@ const AdminCars: React.FC = () => {
                       value={selectedCar.description}
                       onChange={(e) => handleBasicChange(e, 'description')}
                       rows={4}
+                      placeholder="Введите описание автомобиля"
                     />
                   </div>
                   
@@ -483,7 +622,7 @@ const AdminCars: React.FC = () => {
               <TabsContent value="engine" className="pt-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <FormLabel>Тип двигателя</FormLabel>
+                    <FormLabel>Тип двигателя <span className="text-red-500">*</span></FormLabel>
                     <Select 
                       value={selectedCar.engine.type} 
                       onValueChange={(value) => setSelectedCar({
@@ -504,12 +643,13 @@ const AdminCars: React.FC = () => {
                   </div>
                   
                   <div>
-                    <FormLabel>Объем двигателя (л)</FormLabel>
+                    <FormLabel>Объем двигателя (л) <span className="text-red-500">*</span></FormLabel>
                     <Input
                       type="number"
                       step="0.1"
                       value={selectedCar.engine.displacement}
                       onChange={(e) => handleEngineChange(e, 'displacement')}
+                      required
                     />
                   </div>
                   
@@ -532,16 +672,17 @@ const AdminCars: React.FC = () => {
                   </div>
                   
                   <div>
-                    <FormLabel>Тип топлива</FormLabel>
+                    <FormLabel>Тип топлива <span className="text-red-500">*</span></FormLabel>
                     <Input
                       value={selectedCar.engine.fuelType}
                       onChange={(e) => handleEngineChange(e, 'fuelType')}
                       placeholder="АИ-95"
+                      required
                     />
                   </div>
                   
                   <div>
-                    <FormLabel>Тип трансмиссии</FormLabel>
+                    <FormLabel>Тип трансмиссии <span className="text-red-500">*</span></FormLabel>
                     <Select 
                       value={selectedCar.transmission.type} 
                       onValueChange={(value) => setSelectedCar({
