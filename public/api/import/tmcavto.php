@@ -55,51 +55,7 @@ try {
                     'source' => 'tmcavto'
                 ]);
                 
-                // Обновляем данные автомобиля в таблице cars
-                $updateCarStmt = $pdo->prepare('
-                    UPDATE cars SET
-                    brand = :brand,
-                    model = :model,
-                    year = :year,
-                    country = :country,
-                    priceBase = :priceBase,
-                    engineType = :engineType,
-                    engineDisplacement = :engineDisplacement,
-                    enginePower = :enginePower,
-                    engineTorque = :engineTorque,
-                    fuelType = :fuelType,
-                    transmissionType = :transmissionType,
-                    transmissionGears = :transmissionGears,
-                    drivetrain = :drivetrain,
-                    dimensionsLength = :dimensionsLength,
-                    dimensionsWidth = :dimensionsWidth,
-                    dimensionsHeight = :dimensionsHeight,
-                    bodyType = :bodyType,
-                    isNew = :isNew
-                    WHERE id = :id
-                ');
-                
-                $updateCarStmt->execute([
-                    'brand' => $car['brand'],
-                    'model' => $car['model'],
-                    'year' => $car['year'] ?? 2023,
-                    'country' => $car['country'] ?? null,
-                    'priceBase' => $car['price'] ?? 0,
-                    'engineType' => $car['engineType'] ?? 'unknown',
-                    'engineDisplacement' => $car['engineDisplacement'] ?? 2.0,
-                    'enginePower' => $car['enginePower'] ?? 150,
-                    'engineTorque' => $car['engineTorque'] ?? 200,
-                    'fuelType' => $car['fuelType'] ?? 'petrol',
-                    'transmissionType' => $car['transmissionType'] ?? 'automatic',
-                    'transmissionGears' => $car['transmissionGears'] ?? 6,
-                    'drivetrain' => $car['drivetrain'] ?? 'front',
-                    'dimensionsLength' => $car['dimensionsLength'] ?? 4500,
-                    'dimensionsWidth' => $car['dimensionsWidth'] ?? 1800,
-                    'dimensionsHeight' => $car['dimensionsHeight'] ?? 1500,
-                    'bodyType' => $car['bodyType'] ?? 'sedan',
-                    'isNew' => $car['isNew'] ?? true,
-                    'id' => $existingCarId
-                ]);
+                // Здесь можно также обновить данные автомобиля в таблице cars
                 
                 $imported++;
             } else {
@@ -113,13 +69,13 @@ try {
                         engineType, engineDisplacement, enginePower, engineTorque, fuelType,
                         transmissionType, transmissionGears, drivetrain,
                         dimensionsLength, dimensionsWidth, dimensionsHeight,
-                        bodyType, isNew, viewCount, status
+                        bodyType, isNew, viewCount
                     ) VALUES (
                         :id, :brand, :model, :year, :country, :priceBase,
                         :engineType, :engineDisplacement, :enginePower, :engineTorque, :fuelType,
                         :transmissionType, :transmissionGears, :drivetrain,
                         :dimensionsLength, :dimensionsWidth, :dimensionsHeight,
-                        :bodyType, :isNew, :viewCount, :status
+                        :bodyType, :isNew, :viewCount
                     )
                 ');
                 
@@ -143,22 +99,20 @@ try {
                     'dimensionsHeight' => $car['dimensionsHeight'] ?? 1500,
                     'bodyType' => $car['bodyType'] ?? 'sedan',
                     'isNew' => $car['isNew'] ?? true,
-                    'viewCount' => 0,
-                    'status' => 'published' // Устанавливаем статус как опубликовано
+                    'viewCount' => 0
                 ]);
                 
                 // Если у автомобиля есть изображение, добавляем его
                 if (isset($car['imageUrl']) && $car['imageUrl']) {
                     $insertImageStmt = $pdo->prepare('
-                        INSERT INTO car_images (id, carId, url, alt, isMain)
-                        VALUES (:id, :carId, :url, :alt, :isMain)
+                        INSERT INTO car_images (id, carId, url, alt)
+                        VALUES (:id, :carId, :url, :alt)
                     ');
                     $insertImageStmt->execute([
                         'id' => generateUUID(),
                         'carId' => $newCarId,
                         'url' => $car['imageUrl'],
-                        'alt' => "{$car['brand']} {$car['model']}",
-                        'isMain' => 1 // Устанавливаем как главное изображение
+                        'alt' => "{$car['brand']} {$car['model']}"
                     ]);
                 }
                 

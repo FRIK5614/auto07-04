@@ -12,9 +12,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $inputJSON = file_get_contents('php://input');
 $input = json_decode($inputJSON, true);
 
-// Для отладки записываем входящие данные в лог
-error_log("Received add_car request: " . $inputJSON);
-
 // Проверяем данные
 if (!isset($input['id']) || !isset($input['brand']) || !isset($input['model']) || !isset($input['year'])) {
     echo json_encode(['success' => false, 'message' => 'Неверные данные запроса']);
@@ -24,9 +21,6 @@ if (!isset($input['id']) || !isset($input['brand']) || !isset($input['model']) |
 try {
     // Начинаем транзакцию
     $pdo->beginTransaction();
-    
-    // Проверяем наличие поля status и задаем значение по умолчанию, если его нет
-    $status = isset($input['status']) ? $input['status'] : 'published';
     
     // Подготавливаем запрос для добавления автомобиля
     $stmt = $pdo->prepare('
@@ -38,7 +32,7 @@ try {
             dimensionsLength, dimensionsWidth, dimensionsHeight, dimensionsWheelbase, dimensionsWeight, dimensionsTrunkVolume,
             performanceAcceleration, performanceTopSpeed, 
             performanceFuelConsumptionCity, performanceFuelConsumptionHighway, performanceFuelConsumptionCombined,
-            description, isNew, isPopular, country, viewCount, status
+            description, isNew, isPopular, country, viewCount
         ) VALUES (
             :id, :brand, :model, :year, :bodyType, :colors, 
             :priceBase, :priceDiscount, :priceSpecial,
@@ -47,7 +41,7 @@ try {
             :dimensionsLength, :dimensionsWidth, :dimensionsHeight, :dimensionsWheelbase, :dimensionsWeight, :dimensionsTrunkVolume,
             :performanceAcceleration, :performanceTopSpeed, 
             :performanceFuelConsumptionCity, :performanceFuelConsumptionHighway, :performanceFuelConsumptionCombined,
-            :description, :isNew, :isPopular, :country, :viewCount, :status
+            :description, :isNew, :isPopular, :country, :viewCount
         )
     ');
     
@@ -85,18 +79,13 @@ try {
         'isNew' => isset($input['isNew']) ? ($input['isNew'] ? 1 : 0) : 0,
         'isPopular' => isset($input['isPopular']) ? ($input['isPopular'] ? 1 : 0) : 0,
         'country' => $input['country'] ?? null,
-        'viewCount' => $input['viewCount'] ?? 0,
-        'status' => $status
+        'viewCount' => $input['viewCount'] ?? 0
     ];
-    
-    // Для отладки записываем данные запроса
-    error_log("Car data for insertion: " . json_encode($carData));
     
     // Выполняем запрос
     $success = $stmt->execute($carData);
     
     if (!$success) {
-        error_log("Error executing add car query: " . json_encode($stmt->errorInfo()));
         throw new PDOException("Не удалось добавить автомобиль");
     }
     
@@ -121,8 +110,8 @@ try {
     // Добавляем изображения автомобиля, если они есть
     if (isset($input['images']) && is_array($input['images']) && !empty($input['images'])) {
         $imageStmt = $pdo->prepare('
-            INSERT INTO car_images (id, carId, url, alt, isMain) 
-            VALUES (:id, :carId, :url, :alt, :isMain)
+            INSERT INTO car_images (id, carId, url, alt) 
+            VALUES (:id, :carId, :url, :alt)
         ');
         
         foreach ($input['images'] as $image) {
@@ -130,8 +119,7 @@ try {
                 'id' => isset($image['id']) ? $image['id'] : generateUUID(),
                 'carId' => $input['id'],
                 'url' => $image['url'],
-                'alt' => $image['alt'] ?? "{$input['brand']} {$input['model']}",
-                'isMain' => isset($image['isMain']) ? ($image['isMain'] ? 1 : 0) : 0
+                'alt' => $image['alt'] ?? "{$input['brand']} {$input['model']}"
             ]);
         }
     }
@@ -143,7 +131,6 @@ try {
 } catch (PDOException $e) {
     // В случае ошибки отменяем транзакцию
     $pdo->rollBack();
-    error_log("PDO Exception in add_car: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'Ошибка при добавлении автомобиля: ' . $e->getMessage()]);
 }
 ?>

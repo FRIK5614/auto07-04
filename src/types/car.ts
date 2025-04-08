@@ -10,7 +10,7 @@ export interface CarPrice {
   base: number;
   withOptions?: number;
   discount?: number;
-  special?: number | boolean;
+  special?: number;
 }
 
 export interface CarEngine {
@@ -59,12 +59,41 @@ export interface Car {
   year: number;
   bodyType: string;
   colors: string[];
-  price: CarPrice;
-  engine: CarEngine;
-  transmission: CarTransmission;
+  price: {
+    base: number;
+    withOptions?: number;
+    discount?: number;
+    special?: boolean;
+  };
+  engine: {
+    type: string;
+    displacement: number;
+    power: number;
+    torque: number;
+    fuelType: string;
+  };
+  transmission: {
+    type: string;
+    gears: number;
+  };
   drivetrain: string;
-  dimensions: CarDimensions;
-  performance: CarPerformance;
+  dimensions: {
+    length: number;
+    width: number;
+    height: number;
+    wheelbase: number;
+    weight: number;
+    trunkVolume: number;
+  };
+  performance: {
+    acceleration: number;
+    topSpeed: number;
+    fuelConsumption: {
+      city: number;
+      highway: number;
+      combined: number;
+    };
+  };
   features?: CarFeature[];
   images?: CarImage[];
   description?: string;
@@ -105,8 +134,6 @@ export interface Order {
   createdAt: string;
   syncStatus?: 'pending' | 'synced' | 'failed';
   jsonFilePath?: string;
-  amount?: number;
-  customerComment?: string;
 }
 
 export interface OrdersFile {

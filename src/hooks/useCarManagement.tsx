@@ -2,7 +2,6 @@
 import { useCars as useGlobalCars } from "../contexts/CarsContext";
 import { Car } from "../types/car";
 import { useToast } from "@/hooks/use-toast";
-import { apiAdapter } from "@/services/adapter";
 
 export const useCarManagement = () => {
   const {
@@ -28,9 +27,7 @@ export const useCarManagement = () => {
     try {
       const carWithStatus = {
         ...car,
-        status: car.status || 'published',
-        isNew: car.isNew === undefined ? false : car.isNew,
-        isPopular: car.isPopular === undefined ? false : car.isPopular
+        status: car.status || 'published'
       };
       
       console.log('Updating car with status:', carWithStatus);
@@ -50,9 +47,7 @@ export const useCarManagement = () => {
     try {
       const carWithStatus = {
         ...car,
-        status: car.status || 'published',
-        isNew: car.isNew === undefined ? false : car.isNew,
-        isPopular: car.isPopular === undefined ? false : car.isPopular
+        status: car.status || 'published'
       };
       
       console.log('Adding car with status:', carWithStatus);
@@ -149,7 +144,6 @@ export const useCarManagement = () => {
     }
   };
   
-  // Реализуем функции сортировки
   const getPopularCarModels = (limit = 5): { model: string, count: number }[] => {
     const modelCounts: Record<string, number> = {};
     cars.forEach(car => {
@@ -168,91 +162,17 @@ export const useCarManagement = () => {
   };
   
   const sortCars = (carsToSort: Car[], criterion: string) => {
-    console.log('Сортировка по критерию:', criterion);
-    
     switch (criterion) {
       case 'priceAsc':
-        return [...carsToSort].sort((a, b) => {
-          const priceA = a.price.base - (a.price.discount || 0);
-          const priceB = b.price.base - (b.price.discount || 0);
-          return priceA - priceB;
-        });
+        return [...carsToSort].sort((a, b) => (a.price.base - (a.price.discount || 0)) - (b.price.base - (b.price.discount || 0)));
       case 'priceDesc':
-        return [...carsToSort].sort((a, b) => {
-          const priceA = a.price.base - (a.price.discount || 0);
-          const priceB = b.price.base - (b.price.discount || 0);
-          return priceB - priceA;
-        });
+        return [...carsToSort].sort((a, b) => (b.price.base - (b.price.discount || 0)) - (a.price.base - (a.price.discount || 0)));
       case 'yearDesc':
         return [...carsToSort].sort((a, b) => b.year - a.year);
       case 'yearAsc':
         return [...carsToSort].sort((a, b) => a.year - b.year);
       default:
         return carsToSort;
-    }
-  };
-  
-  const getCarsByCountry = (country: string): Car[] => {
-    return cars.filter(car => car.country === country);
-  };
-  
-  const getAvailableCountries = (): string[] => {
-    const countries = new Set<string>();
-    cars.forEach(car => {
-      if (car.country) {
-        countries.add(car.country);
-      }
-    });
-    return Array.from(countries);
-  };
-
-  // Функция для получения новых автомобилей с проверкой наличия
-  const getNewCars = (limit?: number): Car[] => {
-    // Добавляем дополнительную проверку isNew существует и равен true
-    const newCars = cars.filter(car => car && car.isNew === true && car.status === 'published');
-    console.log(`Найдено ${newCars.length} новых автомобилей из ${cars.length} всего`);
-    
-    if (cars.length > 0 && newCars.length === 0) {
-      console.log('Данные по флагу isNew:', cars.map(car => ({ id: car.id, isNew: car.isNew })));
-    }
-    
-    return limit ? newCars.slice(0, limit) : newCars;
-  };
-  
-  // Функция для получения популярных автомобилей с проверкой наличия
-  const getPopularCars = (limit?: number): Car[] => {
-    // Добавляем дополнительную проверку isPopular существует и равен true
-    const popularCars = cars.filter(car => car && car.isPopular === true && car.status === 'published');
-    console.log(`Найдено ${popularCars.length} популярных автомобилей из ${cars.length} всего`);
-    
-    if (cars.length > 0 && popularCars.length === 0) {
-      console.log('Данные по флагу isPopular:', cars.map(car => ({ id: car.id, isPopular: car.isPopular })));
-    }
-    
-    return limit ? popularCars.slice(0, limit) : popularCars;
-  };
-
-  // Принудительно загружаем данные из API при инициализации хука
-  const forceReloadCars = async () => {
-    console.log("Принудительная загрузка автомобилей из API");
-    try {
-      const carsFromApi = await apiAdapter.getCars();
-      console.log(`Загружено ${carsFromApi.length} автомобилей из API`);
-      
-      if (typeof reloadCars === 'function') {
-        // Если есть метод reloadCars в контексте, вызываем его
-        await reloadCars();
-      }
-      
-      return carsFromApi;
-    } catch (error) {
-      console.error("Ошибка при загрузке автомобилей из API:", error);
-      toast({
-        variant: "destructive",
-        title: "Ошибка загрузки",
-        description: "Не удалось загрузить список автомобилей из API"
-      });
-      return [];
     }
   };
 
@@ -265,7 +185,6 @@ export const useCarManagement = () => {
     setFilter,
     getCarById,
     reloadCars,
-    forceReloadCars, // Добавляем новый метод
     viewCar,
     deleteCar,
     updateCar,
@@ -276,9 +195,18 @@ export const useCarManagement = () => {
     sortCars,
     exportCarsData,
     importCarsData,
-    getCarsByCountry,
-    getAvailableCountries,
-    getNewCars,
-    getPopularCars
   };
 };
+
+function getGlobalCars() {
+  try {
+    return useGlobalCars();
+  } catch (error) {
+    console.error('Error accessing global cars context:', error);
+    return {
+      getPopularCarModels: () => [],
+      getCarsByBodyType: () => [],
+      sortCars: (cars: Car[], _: string) => cars
+    };
+  }
+}

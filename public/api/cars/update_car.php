@@ -12,9 +12,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $inputJSON = file_get_contents('php://input');
 $input = json_decode($inputJSON, true);
 
-// Для отладки записываем входящие данные в лог
-error_log("Received update_car request: " . $inputJSON);
-
 // Проверяем данные
 if (!isset($input['id'])) {
     echo json_encode(['success' => false, 'message' => 'Неверные данные запроса']);
@@ -24,15 +21,6 @@ if (!isset($input['id'])) {
 try {
     // Начинаем транзакцию
     $pdo->beginTransaction();
-    
-    // Проверяем, существует ли автомобиль
-    $checkStmt = $pdo->prepare('SELECT COUNT(*) FROM cars WHERE id = :id');
-    $checkStmt->execute(['id' => $input['id']]);
-    $carExists = $checkStmt->fetchColumn();
-    
-    if (!$carExists) {
-        throw new PDOException("Автомобиль с ID {$input['id']} не существует");
-    }
     
     // Формируем SQL запрос для обновления автомобиля
     $updateFields = [];
@@ -54,12 +42,6 @@ try {
             $updateFields[] = "$field = :$field";
             $params[$field] = $input[$field] ? 1 : 0;
         }
-    }
-    
-    // Обработка поля status
-    if (isset($input['status'])) {
-        $updateFields[] = "status = :status";
-        $params['status'] = $input['status'];
     }
     
     // Обработка массивов и объектов
@@ -181,19 +163,18 @@ try {
         $success = $stmt->execute($params);
         
         if (!$success) {
-            error_log("Error executing update car query: " . json_encode($stmt->errorInfo()));
             throw new PDOException("Не удалось обновить автомобиль");
         }
     }
     
     // Обновляем характеристики автомобиля, если они есть
-    if (isset($input['features'])) {
+    if (isset($input['features']) && is_array($input['features'])) {
         // Сначала удаляем существующие характеристики
         $deleteFeatureStmt = $pdo->prepare('DELETE FROM car_features WHERE carId = :carId');
         $deleteFeatureStmt->execute(['carId' => $input['id']]);
         
         // Затем добавляем новые
-        if (is_array($input['features']) && !empty($input['features'])) {
+        if (!empty($input['features'])) {
             $featureStmt = $pdo->prepare('
                 INSERT INTO car_features (id, carId, name, category, isStandard) 
                 VALUES (:id, :carId, :name, :category, :isStandard)
@@ -211,17 +192,17 @@ try {
         }
     }
     
-    // Обновляем изображения автомобиля только если они явно указаны в запросе
-    if (isset($input['images'])) {
+    // Обновляем изображения автомобиля, если они есть
+    if (isset($input['images']) && is_array($input['images'])) {
         // Сначала удаляем существующие изображения
         $deleteImageStmt = $pdo->prepare('DELETE FROM car_images WHERE carId = :carId');
         $deleteImageStmt->execute(['carId' => $input['id']]);
         
         // Затем добавляем новые
-        if (is_array($input['images']) && !empty($input['images'])) {
+        if (!empty($input['images'])) {
             $imageStmt = $pdo->prepare('
-                INSERT INTO car_images (id, carId, url, alt, isMain) 
-                VALUES (:id, :carId, :url, :alt, :isMain)
+                INSERT INTO car_images (id, carId, url, alt) 
+                VALUES (:id, :carId, :url, :alt)
             ');
             
             foreach ($input['images'] as $image) {
@@ -229,8 +210,7 @@ try {
                     'id' => isset($image['id']) ? $image['id'] : generateUUID(),
                     'carId' => $input['id'],
                     'url' => $image['url'],
-                    'alt' => $image['alt'] ?? "{$input['brand']} {$input['model']}",
-                    'isMain' => isset($image['isMain']) ? ($image['isMain'] ? 1 : 0) : 0
+                    'alt' => $image['alt'] ?? "{$input['brand']} {$input['model']}"
                 ]);
             }
         }
@@ -243,7 +223,6 @@ try {
 } catch (PDOException $e) {
     // В случае ошибки отменяем транзакцию
     $pdo->rollBack();
-    error_log("PDO Exception in update_car: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'Ошибка при обновлении автомобиля: ' . $e->getMessage()]);
 }
 ?>
