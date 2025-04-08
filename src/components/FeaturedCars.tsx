@@ -6,21 +6,24 @@ import { Link } from 'react-router-dom';
 import { Button } from './ui/button';
 import { ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from './ui/skeleton';
 
 interface FeaturedCarsProps {
-  title: string;
-  subtitle: string;
+  title?: string;
+  subtitle?: string;
   filter?: 'new' | 'popular' | 'all';
   limit?: number;
-  cars?: Car[]; // Массив автомобилей, передаваемый извне
+  cars?: Car[];
+  isLoading?: boolean; // Добавляем атрибут isLoading
 }
 
 const FeaturedCars: React.FC<FeaturedCarsProps> = ({ 
-  title, 
-  subtitle, 
+  title = "Популярные автомобили", 
+  subtitle = "Самые востребованные модели в нашем автосалоне", 
   filter = 'all',
   limit = 6,
-  cars = [] // Значение по умолчанию - пустой массив
+  cars = [],
+  isLoading = false
 }) => {
   const [filteredCars, setFilteredCars] = useState<Car[]>([]);
   const { toast } = useToast();
@@ -73,6 +76,37 @@ const FeaturedCars: React.FC<FeaturedCarsProps> = ({
     if (filter === 'popular') return car.isPopular === true && (car.status === 'published' || car.status === undefined);
     return car.status === 'published' || car.status === undefined;
   }).length > limit;
+  
+  // Если загружаются данные, показываем скелетон
+  if (isLoading) {
+    return (
+      <div className="py-12 bg-gray-50">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold mb-2">{title}</h2>
+            <p className="text-gray-600">{subtitle}</p>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array(limit).fill(0).map((_, index) => (
+              <div key={index} className="bg-white rounded-lg shadow-sm overflow-hidden">
+                <Skeleton className="h-48 w-full" />
+                <div className="p-4">
+                  <Skeleton className="h-6 w-3/4 mb-2" />
+                  <Skeleton className="h-4 w-1/2 mb-4" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
   
   // Если нет автомобилей для отображения, показываем заглушку вместо null
   if (filteredCars.length === 0) {

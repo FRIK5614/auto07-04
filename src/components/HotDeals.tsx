@@ -58,7 +58,7 @@ const HotDeals = () => {
             key={car.id} 
             car={car} 
             onViewDetails={() => viewHotDeal(car.id)}
-            withBadge 
+            withBadge={true}
             badgeText="Горячее предложение"
             badgeColor="bg-red-500"
           />

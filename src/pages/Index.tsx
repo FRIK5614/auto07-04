@@ -11,7 +11,7 @@ import { CarsProvider } from "@/contexts/CarsContext";
 import { useCarManagement } from "@/hooks/useCarManagement";
 
 const Index = () => {
-  const { forceReloadCars, loading } = useCarManagement();
+  const { cars, forceReloadCars, loading } = useCarManagement();
   
   // Загружаем данные из API при загрузке страницы
   useEffect(() => {
@@ -25,7 +25,14 @@ const Index = () => {
         <main className="flex-1">
           <Hero />
           <div className="container mx-auto px-4 py-8">
-            <FeaturedCars isLoading={loading} />
+            <FeaturedCars 
+              title="Популярные модели" 
+              subtitle="Наши самые востребованные автомобили"
+              filter="popular"
+              limit={6}
+              cars={cars}
+              isLoading={loading}
+            />
             <HotDeals />
             <NewArrivals />
             <WhyChooseUs />

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Car } from "@/types/car";
@@ -13,6 +14,10 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 interface CarCardProps {
   car: Car;
   className?: string;
+  withBadge?: boolean;
+  badgeText?: string;
+  badgeColor?: string;
+  onViewDetails?: () => void; // Добавляем новый пропс для обработки клика
 }
 
 const formatPrice = (price: number) => {
@@ -23,7 +28,14 @@ const formatPrice = (price: number) => {
   }).format(price);
 };
 
-const CarCard = ({ car, className }: CarCardProps) => {
+const CarCard = ({ 
+  car, 
+  className, 
+  withBadge, 
+  badgeText, 
+  badgeColor,
+  onViewDetails 
+}: CarCardProps) => {
   const { 
     toggleFavorite, 
     toggleCompare, 
@@ -53,6 +65,13 @@ const CarCard = ({ car, className }: CarCardProps) => {
     if (emblaApi) {
       const index = emblaApi.selectedScrollSnap();
       setCurrentImageIndex(index);
+    }
+  };
+
+  // Обработчик просмотра деталей
+  const handleViewDetails = () => {
+    if (onViewDetails) {
+      onViewDetails();
     }
   };
 
@@ -110,6 +129,14 @@ const CarCard = ({ car, className }: CarCardProps) => {
   return (
     <Card className={cn("overflow-hidden group h-full flex flex-col", className)}>
       <div className="relative overflow-hidden h-48">
+        {withBadge && badgeText && (
+          <div className="absolute top-2 right-2 z-10">
+            <Badge className={badgeColor || "bg-red-500"}>
+              {badgeText}
+            </Badge>
+          </div>
+        )}
+        
         <div className="h-full w-full" ref={emblaRef}>
           <div className="flex h-full">
             {hasValidImages ? validImages.map((image, idx) => (
@@ -117,7 +144,10 @@ const CarCard = ({ car, className }: CarCardProps) => {
                 key={`${car.id}-img-${idx}`} 
                 className="relative flex-none w-full h-full min-w-0"
               >
-                <Link to={`/car/${car.id}`}>
+                <Link 
+                  to={`/car/${car.id}`} 
+                  onClick={handleViewDetails}
+                >
                   <img
                     src={getImageUrl(image.url)}
                     alt={image.alt || `${car.brand} ${car.model}`}
@@ -133,7 +163,10 @@ const CarCard = ({ car, className }: CarCardProps) => {
               </div>
             )) : (
               <div className="relative flex-none w-full h-full min-w-0">
-                <Link to={`/car/${car.id}`}>
+                <Link 
+                  to={`/car/${car.id}`}
+                  onClick={handleViewDetails}
+                >
                   <img
                     src="/placeholder.svg"
                     alt={`${car.brand} ${car.model}`}
@@ -204,7 +237,11 @@ const CarCard = ({ car, className }: CarCardProps) => {
       </div>
       
       <CardContent className="flex-1 p-4">
-        <Link to={`/car/${car.id}`} className="hover:text-auto-blue-600 transition-colors">
+        <Link 
+          to={`/car/${car.id}`} 
+          className="hover:text-auto-blue-600 transition-colors"
+          onClick={handleViewDetails}
+        >
           <h3 className="text-lg font-semibold text-auto-gray-900">
             {car.brand} {car.model}
           </h3>
@@ -291,7 +328,10 @@ const CarCard = ({ car, className }: CarCardProps) => {
               variant="default" 
               className="col-span-2 bg-auto-blue-600 hover:bg-auto-blue-700 flex items-center justify-center"
             >
-              <Link to={`/car/${car.id}`}>
+              <Link 
+                to={`/car/${car.id}`}
+                onClick={handleViewDetails}
+              >
                 <Info className="mr-2 h-4 w-4" />
                 Подробнее
               </Link>
