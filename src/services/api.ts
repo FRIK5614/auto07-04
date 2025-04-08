@@ -1,4 +1,3 @@
-
 import { Car, Order } from '../types/car';
 
 // Базовый URL для API
@@ -361,5 +360,99 @@ export const checkApiAvailability = async (): Promise<boolean> => {
   } catch (error) {
     console.error('Ошибка при проверке доступности API:', error);
     return false;
+  }
+};
+
+/**
+ * Проверка доступности JSON-файлов 
+ * Используется для контроля наличия файлов заказов
+ */
+export const checkJsonFilesAvailability = async (): Promise<boolean> => {
+  try {
+    // Пытаемся обратиться к директории с JSON-файлами
+    console.log('[API] Проверка доступности JSON-файлов для заказов');
+    
+    // В реальном приложении здесь будет запрос к API для проверки
+    // файловой системы на сервере
+    
+    // Симулируем задержку
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Для демонстрации, будем считать, что файлы доступны
+    return true;
+  } catch (error) {
+    console.error('Ошибка при проверке доступности JSON-файлов:', error);
+    return false;
+  }
+};
+
+/**
+ * Загрузка заказов из JSON-файлов
+ * Используется как альтернатива базе данных
+ */
+export const loadOrdersFromJson = async (): Promise<Order[]> => {
+  try {
+    console.log('[API] Загрузка заказов из JSON-файлов');
+    
+    // В реальном приложении здесь будет запрос к API для загрузки
+    // данных из JSON-файлов на сервере
+    
+    // Для тестирования создадим демо-заказы
+    const demoOrders: Order[] = [
+      {
+        id: 'order-' + Date.now() + '-1',
+        carId: 'demo-car-1',
+        customerName: 'Иван Петров',
+        customerPhone: '+7 (900) 123-45-67',
+        customerEmail: 'ivan@example.com',
+        message: 'Хотел бы уточнить комплектацию',
+        status: 'new',
+        createdAt: new Date().toISOString(),
+        syncStatus: 'synced'
+      },
+      {
+        id: 'order-' + Date.now() + '-2',
+        carId: 'demo-car-2',
+        customerName: 'Елена Сидорова',
+        customerPhone: '+7 (900) 987-65-43',
+        customerEmail: 'elena@example.com',
+        status: 'processing',
+        createdAt: new Date(Date.now() - 86400000).toISOString(),
+        syncStatus: 'synced'
+      }
+    ];
+    
+    // Симулируем задержку
+    await new Promise(resolve => setTimeout(resolve, 700));
+    
+    return demoOrders;
+  } catch (error) {
+    console.error('Ошибка при загрузке заказов из JSON:', error);
+    return [];
+  }
+};
+
+/**
+ * Сохранение заказа в JSON-файл
+ * Используется как альтернатива базе данных
+ */
+export const saveOrderToJson = async (order: Order): Promise<string> => {
+  try {
+    console.log('[API] Сохранение заказа в JSON-файл', order);
+    
+    // В реальном приложении здесь будет запрос к API для сохранения
+    // данных в JSON-файл на сервере
+    
+    // Симулируем задержку
+    await new Promise(resolve => setTimeout(resolve, 600));
+    
+    // Возвращаем имитацию пути к файлу
+    const jsonFilePath = `/orders/${order.id}.json`;
+    console.log(`[API] Заказ сохранен в ${jsonFilePath}`);
+    
+    return jsonFilePath;
+  } catch (error) {
+    console.error('Ошибка при сохранении заказа в JSON:', error);
+    throw new Error('Не удалось сохранить заказ');
   }
 };
