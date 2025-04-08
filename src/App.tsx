@@ -19,6 +19,7 @@ import { AdminProvider } from './contexts/AdminContext';
 import { CarsProvider } from './contexts/CarsContext';
 import { Toaster } from './components/ui/toaster';
 import Catalog from './pages/Catalog';
+import HotDeals from './pages/HotDeals';
 
 function App() {
   return (
@@ -34,6 +35,7 @@ function App() {
                 <Route path="/favorites" element={<Favorites />} />
                 <Route path="/compare" element={<CompareCars />} />
                 <Route path="/catalog" element={<Catalog />} />
+                <Route path="/hot-deals" element={<HotDeals />} />
                 <Route path="/admin/login" element={<AdminLogin />} />
                 <Route path="/admin/*" element={
                   <AdminLayout>

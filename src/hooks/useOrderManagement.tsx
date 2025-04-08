@@ -3,11 +3,13 @@ import { useState, useCallback } from 'react';
 import { Order } from '@/types/car';
 import { useToast } from "@/hooks/use-toast";
 import * as apiService from '@/services/api';
+import { useTelegramNotifications } from '@/hooks/useTelegramNotifications';
 
 export const useOrderManagement = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const { toast } = useToast();
+  const { notifyNewOrder } = useTelegramNotifications();
 
   const syncOrders = useCallback(async (showNotification = true) => {
     setLoading(true);
@@ -127,6 +129,9 @@ export const useOrderManagement = () => {
       // Add the order to the local state
       setOrders(current => [...current, updatedOrder]);
       
+      // Отправляем уведомление в Telegram
+      await notifyNewOrder(updatedOrder);
+      
       return true;
     } catch (error) {
       console.error('Ошибка при создании заказа:', error);
@@ -134,7 +139,7 @@ export const useOrderManagement = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [notifyNewOrder]);
 
   return {
     orders,

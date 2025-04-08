@@ -11,7 +11,7 @@ import {
   TooltipProvider,
   TooltipTrigger
 } from './ui/tooltip';
-import { Heart, Menu, ShoppingCart, X } from 'lucide-react';
+import { Heart, Menu, ShoppingCart, Flame, X } from 'lucide-react';
 
 const Header: React.FC = () => {
   const location = useLocation();
@@ -80,6 +80,14 @@ const Header: React.FC = () => {
             >
               Каталог
             </Link>
+            <Link 
+              to="/hot-deals" 
+              className={`text-sm font-medium transition-colors hover:text-primary ${
+                location.pathname === '/hot-deals' ? 'text-primary border-b-2 border-primary' : 'text-gray-600'
+              }`}
+            >
+              Горячие предложения
+            </Link>
             {isAdmin && (
               <Link 
                 to="/admin" 
@@ -95,6 +103,25 @@ const Header: React.FC = () => {
           {/* Right side buttons */}
           <div className="flex items-center space-x-2">
             <TooltipProvider>
+              {/* Hot Deals button */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    asChild
+                    className="relative"
+                  >
+                    <Link to="/hot-deals">
+                      <Flame className="h-5 w-5 text-orange-500" />
+                    </Link>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Горячие предложения</p>
+                </TooltipContent>
+              </Tooltip>
+
               {/* Favorites button */}
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -178,6 +205,15 @@ const Header: React.FC = () => {
               onClick={() => setIsMobileMenuOpen(false)}
             >
               Каталог
+            </Link>
+            <Link 
+              to="/hot-deals" 
+              className={`block py-2 px-4 rounded-md ${
+                location.pathname === '/hot-deals' ? 'bg-primary/10 text-primary' : ''
+              }`}
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Горячие предложения
             </Link>
             <Link 
               to="/favorites" 
