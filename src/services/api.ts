@@ -6,8 +6,6 @@ const BASE_URL = 'https://catalog.tmcavto.ru';
 
 // Temporary image storage for demo purposes
 const IMAGE_STORAGE_PREFIX = '/car/image/';
-// JSON storage for orders
-const ORDERS_JSON_PREFIX = '/orders/';
 
 /**
  * Получение данных о всех автомобилях
@@ -18,7 +16,6 @@ export const fetchAllCars = async (): Promise<Car[]> => {
   try {
     // В реальном приложении здесь будет запрос к вашему бэкенду
     // Например: const response = await fetch(`${BASE_URL}/api/cars`);
-    // Но сейчас мы используем временные данные из локальных файлов
     console.log(`[API] Имитация запроса к ${BASE_URL}/api/cars`);
     
     // Для тестирования используем существующие данные
@@ -115,16 +112,7 @@ export const uploadImage = async (file: File): Promise<string> => {
     // For demo purposes, simulate a server-side path
     const fileName = `${Date.now()}-${file.name.replace(/\s/g, '_')}`;
     const serverPath = `${IMAGE_STORAGE_PREFIX}${fileName}`;
-    
-    // Create an object URL for demo purposes
-    const objectUrl = URL.createObjectURL(file);
-    
-    // Store the mapping between object URL and server path
-    const urlMapping = localStorage.getItem('imageUrlMapping') || '{}';
-    const mapping = JSON.parse(urlMapping);
-    mapping[objectUrl] = serverPath;
-    localStorage.setItem('imageUrlMapping', JSON.stringify(mapping));
-    
+        
     // Simulate delay for network request
     await new Promise(resolve => setTimeout(resolve, 1000));
     
@@ -144,10 +132,6 @@ export const assignImageToCar = async (carId: string, imagePath: string): Promis
     console.log(`[API] Присвоение изображения ${imagePath} автомобилю ${carId}`);
     
     // In a real app, this would update a database record
-    const carImageMapping = localStorage.getItem('carImageMapping') || '{}';
-    const mapping = JSON.parse(carImageMapping);
-    mapping[carId] = imagePath;
-    localStorage.setItem('carImageMapping', JSON.stringify(mapping));
     
     // Simulate delay
     await new Promise(resolve => setTimeout(resolve, 300));
@@ -236,141 +220,6 @@ export const submitPurchaseRequest = async (formData: Record<string, any>): Prom
       success: false,
       message: "Произошла ошибка при отправке заявки. Пожалуйста, попробуйте позже."
     };
-  }
-};
-
-/**
- * Сохранение заказа в JSON-файл
- * @param order Заказ для сохранения
- * @returns Путь к созданному файлу
- */
-export const saveOrderToJson = async (order: Order): Promise<string> => {
-  try {
-    // Создаем имя файла на основе ID заказа и временной метки
-    // Используем более надежное формирование имени файла с дополнительной временной меткой
-    const timestamp = Date.now();
-    const fileName = `order_${order.id.replace(/[^a-zA-Z0-9]/g, '_')}_${timestamp}.json`;
-    const filePath = `${ORDERS_JSON_PREFIX}${fileName}`;
-    
-    // Получаем существующие JSON-файлы заказов или создаем новый объект
-    const ordersJsonFiles = localStorage.getItem('ordersJsonFiles') || '{}';
-    let jsonFilesMap;
-    
-    try {
-      jsonFilesMap = JSON.parse(ordersJsonFiles);
-    } catch (e) {
-      console.error('Ошибка при разборе ordersJsonFiles:', e);
-      jsonFilesMap = {};
-    }
-    
-    // Сохраняем заказ в JSON-структуру более надежно
-    const orderCopy = { ...order };
-    
-    // Обеспечиваем, что объект сериализуем
-    const serializableOrder = JSON.parse(JSON.stringify(orderCopy));
-    
-    // Сохраняем новый файл в структуру
-    jsonFilesMap[filePath] = {
-      fileName,
-      order: JSON.stringify(serializableOrder),
-      createdAt: new Date().toISOString(),
-      lastModified: new Date().toISOString()
-    };
-    
-    // Обновляем структуру в localStorage с защитой от ошибок
-    try {
-      localStorage.setItem('ordersJsonFiles', JSON.stringify(jsonFilesMap));
-      console.log(`[API] Заказ ${order.id} сохранен в JSON-файл: ${filePath}`);
-    } catch (storageError) {
-      console.error('Ошибка при сохранении в localStorage:', storageError);
-      // В случае проблем с localStorage, создаем версию с меньшим количеством заказов
-      const keys = Object.keys(jsonFilesMap);
-      // Если слишком много записей, удаляем самые старые
-      if (keys.length > 50) {
-        const limitedMap = {};
-        const recentKeys = keys.slice(-50);
-        recentKeys.forEach(key => {
-          limitedMap[key] = jsonFilesMap[key];
-        });
-        localStorage.setItem('ordersJsonFiles', JSON.stringify(limitedMap));
-      }
-    }
-    
-    // Добавляем задержку для имитации сетевого запроса
-    await new Promise(resolve => setTimeout(resolve, 200));
-    
-    return filePath;
-  } catch (error) {
-    console.error('Ошибка при сохранении заказа в JSON:', error);
-    throw new Error('Не удалось сохранить заказ в JSON-файл');
-  }
-};
-
-/**
- * Загрузка заказов из JSON-файлов
- * @returns Массив заказов
- */
-export const loadOrdersFromJson = async (): Promise<Order[]> => {
-  try {
-    // Получаем сохраненные JSON-файлы заказов
-    const ordersJsonFiles = localStorage.getItem('ordersJsonFiles');
-    
-    if (!ordersJsonFiles) {
-      console.log('[API] Нет сохраненных JSON-файлов с заказами');
-      return [];
-    }
-    
-    let jsonFilesMap;
-    try {
-      jsonFilesMap = JSON.parse(ordersJsonFiles);
-    } catch (parseError) {
-      console.error('Ошибка при разборе ordersJsonFiles:', parseError);
-      // В случае ошибки разбора, сбрасываем хранилище
-      localStorage.removeItem('ordersJsonFiles');
-      return [];
-    }
-    
-    const orders: Order[] = [];
-    
-    // Обрабатываем каждый JSON-файл с защитой от ошибок
-    for (const [filePath, fileData] of Object.entries(jsonFilesMap)) {
-      try {
-        // @ts-ignore - обходим проверку типов для fileData.order
-        if (!fileData || typeof fileData.order !== 'string') {
-          console.error(`Некорректные данные для файла ${filePath}`);
-          continue;
-        }
-        
-        // @ts-ignore
-        const orderData = JSON.parse(fileData.order);
-        
-        // Проверка обязательных полей
-        if (!orderData.id || !orderData.customerName) {
-          console.error(`Пропущены обязательные поля в заказе ${filePath}`);
-          continue;
-        }
-        
-        // Добавляем путь к файлу, если его нет
-        if (!orderData.jsonFilePath) {
-          orderData.jsonFilePath = filePath;
-        }
-        
-        // Добавляем статус синхронизации, если его нет
-        if (!orderData.syncStatus) {
-          orderData.syncStatus = 'synced';
-        }
-        
-        orders.push(orderData);
-      } catch (e) {
-        console.error(`Ошибка при разборе JSON-файла ${filePath}:`, e);
-      }
-    }
-    
-    console.log(`[API] Загружено ${orders.length} заказов из JSON-файлов`);
-    return orders;
-  } catch (error) {
-    console.error('Ошибка при загрузке заказов из JSON:', error);
-    throw new Error('Не удалось загрузить заказы из JSON-файлов');
   }
 };
 
@@ -498,27 +347,19 @@ export const fetchCarsByCountryWithFallback = async (country: string): Promise<C
 };
 
 /**
- * Проверка существования и доступности JSON-файлов для заказов
+ * Проверка существования и доступности API
  */
-export const checkJsonFilesAvailability = async (): Promise<boolean> => {
+export const checkApiAvailability = async (): Promise<boolean> => {
   try {
-    // В реальном приложении здесь можно проверить доступность директории для сохранения JSON
-    // Но в эмуляции мы просто проверим, что localStorage доступен
+    // В реальном приложении - проверка доступности API
+    console.log('[API] Проверка доступности API');
     
-    const testKey = 'jsonFilesAvailabilityTest';
-    localStorage.setItem(testKey, 'test');
+    // Симулируем проверку
+    await new Promise(resolve => setTimeout(resolve, 500));
     
-    if (localStorage.getItem(testKey) === 'test') {
-      localStorage.removeItem(testKey);
-      
-      console.log('[API] Проверка доступности JSON-файлов: успешно');
-      return true;
-    }
-    
-    console.error('[API] Проверка доступности JSON-файлов: localStorage недоступен');
-    return false;
+    return true;
   } catch (error) {
-    console.error('Ошибка при проверке доступности JSON-файлов:', error);
+    console.error('Ошибка при проверке доступности API:', error);
     return false;
   }
 };

@@ -74,7 +74,7 @@ export const useCars = () => {
   const { favoriteCarIds, compareCarIds } = favoritesAndCompare;
   
   // Extract these methods from orderManagement to ensure they're properly typed
-  const { createOrder, syncOrders, processOrder, deleteOrder, orders, loading: orderLoading } = orderManagement;
+  const { createOrder, processOrder, deleteOrder, orders, loading: orderLoading } = orderManagement;
   
   // Explicitly extract key methods from carManagement with error handling
   const { 
@@ -84,7 +84,8 @@ export const useCars = () => {
     getCarById,
     viewCar,
     getCarsByCountry,
-    getAvailableCountries
+    getAvailableCountries,
+    forceReloadCars
   } = carManagement;
   
   // Wrap these methods with proper error handling
@@ -141,6 +142,7 @@ export const useCars = () => {
     viewCar,
     getCarsByCountry,
     getAvailableCountries,
+    forceReloadCars,
     
     // Favorites and comparison
     ...favoritesAndCompare,
@@ -154,7 +156,6 @@ export const useCars = () => {
     // Order management
     ...orderManagement,
     createOrder,
-    syncOrders,
     processOrder,
     deleteOrder,
     orders,
