@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { Order } from '@/types/car';
 import { useToast } from "@/hooks/use-toast";
@@ -111,8 +112,10 @@ export const useOrderManagement = () => {
   const createOrder = useCallback(async (order: Order) => {
     setLoading(true);
     try {
+      console.log("Creating order:", order);
       // Save the order to JSON
       const jsonFilePath = await apiService.saveOrderToJson(order);
+      console.log("Order saved to JSON, path:", jsonFilePath);
       
       // Update the order with the JSON file path
       const updatedOrder = {

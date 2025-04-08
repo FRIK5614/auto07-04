@@ -31,8 +31,8 @@ export const useCars = () => {
   const importCarsData = (data: Car[] | Car): { success: number, failed: number } => {
     return carManagement.importCarsData(data);
   };
-
-  // Explicitly expose createOrder from orderManagement
+  
+  // Extract these methods from orderManagement to ensure they're properly typed
   const { createOrder, syncOrders, processOrder, deleteOrder, orders, loading: orderLoading } = orderManagement;
 
   return {
@@ -52,8 +52,9 @@ export const useCars = () => {
     ...carImages,
     
     // Order management
+    // We'll spread orderManagement but also explicitly include key functions
+    // to ensure TypeScript recognizes them
     ...orderManagement,
-    // Explicitly including these to ensure TypeScript recognizes them
     createOrder,
     syncOrders,
     processOrder,
