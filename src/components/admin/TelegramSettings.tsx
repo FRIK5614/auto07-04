@@ -4,30 +4,53 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormDescription } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { useTelegramNotifications } from "@/hooks/useTelegramNotifications";
 import { Loader2 } from "lucide-react";
 
+const formSchema = z.object({
+  telegramToken: z.string().min(1, "Токен не может быть пустым"),
+  telegramChannel: z.string().min(1, "ID канала не может быть пустым"),
+  adminNotifyList: z.string()
+});
+
+type TelegramFormValues = z.infer<typeof formSchema>;
+
 const TelegramSettings = () => {
   const { settings, isLoading, updateSettings } = useTelegramNotifications();
-  const [token, setToken] = useState("");
-  const [channel, setChannel] = useState("");
-  const [adminList, setAdminList] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
-  useEffect(() => {
-    // Обновляем состояние формы при загрузке настроек
-    setToken(settings.telegramToken);
-    setChannel(settings.telegramChannel);
-    setAdminList(settings.adminNotifyList);
-  }, [settings]);
+  // Инициализируем форму
+  const form = useForm<TelegramFormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      telegramToken: "",
+      telegramChannel: "",
+      adminNotifyList: ""
+    }
+  });
 
-  const handleSave = async () => {
+  // Обновляем форму при загрузке настроек
+  useEffect(() => {
+    if (settings) {
+      form.reset({
+        telegramToken: settings.telegramToken || "",
+        telegramChannel: settings.telegramChannel || "",
+        adminNotifyList: settings.adminNotifyList || ""
+      });
+    }
+  }, [settings, form]);
+
+  const handleSave = async (data: TelegramFormValues) => {
     setIsSaving(true);
     try {
       await updateSettings({
-        telegramToken: token,
-        telegramChannel: channel,
-        adminNotifyList: adminList
+        telegramToken: data.telegramToken,
+        telegramChannel: data.telegramChannel,
+        adminNotifyList: data.adminNotifyList
       });
     } finally {
       setIsSaving(false);
@@ -48,58 +71,75 @@ const TelegramSettings = () => {
             <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
           </div>
         ) : (
-          <div className="space-y-4">
-            <div className="grid w-full items-center gap-1.5">
-              <Label htmlFor="token">Токен Telegram бота</Label>
-              <Input
-                id="token"
-                type="text"
-                placeholder="Введите токен Telegram бота"
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleSave)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="telegramToken"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Токен Telegram бота</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Введите токен Telegram бота"
+                        {...field}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
               />
-            </div>
-            
-            <div className="grid w-full items-center gap-1.5">
-              <Label htmlFor="channel">ID канала или чата</Label>
-              <Input
-                id="channel"
-                type="text"
-                placeholder="Например: @my_channel или -1001234567890"
-                value={channel}
-                onChange={(e) => setChannel(e.target.value)}
+              
+              <FormField
+                control={form.control}
+                name="telegramChannel"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>ID канала или чата</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Например: @my_channel или -1001234567890"
+                        {...field}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
               />
-            </div>
-            
-            <div className="grid w-full items-center gap-1.5">
-              <Label htmlFor="adminList">Список администраторов для уведомлений</Label>
-              <Input
-                id="adminList"
-                type="text"
-                placeholder="Например: 123456789,987654321"
-                value={adminList}
-                onChange={(e) => setAdminList(e.target.value)}
+              
+              <FormField
+                control={form.control}
+                name="adminNotifyList"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Список администраторов для уведомлений</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Например: 123456789,987654321"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Введите ID пользователей Telegram через запятую
+                    </FormDescription>
+                  </FormItem>
+                )}
               />
-              <p className="text-sm text-gray-500 mt-1">
-                Введите ID пользователей Telegram через запятую
-              </p>
-            </div>
-            
-            <Button 
-              onClick={handleSave} 
-              disabled={isSaving}
-              className="bg-blue-500 hover:bg-blue-600"
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Сохранение...
-                </>
-              ) : (
-                "Сохранить настройки"
-              )}
-            </Button>
-          </div>
+              
+              <Button 
+                type="submit" 
+                disabled={isSaving}
+                className="bg-blue-500 hover:bg-blue-600"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Сохранение...
+                  </>
+                ) : (
+                  "Сохранить настройки"
+                )}
+              </Button>
+            </form>
+          </Form>
         )}
       </CardContent>
     </Card>
