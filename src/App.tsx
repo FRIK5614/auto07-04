@@ -55,7 +55,7 @@ function App() {
         </AdminProvider>
       </CarsProvider>
     </BrowserRouter>
-  )
+  );
 }
 
 export default App;
