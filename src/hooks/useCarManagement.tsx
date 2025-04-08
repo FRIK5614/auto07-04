@@ -177,9 +177,9 @@ export const useCarManagement = () => {
     updateCar,
     addCar,
     getMostViewedCars,
-    getPopularCarModels: getGlobalCars().getPopularCarModels || (() => []),
-    getCarsByBodyType: getGlobalCars().getCarsByBodyType || (() => []),
-    sortCars: getGlobalCars().sortCars || ((cars, _) => cars),
+    getPopularCarModels,
+    getCarsByBodyType,
+    sortCars,
     exportCarsData,
     importCarsData,
   };
@@ -190,6 +190,10 @@ function getGlobalCars() {
     return useGlobalCars();
   } catch (error) {
     console.error('Error accessing global cars context:', error);
-    return {};
+    return {
+      getPopularCarModels: () => [],
+      getCarsByBodyType: () => [],
+      sortCars: (cars: Car[], _: string) => cars
+    };
   }
 }

@@ -60,6 +60,7 @@ export interface Car {
   colors: string[];
   price: {
     base: number;
+    withOptions?: number;
     discount?: number;
     special?: boolean;
   };
