@@ -46,7 +46,8 @@ export const useFavoritesAndCompare = () => {
   return {
     favoriteCars,
     comparisonCars,
-    compareCarsIds: compareCars,
+    favoriteCarIds: favorites,  // Added this alias
+    compareCarIds: compareCars, // Added this alias
     toggleFavorite,
     toggleCompare,
     clearCompare,
