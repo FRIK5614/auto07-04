@@ -1,10 +1,9 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { Car, CarFilter, Order } from "../types/car";
-import { fetchAllCars } from "../services/api";
+import { Car, CarFilter, Order, OrdersFile } from "../types/car";
+import { fetchAllCars, loadOrdersFromJson, saveOrderToJson } from "../services/api";
 import { useToast } from "@/hooks/use-toast";
 import { v4 as uuidv4 } from "uuid";
-import { apiAdapter } from '@/services/adapter';
+import { format } from "date-fns";
 
 interface CarsContextType {
   cars: Car[];
@@ -31,6 +30,7 @@ interface CarsContextType {
   getOrders: () => Order[];
   exportCarsData: () => Car[];
   importCarsData: (data: Car[] | Car) => { success: number, failed: number };
+  syncOrders: () => Promise<void>;
 }
 
 const CarsContext = createContext<CarsContextType | undefined>(undefined);
@@ -46,16 +46,206 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
   const [filter, setFilter] = useState<CarFilter>({});
   const { toast } = useToast();
 
+  const syncOrders = async () => {
+    try {
+      console.log("Начало синхронизации заказов с JSON...");
+      const jsonOrders = await loadOrdersFromJson();
+      
+      if (!jsonOrders || jsonOrders.length === 0) {
+        console.log("JSON-файлы с заказами не найдены");
+        const savedOrders = localStorage.getItem("orders");
+        if (savedOrders) {
+          try {
+            const localOrders = JSON.parse(savedOrders);
+            if (localOrders && localOrders.length > 0) {
+              console.log(`Найдено ${localOrders.length} локальных заказов, но нет JSON. Используем локальные.`);
+              for (const localOrder of localOrders) {
+                try {
+                  const jsonFilePath = await saveOrderToJson(localOrder);
+                  localOrder.jsonFilePath = jsonFilePath;
+                  localOrder.syncStatus = 'synced';
+                } catch (saveError) {
+                  console.error(`Ошибка при сохранении локального заказа ${localOrder.id} в JSON:`, saveError);
+                }
+              }
+              localStorage.setItem("orders", JSON.stringify(localOrders));
+              setOrders(localOrders);
+              return;
+            }
+          } catch (parseError) {
+            console.error("Ошибка при разборе локальных заказов:", parseError);
+          }
+        }
+        return;
+      }
+
+      console.log(`Получено ${jsonOrders.length} заказов из JSON-файлов`);
+
+      const ordersWithSyncStatus = jsonOrders.map(order => ({
+        ...order,
+        syncStatus: order.syncStatus || 'synced' as const
+      }));
+      
+      setOrders(ordersWithSyncStatus);
+      
+      try {
+        localStorage.setItem("orders", JSON.stringify(ordersWithSyncStatus));
+      } catch (storageError) {
+        console.error("Ошибка при сохранении заказов в localStorage:", storageError);
+        
+        if (ordersWithSyncStatus.length > 50) {
+          const limitedOrders = ordersWithSyncStatus.slice(-50);
+          try {
+            localStorage.setItem("orders", JSON.stringify(limitedOrders));
+            console.log("Сохранены последние 50 заказов из-за ограничений localStorage");
+          } catch (limitError) {
+            console.error("Не удалось сохранить даже ограниченный список заказов:", limitError);
+          }
+        }
+      }
+      
+      const csvContent = saveOrdersToCSV();
+      localStorage.setItem("ordersCSVBackup", csvContent);
+      localStorage.setItem("ordersCSVBackupTime", new Date().toISOString());
+      console.log("Синхронизация заказов успешно завершена");
+    } catch (error) {
+      console.error("Ошибка при синхронизации заказов:", error);
+      
+      const savedOrders = localStorage.getItem("orders");
+      if (savedOrders) {
+        try {
+          setOrders(JSON.parse(savedOrders));
+          console.log("Восстановлены заказы из localStorage после ошибки синхронизации");
+        } catch (err) {
+          console.error("Ошибка при восстановлении заказов из localStorage:", err);
+        }
+      }
+      
+      throw error;
+    }
+  };
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        await syncOrders();
+      } catch (fetchError) {
+        console.error("Ошибка при загрузке заказов:", fetchError);
+        const savedOrders = localStorage.getItem("orders");
+        if (savedOrders) {
+          try {
+            setOrders(JSON.parse(savedOrders));
+            console.log("Загружены заказы из localStorage");
+          } catch (err) {
+            console.error("Ошибка при разборе сохраненных заказов:", err);
+          }
+        }
+      }
+    };
+    
+    fetchOrders();
+    
+    const syncInterval = setInterval(() => {
+      syncOrders().catch(error => {
+        console.error("Периодическая синхронизация не удалась:", error);
+      });
+    }, 10000);
+    
+    return () => {
+      clearInterval(syncInterval);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (orders.length > 0) {
+      localStorage.setItem("orders", JSON.stringify(orders));
+      
+      const csvContent = saveOrdersToCSV();
+      localStorage.setItem("ordersCSVBackup", csvContent);
+      localStorage.setItem("ordersCSVBackupTime", new Date().toISOString());
+    }
+  }, [orders]);
+
+  const saveOrdersToCSV = () => {
+    if (!orders || orders.length === 0) return "";
+    
+    const headers = [
+      'ID', 'Дата создания', 'Статус', 'Имя клиента', 
+      'Телефон', 'Email', 'ID автомобиля', 'Марка', 'Модель', 'Синхронизация', 'JSON файл'
+    ];
+    
+    const csvRows = [];
+    csvRows.push(headers.join(','));
+    
+    for (const order of orders) {
+      const car = cars.find(c => c.id === order.carId);
+      const row = [
+        order.id,
+        new Date(order.createdAt).toISOString().slice(0, 19).replace('T', ' '),
+        order.status,
+        order.customerName,
+        order.customerPhone,
+        order.customerEmail,
+        order.carId,
+        car ? car.brand : 'Н/Д',
+        car ? car.model : 'Н/Д',
+        order.syncStatus || 'Н/Д',
+        order.jsonFilePath || 'Н/Д'
+      ];
+      
+      const escapedRow = row.map(value => {
+        const strValue = String(value).replace(/"/g, '""');
+        return value.includes(',') || value.includes('"') || value.includes('\n') 
+          ? `"${strValue}"` 
+          : strValue;
+      });
+      
+      csvRows.push(escapedRow.join(','));
+    }
+    
+    const csvContent = csvRows.join('\n');
+    return csvContent;
+  };
+
   const loadCars = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      // Загружаем данные напрямую из API
+      const savedCars = localStorage.getItem("carsCatalog");
+      if (savedCars) {
+        try {
+          const parsedCars = JSON.parse(savedCars);
+          console.log("Loaded cars from localStorage:", parsedCars.length);
+          setCars(parsedCars);
+          setFilteredCars(parsedCars);
+          setLoading(false);
+          
+          await syncOrders();
+          
+          fetchAllCars().then(apiCars => {
+            if (apiCars && apiCars.length > 0) {
+              setCars(apiCars);
+              setFilteredCars(apiCars);
+              localStorage.setItem("carsCatalog", JSON.stringify(apiCars));
+            }
+          }).catch(err => {
+            console.error("Background refresh of cars failed:", err);
+          });
+          
+          return;
+        } catch (err) {
+          console.error("Failed to parse saved cars, will load from API:", err);
+        }
+      }
+      
       const data = await fetchAllCars();
       console.log("Loaded cars from API:", data.length);
       setCars(data);
       setFilteredCars(data);
+      localStorage.setItem("carsCatalog", JSON.stringify(data));
+      
+      await syncOrders();
       
       setLoading(false);
     } catch (err) {
@@ -69,6 +259,57 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
         description: errorMessage
       });
     }
+  };
+
+  const createSampleOrders = async (data: Car[]) => {
+    const sampleOrders: Order[] = [
+      {
+        id: "order1",
+        carId: data[0]?.id || "car1",
+        customerName: "Иван Иванов",
+        customerPhone: "+7 (999) 123-45-67",
+        customerEmail: "ivan@example.com",
+        status: "new",
+        createdAt: new Date().toISOString(),
+        syncStatus: "pending"
+      },
+      {
+        id: "order2",
+        carId: data[1]?.id || "car2",
+        customerName: "Петр Петров",
+        customerPhone: "+7 (999) 765-43-21",
+        customerEmail: "petr@example.com",
+        status: "processing",
+        createdAt: new Date(Date.now() - 86400000).toISOString(),
+        syncStatus: "pending"
+      },
+      {
+        id: "order3",
+        carId: data[2]?.id || "car3",
+        customerName: "Мария Сидорова",
+        customerPhone: "+7 (999) 555-55-55",
+        customerEmail: "maria@example.com",
+        status: "completed",
+        createdAt: new Date(Date.now() - 172800000).toISOString(),
+        syncStatus: "pending"
+      },
+    ];
+    
+    setOrders(sampleOrders);
+    localStorage.setItem("orders", JSON.stringify(sampleOrders));
+    
+    for (const order of sampleOrders) {
+      try {
+        const jsonFilePath = await saveOrderToJson(order);
+        order.jsonFilePath = jsonFilePath;
+        order.syncStatus = "synced";
+      } catch (error) {
+        console.error(`Failed to save sample order ${order.id} to JSON:`, error);
+        order.syncStatus = "failed";
+      }
+    }
+    
+    localStorage.setItem("orders", JSON.stringify(sampleOrders));
   };
 
   useEffect(() => {
@@ -242,15 +483,45 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
 
   const processOrder = async (orderId: string, status: Order['status']) => {
     const updatedOrders = orders.map(order => 
-      order.id === orderId ? { ...order, status } : order
+      order.id === orderId ? { ...order, status, syncStatus: 'pending' as const } : order
     );
     
     setOrders(updatedOrders);
+    localStorage.setItem("orders", JSON.stringify(updatedOrders));
     
-    toast({
-      title: "Заказ обновлен",
-      description: `Статус заказа изменен на: ${status}`
-    });
+    const orderToUpdate = updatedOrders.find(order => order.id === orderId);
+    if (orderToUpdate) {
+      try {
+        const jsonFilePath = await saveOrderToJson(orderToUpdate);
+        
+        const finalOrders = updatedOrders.map(order => 
+          order.id === orderId ? { ...order, syncStatus: 'synced' as const, jsonFilePath } : order
+        );
+        
+        setOrders(finalOrders);
+        localStorage.setItem("orders", JSON.stringify(finalOrders));
+        
+        toast({
+          title: "Заказ обновлен",
+          description: `Статус заказа изменен на: ${status}`
+        });
+      } catch (error) {
+        console.error(`Failed to update order ${orderId} in JSON:`, error);
+        
+        const failedOrders = updatedOrders.map(order => 
+          order.id === orderId ? { ...order, syncStatus: 'failed' as const } : order
+        );
+        
+        setOrders(failedOrders);
+        localStorage.setItem("orders", JSON.stringify(failedOrders));
+        
+        toast({
+          variant: "destructive",
+          title: "Ошибка обновления",
+          description: "Заказ обновлен локально, но не сохранен в JSON-файле"
+        });
+      }
+    }
   };
 
   const getOrders = () => {
@@ -280,6 +551,7 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
         
         setCars(processedCars);
         setFilteredCars(processedCars);
+        localStorage.setItem("carsCatalog", JSON.stringify(processedCars));
         
         toast({
           title: "Импорт завершен",
@@ -310,6 +582,12 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
     return car as Car;
   };
 
+  useEffect(() => {
+    if (cars.length > 0) {
+      localStorage.setItem("carsCatalog", JSON.stringify(cars));
+    }
+  }, [cars]);
+
   return (
     <CarsContext.Provider
       value={{
@@ -336,7 +614,8 @@ export const CarsProvider = ({ children }: { children: ReactNode }) => {
         processOrder,
         getOrders,
         exportCarsData,
-        importCarsData
+        importCarsData,
+        syncOrders
       }}
     >
       {children}

@@ -265,7 +265,7 @@ export const useCarManagement = () => {
     setFilter,
     getCarById,
     reloadCars,
-    forceReloadCars,
+    forceReloadCars, // Добавляем новый метод
     viewCar,
     deleteCar,
     updateCar,

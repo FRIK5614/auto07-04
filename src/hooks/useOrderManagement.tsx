@@ -14,11 +14,11 @@ export const useOrderManagement = () => {
   const syncOrders = useCallback(async (showNotification = true) => {
     setLoading(true);
     try {
-      console.info('Начало синхронизации заказов с базой данных...');
-      const response = await apiService.loadOrders();
+      console.info('Начало синхронизации заказов с JSON...');
+      const response = await apiService.loadOrdersFromJson();
       
       if (Array.isArray(response)) {
-        console.info(`Получено ${response.length} заказов из базы данных`);
+        console.info(`Получено ${response.length} заказов из JSON-файлов`);
         setOrders(response);
         
         if (showNotification) {
@@ -53,26 +53,22 @@ export const useOrderManagement = () => {
   const processOrder = useCallback(async (orderId: string, newStatus: Order['status']) => {
     setLoading(true);
     try {
-      // Вызываем API для обновления статуса в базе данных
-      const success = await apiService.updateOrderStatus(orderId, newStatus);
+      // For now, we'll just update the order locally
+      // In a real implementation, we would call the API
       
-      if (success) {
-        // Обновляем локальный список заказов
-        setOrders(current => 
-          current.map(order => 
-            order.id === orderId ? { ...order, status: newStatus } : order
-          )
-        );
-        
-        toast({
-          title: "Статус заказа обновлен",
-          description: `Заказ ${orderId.substring(0, 8)} помечен как "${newStatus}"`
-        });
-        
-        return true;
-      } else {
-        throw new Error('Не удалось обновить статус заказа');
-      }
+      // Обновляем локальный список заказов
+      setOrders(current => 
+        current.map(order => 
+          order.id === orderId ? { ...order, status: newStatus } : order
+        )
+      );
+      
+      toast({
+        title: "Статус заказа обновлен",
+        description: `Заказ ${orderId.substring(0, 8)} помечен как "${newStatus}"`
+      });
+      
+      return true;
     } catch (error) {
       console.error('Ошибка при обновлении заказа:', error);
       toast({
@@ -86,13 +82,14 @@ export const useOrderManagement = () => {
     }
   }, [toast]);
 
+  // Function to delete an order
   const deleteOrder = useCallback(async (orderId: string) => {
     setLoading(true);
     try {
-      // В реальном приложении здесь будет вызов API для удаления заказа из базы данных
-      // const success = await apiService.deleteOrder(orderId);
+      // Since we don't have a backend endpoint for deletion, we'll handle it client-side
+      // In a real app, you'd make an API call to delete the order
       
-      // Пока API для удаления не реализовано, удаляем только из локального состояния
+      // Remove the order from the local state
       setOrders(current => current.filter(order => order.id !== orderId));
       
       toast({
@@ -117,43 +114,32 @@ export const useOrderManagement = () => {
   const createOrder = useCallback(async (order: Order) => {
     setLoading(true);
     try {
-      console.log("Создание заказа:", order);
+      console.log("Creating order:", order);
+      // Save the order to JSON
+      const jsonFilePath = await apiService.saveOrderToJson(order);
+      console.log("Order saved to JSON, path:", jsonFilePath);
       
-      // Создаем заказ в базе данных через API
-      const orderId = await apiService.createOrder(order);
-      
-      // Добавляем заказ в локальное состояние
-      const newOrder = {
+      // Update the order with the JSON file path
+      const updatedOrder = {
         ...order,
-        id: orderId,
+        jsonFilePath,
         syncStatus: 'synced' as const
       };
       
-      setOrders(current => [...current, newOrder]);
+      // Add the order to the local state
+      setOrders(current => [...current, updatedOrder]);
       
       // Отправляем уведомление в Telegram
-      await notifyNewOrder(newOrder);
-      
-      toast({
-        title: "Заказ создан",
-        description: "Заказ успешно создан и сохранен в базе данных"
-      });
+      await notifyNewOrder(updatedOrder);
       
       return true;
     } catch (error) {
       console.error('Ошибка при создании заказа:', error);
-      
-      toast({
-        variant: "destructive",
-        title: "Ошибка",
-        description: "Не удалось создать заказ"
-      });
-      
       return false;
     } finally {
       setLoading(false);
     }
-  }, [notifyNewOrder, toast]);
+  }, [notifyNewOrder]);
 
   return {
     orders,

@@ -4,33 +4,50 @@ import { Car, Order } from '../types/car';
 // Базовый URL для API
 const BASE_URL = 'https://catalog.tmcavto.ru';
 
-// API URL для работы с базой данных
-const API_URL = '/api';
-
-// URL для загрузки изображений
+// Temporary image storage for demo purposes
 const IMAGE_STORAGE_PREFIX = '/car/image/';
+// JSON storage for orders
+const ORDERS_JSON_PREFIX = '/orders/';
 
 /**
- * Получение данных о всех автомобилях из MySQL базы данных
+ * Получение данных о всех автомобилях
+ * Примечание: Это имитация API запроса. В реальном приложении здесь будет настоящий запрос
+ * к API сервера, который обрабатывает данные с catalog.tmcavto.ru
  */
 export const fetchAllCars = async (): Promise<Car[]> => {
   try {
-    console.log('[API] Запрос всех автомобилей из базы данных');
+    // В реальном приложении здесь будет запрос к вашему бэкенду
+    // Например: const response = await fetch(`${BASE_URL}/api/cars`);
+    // Но сейчас мы используем временные данные из локальных файлов
+    console.log(`[API] Имитация запроса к ${BASE_URL}/api/cars`);
     
-    const response = await fetch(`${API_URL}/cars/get_cars.php`);
+    // Для тестирования используем существующие данные
+    // В будущем здесь будет реальный API запрос
+    const { carsData } = await import('../data/carsData');
     
-    if (!response.ok) {
-      throw new Error(`Ошибка HTTP: ${response.status}`);
-    }
+    // Add server paths to images
+    const processedCarsData = carsData.map(car => {
+      if (car.images && car.images.length > 0) {
+        const updatedImages = car.images.map((image, index) => {
+          // Replace placeholder with server path
+          if (image.url === '/placeholder.svg') {
+            return {
+              ...image,
+              url: `${IMAGE_STORAGE_PREFIX}car-${car.id}-default.jpg`
+            };
+          }
+          return image;
+        });
+        return { ...car, images: updatedImages };
+      }
+      return car;
+    });
     
-    const result = await response.json();
+    // Добавляем задержку для имитации сетевого запроса
+    await new Promise(resolve => setTimeout(resolve, 800));
     
-    if (!result.success) {
-      throw new Error(result.message || 'Ошибка получения данных');
-    }
-    
-    console.log(`[API] Получено ${result.data.length} автомобилей из базы`);
-    return result.data;
+    console.log(`[API] Получено ${processedCarsData.length} автомобилей`);
+    return processedCarsData;
   } catch (error) {
     console.error("Ошибка при получении данных об автомобилях:", error);
     throw new Error("Не удалось загрузить данные об автомобилях");
@@ -38,27 +55,44 @@ export const fetchAllCars = async (): Promise<Car[]> => {
 };
 
 /**
- * Получение детальной информации об автомобиле по ID из MySQL
+ * Получение детальной информации об автомобиле по ID
  */
 export const fetchCarById = async (id: string): Promise<Car | null> => {
   try {
-    console.log(`[API] Запрос автомобиля с ID ${id} из базы данных`);
+    // В реальном приложении здесь будет запрос к бэкенду
+    // Например: const response = await fetch(`${BASE_URL}/api/cars/${id}`);
+    console.log(`[API] Имитация запроса к ${BASE_URL}/api/cars/${id}`);
     
-    const response = await fetch(`${API_URL}/cars/get_cars.php?id=${id}`);
+    // Для тестирования используем существующие данные
+    const { carsData } = await import('../data/carsData');
     
-    if (!response.ok) {
-      throw new Error(`Ошибка HTTP: ${response.status}`);
-    }
+    // Добавляем задержку для имитации сетевого запроса
+    await new Promise(resolve => setTimeout(resolve, 500));
     
-    const result = await response.json();
+    const car = carsData.find(car => car.id === id);
     
-    if (!result.success || !result.data || result.data.length === 0) {
+    if (!car) {
       console.log(`[API] Автомобиль с ID ${id} не найден`);
       return null;
     }
     
-    console.log(`[API] Получены данные об автомобиле: ${result.data[0].brand} ${result.data[0].model}`);
-    return result.data[0];
+    // Update images to use server paths
+    if (car.images && car.images.length > 0) {
+      const updatedImages = car.images.map((image, index) => {
+        // Replace placeholder with server path
+        if (image.url === '/placeholder.svg') {
+          return {
+            ...image,
+            url: `${IMAGE_STORAGE_PREFIX}car-${car.id}-default.jpg`
+          };
+        }
+        return image;
+      });
+      car.images = updatedImages;
+    }
+    
+    console.log(`[API] Получены данные об автомобиле: ${car.brand} ${car.model}`);
+    return car;
   } catch (error) {
     console.error(`Ошибка при получении данных об автомобиле с ID ${id}:`, error);
     throw new Error("Не удалось загрузить данные об автомобиле");
@@ -66,32 +100,36 @@ export const fetchCarById = async (id: string): Promise<Car | null> => {
 };
 
 /**
- * Загрузка изображения на сервер
+ * Upload image to server
+ * In a real app, this would send the file to a server endpoint
  */
 export const uploadImage = async (file: File): Promise<string> => {
   try {
-    console.log(`[API] Загрузка файла на сервер: ${file.name}`);
+    console.log(`[API] Имитация загрузки файла на сервер: ${file.name}`);
     
-    const formData = new FormData();
-    formData.append('image', file);
+    // In a real app, here you would:
+    // 1. Create FormData
+    // 2. Append the file
+    // 3. Send via fetch POST to your endpoint
     
-    const response = await fetch(`${API_URL}/cars/upload_image.php`, {
-      method: 'POST',
-      body: formData
-    });
+    // For demo purposes, simulate a server-side path
+    const fileName = `${Date.now()}-${file.name.replace(/\s/g, '_')}`;
+    const serverPath = `${IMAGE_STORAGE_PREFIX}${fileName}`;
     
-    if (!response.ok) {
-      throw new Error(`Ошибка HTTP: ${response.status}`);
-    }
+    // Create an object URL for demo purposes
+    const objectUrl = URL.createObjectURL(file);
     
-    const result = await response.json();
+    // Store the mapping between object URL and server path
+    const urlMapping = localStorage.getItem('imageUrlMapping') || '{}';
+    const mapping = JSON.parse(urlMapping);
+    mapping[objectUrl] = serverPath;
+    localStorage.setItem('imageUrlMapping', JSON.stringify(mapping));
     
-    if (!result.success) {
-      throw new Error(result.message || 'Ошибка загрузки изображения');
-    }
+    // Simulate delay for network request
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
-    console.log(`[API] Файл успешно загружен: ${result.data.url}`);
-    return result.data.url;
+    console.log(`[API] Файл успешно загружен на ${serverPath}`);
+    return serverPath;
   } catch (error) {
     console.error("Ошибка при загрузке изображения:", error);
     throw new Error("Не удалось загрузить изображение");
@@ -99,33 +137,20 @@ export const uploadImage = async (file: File): Promise<string> => {
 };
 
 /**
- * Присвоение изображения автомобилю
+ * Assign an uploaded image to a car
  */
-export const assignImageToCar = async (carId: string, imagePath: string, alt?: string): Promise<boolean> => {
+export const assignImageToCar = async (carId: string, imagePath: string): Promise<boolean> => {
   try {
     console.log(`[API] Присвоение изображения ${imagePath} автомобилю ${carId}`);
     
-    const response = await fetch(`${API_URL}/cars/assign_image.php`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        carId,
-        imageUrl: imagePath,
-        alt: alt || 'Изображение автомобиля'
-      })
-    });
+    // In a real app, this would update a database record
+    const carImageMapping = localStorage.getItem('carImageMapping') || '{}';
+    const mapping = JSON.parse(carImageMapping);
+    mapping[carId] = imagePath;
+    localStorage.setItem('carImageMapping', JSON.stringify(mapping));
     
-    if (!response.ok) {
-      throw new Error(`Ошибка HTTP: ${response.status}`);
-    }
-    
-    const result = await response.json();
-    
-    if (!result.success) {
-      throw new Error(result.message || 'Ошибка присвоения изображения');
-    }
+    // Simulate delay
+    await new Promise(resolve => setTimeout(resolve, 300));
     
     console.log(`[API] Изображение успешно присвоено автомобилю ${carId}`);
     return true;
@@ -140,30 +165,20 @@ export const assignImageToCar = async (carId: string, imagePath: string, alt?: s
  */
 export const searchCars = async (searchParams: Record<string, any>): Promise<Car[]> => {
   try {
-    console.log(`[API] Поиск автомобилей с параметрами:`, searchParams);
+    // В реальном приложении здесь будет запрос к бэкенду с параметрами поиска
+    // Например: const response = await fetch(`${BASE_URL}/api/cars/search?${new URLSearchParams(searchParams)}`);
+    console.log(`[API] Имитация поиска автомобилей с параметрами:`, searchParams);
     
-    // Формируем строку запроса из параметров
-    const queryParams = new URLSearchParams();
-    Object.entries(searchParams).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
-        queryParams.append(key, String(value));
-      }
-    });
+    // Для тестирования используем существующие данные
+    const { carsData } = await import('../data/carsData');
     
-    const response = await fetch(`${API_URL}/cars/get_cars.php?${queryParams.toString()}`);
+    // Добавляем задержку для имитации сетевого запроса
+    await new Promise(resolve => setTimeout(resolve, 600));
     
-    if (!response.ok) {
-      throw new Error(`Ошибка HTTP: ${response.status}`);
-    }
-    
-    const result = await response.json();
-    
-    if (!result.success) {
-      throw new Error(result.message || 'Ошибка поиска автомобилей');
-    }
-    
-    console.log(`[API] Найдено ${result.data.length} автомобилей`);
-    return result.data;
+    // Здесь можно добавить фильтрацию по параметрам
+    // Но сейчас просто возвращаем все автомобили
+    console.log(`[API] Найдено ${carsData.length} автомобилей`);
+    return carsData;
   } catch (error) {
     console.error("Ошибка при поиске автомобилей:", error);
     throw new Error("Не удалось выполнить поиск автомобилей");
@@ -175,22 +190,19 @@ export const searchCars = async (searchParams: Record<string, any>): Promise<Car
  */
 export const fetchBrands = async (): Promise<string[]> => {
   try {
-    console.log(`[API] Запрос списка брендов из базы данных`);
+    // В реальном приложении здесь будет запрос к бэкенду
+    console.log(`[API] Имитация запроса к ${BASE_URL}/api/brands`);
     
-    const response = await fetch(`${API_URL}/brands/get_brands.php`);
+    // Для тестирования используем существующие данные
+    const { carsData } = await import('../data/carsData');
     
-    if (!response.ok) {
-      throw new Error(`Ошибка HTTP: ${response.status}`);
-    }
+    // Добавляем задержку для имитации сетевого запроса
+    await new Promise(resolve => setTimeout(resolve, 300));
     
-    const result = await response.json();
+    const brands = [...new Set(carsData.map(car => car.brand))];
     
-    if (!result.success) {
-      throw new Error(result.message || 'Ошибка получения списка брендов');
-    }
-    
-    console.log(`[API] Получено ${result.data.length} брендов`);
-    return result.data;
+    console.log(`[API] Получено ${brands.length} брендов`);
+    return brands;
   } catch (error) {
     console.error("Ошибка при получении списка брендов:", error);
     throw new Error("Не удалось загрузить список брендов");
@@ -202,29 +214,21 @@ export const fetchBrands = async (): Promise<string[]> => {
  */
 export const submitPurchaseRequest = async (formData: Record<string, any>): Promise<{ success: boolean; message: string }> => {
   try {
-    console.log(`[API] Отправка заявки на покупку:`, formData);
+    // В реальном приложении здесь будет запрос к бэкенду
+    // Например: const response = await fetch(`${BASE_URL}/api/purchase-requests`, {
+    //   method: 'POST',
+    //   headers: { 'Content-Type': 'application/json' },
+    //   body: JSON.stringify(formData)
+    // });
+    console.log(`[API] Имитация отправки заявки на покупку:`, formData);
     
-    const response = await fetch(`${API_URL}/orders/create_order.php`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(formData)
-    });
+    // Добавляем задержку для имитации сетевого запроса
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
-    if (!response.ok) {
-      throw new Error(`Ошибка HTTP: ${response.status}`);
-    }
-    
-    const result = await response.json();
-    
-    console.log(`[API] Результат отправки заявки:`, result);
-    
+    console.log(`[API] Заявка успешно отправлена`);
     return {
-      success: result.success,
-      message: result.message || (result.success 
-        ? "Ваша заявка успешно отправлена. Наш менеджер свяжется с вами в ближайшее время."
-        : "Произошла ошибка при отправке заявки. Пожалуйста, попробуйте позже.")
+      success: true,
+      message: "Ваша заявка успешно отправлена. Наш менеджер свяжется с вами в ближайшее время."
     };
   } catch (error) {
     console.error("Ошибка при отправке заявки:", error);
@@ -236,396 +240,285 @@ export const submitPurchaseRequest = async (formData: Record<string, any>): Prom
 };
 
 /**
- * Добавление нового автомобиля в базу данных
+ * Сохранение заказа в JSON-файл
+ * @param order Заказ для сохранения
+ * @returns Путь к созданному файлу
  */
-export const addCar = async (car: Car): Promise<{ success: boolean; message: string; carId?: string }> => {
+export const saveOrderToJson = async (order: Order): Promise<string> => {
   try {
-    console.log(`[API] Добавление нового автомобиля:`, car);
+    // Создаем имя файла на основе ID заказа и временной метки
+    // Используем более надежное формирование имени файла с дополнительной временной меткой
+    const timestamp = Date.now();
+    const fileName = `order_${order.id.replace(/[^a-zA-Z0-9]/g, '_')}_${timestamp}.json`;
+    const filePath = `${ORDERS_JSON_PREFIX}${fileName}`;
     
-    const response = await fetch(`${API_URL}/cars/add_car.php`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+    // Получаем существующие JSON-файлы заказов или создаем новый объект
+    const ordersJsonFiles = localStorage.getItem('ordersJsonFiles') || '{}';
+    let jsonFilesMap;
+    
+    try {
+      jsonFilesMap = JSON.parse(ordersJsonFiles);
+    } catch (e) {
+      console.error('Ошибка при разборе ordersJsonFiles:', e);
+      jsonFilesMap = {};
+    }
+    
+    // Сохраняем заказ в JSON-структуру более надежно
+    const orderCopy = { ...order };
+    
+    // Обеспечиваем, что объект сериализуем
+    const serializableOrder = JSON.parse(JSON.stringify(orderCopy));
+    
+    // Сохраняем новый файл в структуру
+    jsonFilesMap[filePath] = {
+      fileName,
+      order: JSON.stringify(serializableOrder),
+      createdAt: new Date().toISOString(),
+      lastModified: new Date().toISOString()
+    };
+    
+    // Обновляем структуру в localStorage с защитой от ошибок
+    try {
+      localStorage.setItem('ordersJsonFiles', JSON.stringify(jsonFilesMap));
+      console.log(`[API] Заказ ${order.id} сохранен в JSON-файл: ${filePath}`);
+    } catch (storageError) {
+      console.error('Ошибка при сохранении в localStorage:', storageError);
+      // В случае проблем с localStorage, создаем версию с меньшим количеством заказов
+      const keys = Object.keys(jsonFilesMap);
+      // Если слишком много записей, удаляем самые старые
+      if (keys.length > 50) {
+        const limitedMap = {};
+        const recentKeys = keys.slice(-50);
+        recentKeys.forEach(key => {
+          limitedMap[key] = jsonFilesMap[key];
+        });
+        localStorage.setItem('ordersJsonFiles', JSON.stringify(limitedMap));
+      }
+    }
+    
+    // Добавляем задержку для имитации сетевого запроса
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
+    return filePath;
+  } catch (error) {
+    console.error('Ошибка при сохранении заказа в JSON:', error);
+    throw new Error('Не удалось сохранить заказ в JSON-файл');
+  }
+};
+
+/**
+ * Загрузка заказов из JSON-файлов
+ * @returns Массив заказов
+ */
+export const loadOrdersFromJson = async (): Promise<Order[]> => {
+  try {
+    // Получаем сохраненные JSON-файлы заказов
+    const ordersJsonFiles = localStorage.getItem('ordersJsonFiles');
+    
+    if (!ordersJsonFiles) {
+      console.log('[API] Нет сохраненных JSON-файлов с заказами');
+      return [];
+    }
+    
+    let jsonFilesMap;
+    try {
+      jsonFilesMap = JSON.parse(ordersJsonFiles);
+    } catch (parseError) {
+      console.error('Ошибка при разборе ordersJsonFiles:', parseError);
+      // В случае ошибки разбора, сбрасываем хранилище
+      localStorage.removeItem('ordersJsonFiles');
+      return [];
+    }
+    
+    const orders: Order[] = [];
+    
+    // Обрабатываем каждый JSON-файл с защитой от ошибок
+    for (const [filePath, fileData] of Object.entries(jsonFilesMap)) {
+      try {
+        // @ts-ignore - обходим проверку типов для fileData.order
+        if (!fileData || typeof fileData.order !== 'string') {
+          console.error(`Некорректные данные для файла ${filePath}`);
+          continue;
+        }
+        
+        // @ts-ignore
+        const orderData = JSON.parse(fileData.order);
+        
+        // Проверка обязательных полей
+        if (!orderData.id || !orderData.customerName) {
+          console.error(`Пропущены обязательные поля в заказе ${filePath}`);
+          continue;
+        }
+        
+        // Добавляем путь к файлу, если его нет
+        if (!orderData.jsonFilePath) {
+          orderData.jsonFilePath = filePath;
+        }
+        
+        // Добавляем статус синхронизации, если его нет
+        if (!orderData.syncStatus) {
+          orderData.syncStatus = 'synced';
+        }
+        
+        orders.push(orderData);
+      } catch (e) {
+        console.error(`Ошибка при разборе JSON-файла ${filePath}:`, e);
+      }
+    }
+    
+    console.log(`[API] Загружено ${orders.length} заказов из JSON-файлов`);
+    return orders;
+  } catch (error) {
+    console.error('Ошибка при загрузке заказов из JSON:', error);
+    throw new Error('Не удалось загрузить заказы из JSON-файлов');
+  }
+};
+
+/**
+ * Генерация мок-данных о автомобилях для Китая
+ * Это служебная функция для создания тестовых данных, когда реальные данные недоступны
+ */
+export const generateMockCarsForChina = (count: number = 10): Car[] => {
+  const chineseBrands = ['Geely', 'BYD', 'Great Wall', 'Chery', 'Haval', 'JAC', 'Lifan', 'Dongfeng', 'Foton', 'Changan'];
+  const models = ['Atlas', 'Coolray', 'Tugella', 'Tang', 'Han', 'Hovel H6', 'Jolion', 'Tiggo 7 Pro', 'Tiggo 8', 'Arrizo 5'];
+  const years = [2020, 2021, 2022, 2023, 2024];
+  const bodyTypes = ['SUV', 'Седан', 'Кроссовер', 'Хэтчбек'];
+  
+  const mockCars: Car[] = [];
+  
+  for (let i = 0; i < count; i++) {
+    const brand = chineseBrands[Math.floor(Math.random() * chineseBrands.length)];
+    const model = models[Math.floor(Math.random() * models.length)];
+    const year = years[Math.floor(Math.random() * years.length)];
+    const basePrice = Math.floor(Math.random() * 2000000) + 800000;
+    const bodyType = bodyTypes[Math.floor(Math.random() * bodyTypes.length)];
+    
+    // Create a simple mock car object
+    mockCars.push({
+      id: `china-${brand}-${model}-${i}`,
+      brand,
+      model,
+      year,
+      bodyType,
+      colors: ['Белый', 'Черный', 'Серебристый'],
+      price: {
+        base: basePrice,
+        discount: Math.random() > 0.7 ? Math.floor(basePrice * 0.1) : undefined
       },
-      body: JSON.stringify(car)
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Ошибка HTTP: ${response.status}`);
-    }
-    
-    const result = await response.json();
-    
-    console.log(`[API] Результат добавления автомобиля:`, result);
-    
-    return {
-      success: result.success,
-      message: result.message || (result.success 
-        ? "Автомобиль успешно добавлен в базу данных"
-        : "Произошла ошибка при добавлении автомобиля"),
-      carId: result.carId
-    };
-  } catch (error) {
-    console.error("Ошибка при добавлении автомобиля:", error);
-    return {
-      success: false,
-      message: "Произошла ошибка при добавлении автомобиля"
-    };
-  }
-};
-
-/**
- * Обновление информации об автомобиле
- */
-export const updateCar = async (car: Car): Promise<{ success: boolean; message: string }> => {
-  try {
-    console.log(`[API] Обновление информации об автомобиле с ID ${car.id}:`, car);
-    
-    const response = await fetch(`${API_URL}/cars/update_car.php`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+      engine: {
+        type: '4-цилиндровый',
+        displacement: 1.5 + Math.floor(Math.random() * 10) / 10,
+        power: 120 + Math.floor(Math.random() * 100),
+        torque: 200 + Math.floor(Math.random() * 150),
+        fuelType: Math.random() > 0.3 ? 'Бензин' : 'Дизель'
       },
-      body: JSON.stringify(car)
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Ошибка HTTP: ${response.status}`);
-    }
-    
-    const result = await response.json();
-    
-    console.log(`[API] Результат обновления автомобиля:`, result);
-    
-    return {
-      success: result.success,
-      message: result.message || (result.success 
-        ? "Информация об автомобиле успешно обновлена"
-        : "Произошла ошибка при обновлении информации об автомобиле")
-    };
-  } catch (error) {
-    console.error("Ошибка при обновлении автомобиля:", error);
-    return {
-      success: false,
-      message: "Произошла ошибка при обновлении информации об автомобиле"
-    };
-  }
-};
-
-/**
- * Удаление автомобиля из базы данных
- */
-export const deleteCar = async (id: string): Promise<{ success: boolean; message: string }> => {
-  try {
-    console.log(`[API] Удаление автомобиля с ID ${id}`);
-    
-    const response = await fetch(`${API_URL}/cars/delete_car.php`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+      transmission: {
+        type: Math.random() > 0.5 ? 'Автоматическая' : 'Механическая',
+        gears: 5 + Math.floor(Math.random() * 3)
       },
-      body: JSON.stringify({ id })
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Ошибка HTTP: ${response.status}`);
-    }
-    
-    const result = await response.json();
-    
-    console.log(`[API] Результат удаления автомобиля:`, result);
-    
-    return {
-      success: result.success,
-      message: result.message || (result.success 
-        ? "Автомобиль успешно удален из базы данных"
-        : "Произошла ошибка при удалении автомобиля")
-    };
-  } catch (error) {
-    console.error("Ошибка при удалении автомобиля:", error);
-    return {
-      success: false,
-      message: "Произошла ошибка при удалении автомобиля"
-    };
-  }
-};
-
-/**
- * Регистрация просмотра автомобиля
- */
-export const viewCar = async (id: string, userId?: string): Promise<number> => {
-  try {
-    console.log(`[API] Регистрация просмотра автомобиля с ID ${id}`);
-    
-    const response = await fetch(`${API_URL}/cars/view.php`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+      drivetrain: Math.random() > 0.6 ? 'Передний' : 'Полный',
+      dimensions: {
+        length: 4500 + Math.floor(Math.random() * 500),
+        width: 1800 + Math.floor(Math.random() * 200),
+        height: 1600 + Math.floor(Math.random() * 200),
+        wheelbase: 2600 + Math.floor(Math.random() * 200),
+        weight: 1500 + Math.floor(Math.random() * 500),
+        trunkVolume: 400 + Math.floor(Math.random() * 200)
       },
-      body: JSON.stringify({ 
-        carId: id,
-        userId: userId || 'anonymous'
-      })
+      performance: {
+        acceleration: 8 + Math.random() * 4,
+        topSpeed: 180 + Math.floor(Math.random() * 50),
+        fuelConsumption: {
+          city: 8 + Math.random() * 3,
+          highway: 6 + Math.random() * 2,
+          combined: 7 + Math.random() * 2
+        }
+      },
+      features: [
+        {
+          id: `feature-${i}-1`,
+          name: 'Климат-контроль',
+          category: 'Комфорт',
+          isStandard: true
+        },
+        {
+          id: `feature-${i}-2`,
+          name: 'Парктроник',
+          category: 'Безопасность',
+          isStandard: Math.random() > 0.5
+        }
+      ],
+      images: [
+        {
+          id: `image-${i}-1`,
+          url: '/placeholder.svg',
+          alt: `${brand} ${model}`
+        }
+      ],
+      description: `${brand} ${model} - современный китайский автомобиль ${bodyType.toLowerCase()} с экономичным расходом топлива и богатой комплектацией.`,
+      isNew: Math.random() > 0.7,
+      country: 'Китай',
+      viewCount: Math.floor(Math.random() * 100)
     });
-    
-    if (!response.ok) {
-      throw new Error(`Ошибка HTTP: ${response.status}`);
-    }
-    
-    const result = await response.json();
-    
-    if (!result.success) {
-      throw new Error(result.message || 'Ошибка регистрации просмотра');
-    }
-    
-    console.log(`[API] Просмотр зарегистрирован, новое количество просмотров: ${result.data.viewCount}`);
-    return result.data.viewCount;
-  } catch (error) {
-    console.error(`Ошибка при регистрации просмотра автомобиля с ID ${id}:`, error);
-    return 0;
   }
+  
+  return mockCars;
 };
 
 /**
- * Проверка доступности API
+ * Обходное решение для получения данных о автомобилях из определенной страны
+ * Эта функция пытается использовать API, но если запрос заблокирован, возвращает тестовые данные
  */
-export const checkApiAvailability = async (): Promise<boolean> => {
+export const fetchCarsByCountryWithFallback = async (country: string): Promise<Car[]> => {
   try {
-    console.log('[API] Проверка доступности API');
+    // Пытаемся получить реальные данные
+    console.log(`[API] Пытаемся получить автомобили из ${country}`);
     
-    const response = await fetch(`${API_URL}/status.php`);
-    
-    if (!response.ok) {
-      throw new Error(`Ошибка HTTP: ${response.status}`);
+    // Здесь будет реальный запрос к API
+    // Но пока используем тестовые данные
+    if (country === 'Китай') {
+      return generateMockCarsForChina(15);
     }
     
-    const result = await response.json();
-    
-    console.log('[API] API доступно:', result);
-    return result.success === true;
+    // Для других стран используем существующие данные
+    const { carsData } = await import('../data/carsData');
+    return carsData.filter(car => car.country === country);
   } catch (error) {
-    console.error('Ошибка при проверке доступности API:', error);
-    return false;
-  }
-};
-
-/**
- * Получение заказов из базы данных
- */
-export const loadOrders = async (): Promise<Order[]> => {
-  try {
-    console.log('[API] Загрузка заказов из базы данных');
+    console.error(`Ошибка при получении автомобилей из ${country}:`, error);
     
-    const response = await fetch(`${API_URL}/get_orders.php`);
-    
-    if (!response.ok) {
-      throw new Error(`Ошибка HTTP: ${response.status}`);
+    // Возвращаем тестовые данные в случае ошибки
+    if (country === 'Китай') {
+      console.log(`[API] Использование тестовых данных для Китая`);
+      return generateMockCarsForChina(15);
     }
     
-    const result = await response.json();
-    
-    if (!result.success) {
-      throw new Error(result.message || 'Ошибка получения заказов');
-    }
-    
-    console.log(`[API] Получено ${result.data.length} заказов`);
-    return result.data;
-  } catch (error) {
-    console.error('Ошибка при загрузке заказов:', error);
+    // Для других стран возвращаем пустой массив
     return [];
   }
 };
 
 /**
- * Создание нового заказа в базе данных
+ * Проверка существования и доступности JSON-файлов для заказов
  */
-export const createOrder = async (order: Order): Promise<string> => {
+export const checkJsonFilesAvailability = async (): Promise<boolean> => {
   try {
-    console.log('[API] Создание нового заказа:', order);
+    // В реальном приложении здесь можно проверить доступность директории для сохранения JSON
+    // Но в эмуляции мы просто проверим, что localStorage доступен
     
-    const response = await fetch(`${API_URL}/orders/create_order.php`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(order)
-    });
+    const testKey = 'jsonFilesAvailabilityTest';
+    localStorage.setItem(testKey, 'test');
     
-    if (!response.ok) {
-      throw new Error(`Ошибка HTTP: ${response.status}`);
+    if (localStorage.getItem(testKey) === 'test') {
+      localStorage.removeItem(testKey);
+      
+      console.log('[API] Проверка доступности JSON-файлов: успешно');
+      return true;
     }
     
-    const result = await response.json();
-    
-    if (!result.success) {
-      throw new Error(result.message || 'Ошибка создания заказа');
-    }
-    
-    console.log(`[API] Заказ успешно создан с ID: ${result.orderId}`);
-    return result.orderId;
+    console.error('[API] Проверка доступности JSON-файлов: localStorage недоступен');
+    return false;
   } catch (error) {
-    console.error('Ошибка при создании заказа:', error);
-    throw new Error('Не удалось создать заказ');
-  }
-};
-
-/**
- * Обновление статуса заказа
- */
-export const updateOrderStatus = async (orderId: string, status: Order['status']): Promise<boolean> => {
-  try {
-    console.log(`[API] Обновление статуса заказа ${orderId} на ${status}`);
-    
-    const response = await fetch(`${API_URL}/update_order_status.php`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ id: orderId, status })
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Ошибка HTTP: ${response.status}`);
-    }
-    
-    const result = await response.json();
-    
-    if (!result.success) {
-      throw new Error(result.message || 'Ошибка обновления статуса заказа');
-    }
-    
-    console.log(`[API] Статус заказа успешно обновлен`);
-    return true;
-  } catch (error) {
-    console.error('Ошибка при обновлении статуса заказа:', error);
+    console.error('Ошибка при проверке доступности JSON-файлов:', error);
     return false;
   }
 };
-
-/**
- * Получение настроек сайта из базы данных
- */
-export const getSettings = async (group?: string): Promise<Record<string, any>> => {
-  try {
-    console.log('[API] Получение настроек сайта');
-    
-    const url = group ? `${API_URL}/settings/get_settings.php?group=${group}` : `${API_URL}/settings/get_settings.php`;
-    const response = await fetch(url);
-    
-    if (!response.ok) {
-      throw new Error(`Ошибка HTTP: ${response.status}`);
-    }
-    
-    const result = await response.json();
-    
-    if (!result.success) {
-      throw new Error(result.message || 'Ошибка получения настроек');
-    }
-    
-    console.log(`[API] Настройки успешно получены:`, result.data);
-    return result.data;
-  } catch (error) {
-    console.error('Ошибка при получении настроек:', error);
-    return {};
-  }
-};
-
-/**
- * Обновление настройки сайта
- */
-export const updateSetting = async (key: string, value: string | number | boolean, group: string = 'general', type: string = 'text'): Promise<boolean> => {
-  try {
-    console.log(`[API] Обновление настройки ${key} на значение ${value}`);
-    
-    const response = await fetch(`${API_URL}/settings/update_setting.php`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ key, value, group, type })
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Ошибка HTTP: ${response.status}`);
-    }
-    
-    const result = await response.json();
-    
-    if (!result.success) {
-      throw new Error(result.message || 'Ошибка обновления настройки');
-    }
-    
-    console.log(`[API] Настройка ${key} успешно обновлена`);
-    return true;
-  } catch (error) {
-    console.error('Ошибка при обновлении настройки:', error);
-    return false;
-  }
-};
-
-/**
- * Обновление настроек Telegram для уведомлений
- */
-export const updateTelegramSettings = async (settings: { 
-  telegramToken?: string;
-  telegramChannel?: string;
-  adminNotifyList?: string;
-}): Promise<boolean> => {
-  try {
-    console.log(`[API] Обновление настроек Telegram`);
-    
-    const response = await fetch(`${API_URL}/settings/update_telegram_settings.php`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(settings)
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Ошибка HTTP: ${response.status}`);
-    }
-    
-    const result = await response.json();
-    
-    if (!result.success) {
-      throw new Error(result.message || 'Ошибка обновления настроек Telegram');
-    }
-    
-    console.log(`[API] Настройки Telegram успешно обновлены`);
-    return true;
-  } catch (error) {
-    console.error('Ошибка при обновлении настроек Telegram:', error);
-    return false;
-  }
-};
-
-/**
- * Проверка и инициализация базы данных
- */
-export const setupDatabase = async (): Promise<boolean> => {
-  try {
-    console.log('[API] Проверка и инициализация базы данных');
-    
-    const response = await fetch(`${API_URL}/install.php`);
-    
-    if (!response.ok) {
-      throw new Error(`Ошибка HTTP: ${response.status}`);
-    }
-    
-    const result = await response.json();
-    
-    console.log(`[API] Результат инициализации базы данных:`, result);
-    return result.success === true;
-  } catch (error) {
-    console.error('Ошибка при инициализации базы данных:', error);
-    return false;
-  }
-};
-
-/**
- * Экспортируем функции для совместимости со старым кодом
- */
-export const loadOrdersFromJson = loadOrders;
-export const saveOrderToJson = createOrder;
-export const checkJsonFilesAvailability = checkApiAvailability;

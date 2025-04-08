@@ -1,134 +1,94 @@
 
-import { useState, useCallback, useEffect } from 'react';
-import { Order } from '@/types/car';
+import { useState, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { getSettings, updateTelegramSettings } from '@/services/api';
-
-interface TelegramSettings {
-  telegramToken: string;
-  telegramChannel: string;
-  adminNotifyList: string;
-}
+import { useSettings } from '@/hooks/useSettings';
+import { Order } from '@/types/car';
 
 export const useTelegramNotifications = () => {
-  const [settings, setSettings] = useState<TelegramSettings>({
-    telegramToken: '',
-    telegramChannel: '',
-    adminNotifyList: ''
-  });
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(false);
+  const { settings } = useSettings();
   const { toast } = useToast();
+  
+  const TELEGRAM_TOKEN = '7816899565:AAF_OIH114D1Ijlg_r6_xAq1un5jy5X4w7Y';
+  const TELEGRAM_API_BASE = `https://api.telegram.org/bot${TELEGRAM_TOKEN}`;
+  const TELEGRAM_CHANNEL = '@VoeAVTO'; // Канал по умолчанию
 
-  // Загрузка настроек из базы данных
-  const loadSettings = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const telegramSettings = await getSettings('telegram');
-      
-      if (telegramSettings) {
-        setSettings({
-          telegramToken: telegramSettings.telegramToken || '',
-          telegramChannel: telegramSettings.telegramChannel || '',
-          adminNotifyList: telegramSettings.adminNotifyList || ''
-        });
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error('Ошибка при загрузке настроек Telegram:', error);
-      return false;
-    } finally {
-      setIsLoading(false);
+  // Проверка поля adminNotifyList из настроек
+  const getNotificationRecipients = useCallback(() => {
+    const adminList = settings?.adminNotifyList;
+    
+    if (!adminList || adminList === '') {
+      // Если список администраторов не настроен, отправляем только в канал
+      return [TELEGRAM_CHANNEL];
     }
-  }, []);
+    
+    // Разделяем список (предполагается, что администраторы перечислены через запятую)
+    const recipients = adminList.split(',').map(id => id.trim());
+    recipients.push(TELEGRAM_CHANNEL); // Добавляем основной канал
+    
+    return recipients;
+  }, [settings]);
 
-  // Загружаем настройки при первой инициализации
-  useEffect(() => {
-    loadSettings();
-  }, [loadSettings]);
-
-  // Обновление настроек в базе данных
-  const updateSettings = useCallback(async (newSettings: Partial<TelegramSettings>) => {
-    setIsLoading(true);
+  const notifyNewOrder = useCallback(async (order: Order) => {
     try {
-      const success = await updateTelegramSettings({
-        ...newSettings
+      setLoading(true);
+      
+      // Получаем список получателей
+      const recipients = getNotificationRecipients();
+      
+      // Формируем сообщение с проверкой на наличие полей
+      const message = `
+📋 *Новый заказ!*
+  
+🚗 *Автомобиль:* ID: ${order.carId}
+💰 *Цена:* Уточняется
+👤 *Клиент:* ${order.customerName || 'Имя не указано'}
+☎️ *Телефон:* ${order.customerPhone || 'Не указан'}
+📝 *Комментарий:* ${order.message || 'Без комментария'}
+      `;
+      
+      // Отправляем сообщения всем получателям
+      const sendPromises = recipients.map(recipient => {
+        // Если это канал или группа, используем sendMessage
+        const sendMethod = recipient.startsWith('@') ? 'sendMessage' : 'sendMessage';
+        const chatId = recipient;
+        
+        return fetch(`${TELEGRAM_API_BASE}/${sendMethod}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            chat_id: chatId,
+            text: message,
+            parse_mode: 'Markdown',
+          }),
+        });
       });
       
-      if (success) {
-        setSettings(prevSettings => ({
-          ...prevSettings,
-          ...newSettings
-        }));
-        
-        toast({
-          title: "Настройки обновлены",
-          description: "Настройки Telegram успешно сохранены"
-        });
-        
-        return true;
-      } else {
-        throw new Error("Не удалось обновить настройки");
-      }
-    } catch (error) {
-      console.error('Ошибка при обновлении настроек Telegram:', error);
+      // Ждем завершения всех запросов
+      await Promise.all(sendPromises);
+      
+      console.log(`Уведомление о новом заказе успешно отправлено ${recipients.length} получателям`);
+      
+      return true;
+    } catch (err) {
+      console.error('Ошибка при отправке уведомления в Telegram:', err);
       
       toast({
         variant: "destructive",
-        title: "Ошибка",
-        description: "Не удалось сохранить настройки Telegram"
+        title: "Ошибка уведомления",
+        description: "Не удалось отправить уведомление в Telegram"
       });
       
       return false;
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
-  }, [toast]);
-
-  // Отправка уведомления о новом заказе
-  const notifyNewOrder = useCallback(async (order: Order) => {
-    try {
-      if (!settings.telegramToken || !settings.telegramChannel) {
-        console.log('Настройки Telegram не заданы, уведомление не отправлено');
-        return false;
-      }
-      
-      const formattedMessage = formatOrderMessage(order);
-      
-      // В настоящем приложении здесь был бы запрос к API телеграм или вашему серверу
-      console.log(`[Telegram] Отправка уведомления в канал ${settings.telegramChannel}`);
-      console.log(`[Telegram] Сообщение: ${formattedMessage}`);
-      
-      // Имитация отправки
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      console.log('[Telegram] Уведомление отправлено успешно');
-      return true;
-    } catch (error) {
-      console.error('Ошибка при отправке уведомления в Telegram:', error);
-      return false;
-    }
-  }, [settings]);
+  }, [getNotificationRecipients, toast]);
 
   return {
-    settings,
-    isLoading,
-    loadSettings,
-    updateSettings,
-    notifyNewOrder
+    notifyNewOrder,
+    loading
   };
-};
-
-// Вспомогательная функция для форматирования сообщения о заказе
-const formatOrderMessage = (order: Order): string => {
-  return `
-🚗 *Новый заказ*
-📝 ID: ${order.id}
-👤 Клиент: ${order.customerName}
-📞 Телефон: ${order.customerPhone}
-📧 Email: ${order.customerEmail || 'Не указан'}
-🚘 ID автомобиля: ${order.carId}
-${order.message ? `💬 Комментарий: ${order.message}` : ''}
-⏱ Дата: ${new Date(order.createdAt).toLocaleString()}
-  `.trim();
 };
