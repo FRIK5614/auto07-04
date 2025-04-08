@@ -25,29 +25,29 @@ function App() {
     <BrowserRouter>
       <CarsProvider>
         <AdminProvider>
-            <Header />
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/car/:id" element={<CarDetails />} />
-              <Route path="/favorites" element={<Favorites />} />
-              <Route path="/compare" element={<CompareCars />} />
-              <Route path="/catalog" element={<Catalog />} />
-              <Route path="/admin/login" element={<AdminLogin />} />
-              <Route path="/admin/*" element={
-                <AdminLayout>
-                  <Routes>
-                    <Route path="/" element={<AdminDashboard />} />
-                    <Route path="cars" element={<AdminCars />} />
-                    <Route path="orders" element={<AdminOrders />} />
-                    <Route path="import" element={<AdminImport />} />
-                    <Route path="settings" element={<AdminSettings />} />
-                  </Routes>
-                </AdminLayout>
-              } />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-            <Footer />
-            <Toaster />
+          <Header />
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/car/:id" element={<CarDetails />} />
+            <Route path="/favorites" element={<Favorites />} />
+            <Route path="/compare" element={<CompareCars />} />
+            <Route path="/catalog" element={<Catalog />} />
+            <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/admin/*" element={
+              <AdminLayout>
+                <Routes>
+                  <Route path="/" element={<AdminDashboard />} />
+                  <Route path="cars" element={<AdminCars />} />
+                  <Route path="orders" element={<AdminOrders />} />
+                  <Route path="import" element={<AdminImport />} />
+                  <Route path="settings" element={<AdminSettings />} />
+                </Routes>
+              </AdminLayout>
+            } />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+          <Footer />
+          <Toaster />
         </AdminProvider>
       </CarsProvider>
     </BrowserRouter>
