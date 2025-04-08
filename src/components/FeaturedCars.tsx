@@ -14,7 +14,7 @@ interface FeaturedCarsProps {
   filter?: 'new' | 'popular' | 'all';
   limit?: number;
   cars?: Car[];
-  isLoading?: boolean; // Добавляем атрибут isLoading
+  isLoading?: boolean;
 }
 
 const FeaturedCars: React.FC<FeaturedCarsProps> = ({ 

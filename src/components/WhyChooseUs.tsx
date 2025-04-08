@@ -1,76 +1,51 @@
 
-import React from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { 
-  ThumbsUp, 
-  ShieldCheck, 
-  Clock, 
-  CreditCard, 
-  Headphones, 
-  BarChart
-} from "lucide-react";
+import React from 'react';
+import { Shield, Award, ThumbsUp, Truck } from 'lucide-react';
 
 const WhyChooseUs = () => {
-  const reasons = [
+  const features = [
+    {
+      icon: <Shield className="h-10 w-10 text-blue-600" />,
+      title: 'Гарантия качества',
+      description: 'Все наши автомобили проходят тщательную проверку перед продажей'
+    },
+    {
+      icon: <Award className="h-10 w-10 text-blue-600" />,
+      title: 'Лучшие цены',
+      description: 'Мы предлагаем конкурентные цены и выгодные условия приобретения'
+    },
     {
       icon: <ThumbsUp className="h-10 w-10 text-blue-600" />,
-      title: "Качественные автомобили",
-      description: "Все автомобили проходят тщательную проверку перед поступлением в продажу"
+      title: 'Отличный сервис',
+      description: 'Наши специалисты всегда готовы помочь с выбором и оформлением'
     },
     {
-      icon: <ShieldCheck className="h-10 w-10 text-blue-600" />,
-      title: "Гарантия качества",
-      description: "Предоставляем гарантию на все автомобили"
-    },
-    {
-      icon: <Clock className="h-10 w-10 text-blue-600" />,
-      title: "Быстрое оформление",
-      description: "Оформление документов занимает минимум времени"
-    },
-    {
-      icon: <CreditCard className="h-10 w-10 text-blue-600" />,
-      title: "Выгодные кредиты",
-      description: "Специальные условия кредитования от банков-партнеров"
-    },
-    {
-      icon: <Headphones className="h-10 w-10 text-blue-600" />,
-      title: "Поддержка клиентов",
-      description: "Наша служба поддержки всегда готова помочь вам"
-    },
-    {
-      icon: <BarChart className="h-10 w-10 text-blue-600" />,
-      title: "Прозрачные условия",
-      description: "Никаких скрытых платежей и комиссий"
+      icon: <Truck className="h-10 w-10 text-blue-600" />,
+      title: 'Быстрая доставка',
+      description: 'Доставим ваш новый автомобиль в любую точку России'
     }
   ];
 
   return (
-    <div className="my-16 py-12 bg-gray-50">
+    <section className="py-16 bg-gray-50">
       <div className="container mx-auto px-4">
-        <div className="text-center mb-10">
-          <h2 className="text-3xl font-bold mb-2">Почему выбирают нас</h2>
-          <p className="text-gray-600 max-w-2xl mx-auto">
-            Мы стремимся сделать покупку автомобиля максимально комфортной и выгодной для каждого клиента
-          </p>
-        </div>
+        <h2 className="text-3xl font-bold text-center mb-12">Почему выбирают нас</h2>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {reasons.map((reason, index) => (
-            <Card key={index} className="border-none shadow-sm">
-              <CardContent className="p-6">
-                <div className="flex flex-col items-center text-center">
-                  <div className="mb-4">
-                    {reason.icon}
-                  </div>
-                  <h3 className="font-semibold text-lg mb-2">{reason.title}</h3>
-                  <p className="text-gray-600">{reason.description}</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          {features.map((feature, index) => (
+            <div key={index} className="bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex flex-col items-center text-center">
+                <div className="mb-4">
+                  {feature.icon}
                 </div>
-              </CardContent>
-            </Card>
+                <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
+                <p className="text-gray-600">{feature.description}</p>
+              </div>
+            </div>
           ))}
         </div>
       </div>
-    </div>
+    </section>
   );
 };
 

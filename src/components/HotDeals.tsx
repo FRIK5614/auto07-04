@@ -57,7 +57,6 @@ const HotDeals = () => {
           <CarCard 
             key={car.id} 
             car={car} 
-            onViewDetails={() => viewHotDeal(car.id)}
             withBadge={true}
             badgeText="Горячее предложение"
             badgeColor="bg-red-500"
