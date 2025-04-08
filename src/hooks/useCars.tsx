@@ -19,6 +19,7 @@ export const useCars = () => {
 
   // Create a loadCars convenience method that wraps reloadCars from carManagement
   const loadCars = () => {
+    console.log('Loading cars via useCars hook');
     return carManagement.reloadCars();
   };
   
@@ -34,6 +35,15 @@ export const useCars = () => {
   
   // Extract these methods from orderManagement to ensure they're properly typed
   const { createOrder, syncOrders, processOrder, deleteOrder, orders, loading: orderLoading } = orderManagement;
+  
+  // Explicitly extract key methods from carManagement
+  const { 
+    updateCar, 
+    addCar, 
+    deleteCar,
+    getCarById,
+    viewCar
+  } = carManagement;
 
   return {
     // Car management
@@ -44,6 +54,11 @@ export const useCars = () => {
     loadCars,
     exportCarsData,
     importCarsData,
+    updateCar,
+    addCar,
+    deleteCar,
+    getCarById,
+    viewCar,
     
     // Favorites and comparison
     ...favoritesAndCompare,

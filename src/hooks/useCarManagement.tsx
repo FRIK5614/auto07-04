@@ -1,3 +1,4 @@
+
 import { useCars as useGlobalCars } from "../contexts/CarsContext";
 import { Car } from "../types/car";
 import { useToast } from "@/hooks/use-toast";
@@ -29,9 +30,15 @@ export const useCarManagement = () => {
         status: car.status || 'published'
       };
       
+      console.log('Updating car with status:', carWithStatus);
       return await contextUpdateCar(carWithStatus);
     } catch (error) {
       console.error('Error in updateCar wrapper:', error);
+      toast({
+        variant: "destructive",
+        title: "Ошибка обновления",
+        description: "Произошла ошибка при обновлении автомобиля"
+      });
       throw error;
     }
   };
@@ -43,9 +50,15 @@ export const useCarManagement = () => {
         status: car.status || 'published'
       };
       
+      console.log('Adding car with status:', carWithStatus);
       return contextAddCar(carWithStatus);
     } catch (error) {
       console.error('Error in addCar wrapper:', error);
+      toast({
+        variant: "destructive",
+        title: "Ошибка добавления",
+        description: "Произошла ошибка при добавлении автомобиля"
+      });
       throw error;
     }
   };
