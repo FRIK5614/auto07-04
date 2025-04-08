@@ -5,13 +5,14 @@ import CarCard from './CarCard';
 import { Link } from 'react-router-dom';
 import { Button } from './ui/button';
 import { ChevronRight } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface FeaturedCarsProps {
   title: string;
   subtitle: string;
   filter?: 'new' | 'popular' | 'all';
   limit?: number;
-  cars?: Car[]; // Added cars prop to support both direct passing of cars and filtering
+  cars?: Car[]; // Массив автомобилей, передаваемый извне
 }
 
 const FeaturedCars: React.FC<FeaturedCarsProps> = ({ 
@@ -19,9 +20,10 @@ const FeaturedCars: React.FC<FeaturedCarsProps> = ({
   subtitle, 
   filter = 'all',
   limit = 6,
-  cars = [] // Default to empty array
+  cars = [] // Значение по умолчанию - пустой массив
 }) => {
   const [filteredCars, setFilteredCars] = useState<Car[]>([]);
+  const { toast } = useToast();
   
   useEffect(() => {
     // Логируем входящие данные для отладки
@@ -29,24 +31,26 @@ const FeaturedCars: React.FC<FeaturedCarsProps> = ({
       filter,
       limit,
       carsLength: cars.length,
-      isNew: cars.filter(c => c.isNew).length,
-      isPopular: cars.filter(c => c.isPopular).length,
-      status: cars.filter(c => c.status === 'published').length
+      isNew: cars.filter(c => c?.isNew).length,
+      isPopular: cars.filter(c => c?.isPopular).length,
+      status: cars.filter(c => c?.status === 'published').length
     });
   
-    // If cars are directly provided, use them
     if (cars && cars.length > 0) {
       let result = [...cars]; // Создаем копию массива
       
-      // Применяем фильтр, если он указан и если мы не получили уже отфильтрованные данные напрямую
+      // Применяем фильтр, если он указан
       if (filter === 'new') {
         result = result.filter(car => car.isNew === true);
+        console.log(`После фильтра "new":`, result.length);
       } else if (filter === 'popular') {
         result = result.filter(car => car.isPopular === true);
+        console.log(`После фильтра "popular":`, result.length);
       }
       
       // Выводим только опубликованные автомобили
       result = result.filter(car => car.status === 'published' || car.status === undefined);
+      console.log(`После фильтра status:`, result.length);
       
       // Ограничиваем количество
       result = result.slice(0, limit);
@@ -70,9 +74,22 @@ const FeaturedCars: React.FC<FeaturedCarsProps> = ({
     return car.status === 'published' || car.status === undefined;
   }).length > limit;
   
-  // Если нет автомобилей для отображения, не рендерим компонент
+  // Если нет автомобилей для отображения, показываем заглушку вместо null
   if (filteredCars.length === 0) {
-    return null;
+    return (
+      <div className="py-12 bg-gray-50">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold mb-2">{title}</h2>
+            <p className="text-gray-600">{subtitle}</p>
+          </div>
+          
+          <div className="bg-white p-8 rounded-lg shadow-sm text-center">
+            <p className="text-gray-500">Автомобили не найдены</p>
+          </div>
+        </div>
+      </div>
+    );
   }
   
   return (

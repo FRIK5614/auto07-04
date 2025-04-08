@@ -2,6 +2,7 @@
 import { useCars as useGlobalCars } from "../contexts/CarsContext";
 import { Car } from "../types/car";
 import { useToast } from "@/hooks/use-toast";
+import { apiAdapter } from "@/services/adapter";
 
 export const useCarManagement = () => {
   const {
@@ -205,16 +206,54 @@ export const useCarManagement = () => {
     return Array.from(countries);
   };
 
+  // Функция для получения новых автомобилей с проверкой наличия
   const getNewCars = (limit?: number): Car[] => {
-    const newCars = cars.filter(car => car.isNew === true && car.status !== 'draft');
-    console.log(`Найдено ${newCars.length} новых автомобилей`);
+    // Добавляем дополнительную проверку isNew существует и равен true
+    const newCars = cars.filter(car => car && car.isNew === true && car.status === 'published');
+    console.log(`Найдено ${newCars.length} новых автомобилей из ${cars.length} всего`);
+    
+    if (cars.length > 0 && newCars.length === 0) {
+      console.log('Данные по флагу isNew:', cars.map(car => ({ id: car.id, isNew: car.isNew })));
+    }
+    
     return limit ? newCars.slice(0, limit) : newCars;
   };
   
+  // Функция для получения популярных автомобилей с проверкой наличия
   const getPopularCars = (limit?: number): Car[] => {
-    const popularCars = cars.filter(car => car.isPopular === true && car.status !== 'draft');
-    console.log(`Найдено ${popularCars.length} популярных автомобилей`);
+    // Добавляем дополнительную проверку isPopular существует и равен true
+    const popularCars = cars.filter(car => car && car.isPopular === true && car.status === 'published');
+    console.log(`Найдено ${popularCars.length} популярных автомобилей из ${cars.length} всего`);
+    
+    if (cars.length > 0 && popularCars.length === 0) {
+      console.log('Данные по флагу isPopular:', cars.map(car => ({ id: car.id, isPopular: car.isPopular })));
+    }
+    
     return limit ? popularCars.slice(0, limit) : popularCars;
+  };
+
+  // Принудительно загружаем данные из API при инициализации хука
+  const forceReloadCars = async () => {
+    console.log("Принудительная загрузка автомобилей из API");
+    try {
+      const carsFromApi = await apiAdapter.getCars();
+      console.log(`Загружено ${carsFromApi.length} автомобилей из API`);
+      
+      if (typeof reloadCars === 'function') {
+        // Если есть метод reloadCars в контексте, вызываем его
+        await reloadCars();
+      }
+      
+      return carsFromApi;
+    } catch (error) {
+      console.error("Ошибка при загрузке автомобилей из API:", error);
+      toast({
+        variant: "destructive",
+        title: "Ошибка загрузки",
+        description: "Не удалось загрузить список автомобилей из API"
+      });
+      return [];
+    }
   };
 
   return {
@@ -226,6 +265,7 @@ export const useCarManagement = () => {
     setFilter,
     getCarById,
     reloadCars,
+    forceReloadCars, // Добавляем новый метод
     viewCar,
     deleteCar,
     updateCar,

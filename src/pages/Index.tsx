@@ -1,8 +1,7 @@
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import Header from "@/components/Header";
-import Footer from "@/components/Footer";
 import FeaturedCars from "@/components/FeaturedCars";
 import SearchFilters from "@/components/SearchFilters";
 import CarCard from "@/components/CarCard";
@@ -21,7 +20,18 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const IndexContent = () => {
-  const { cars, filteredCars, setFilter, filter, sortCars, reloadCars } = useCars();
+  const { 
+    cars, 
+    filteredCars, 
+    setFilter, 
+    filter, 
+    sortCars, 
+    reloadCars,
+    forceReloadCars, // Используем новый метод
+    getNewCars,
+    getPopularCars
+  } = useCars();
+  
   const [searchParams] = useSearchParams();
   const [visibleCars, setVisibleCars] = useState(12);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
@@ -29,10 +39,15 @@ const IndexContent = () => {
   const [sortedCars, setSortedCars] = useState(filteredCars);
   const [sortOption, setSortOption] = useState('default');
   
-  // Загрузить автомобили при первом рендере
+  // Загружаем автомобили из API при первом рендере
   useEffect(() => {
-    reloadCars();
-  }, [reloadCars]);
+    const loadData = async () => {
+      console.log("Загрузка данных на главной странице");
+      await forceReloadCars();
+    };
+    
+    loadData();
+  }, [forceReloadCars]);
 
   // Обновить фильтр при изменении параметров URL
   useEffect(() => {
@@ -55,8 +70,8 @@ const IndexContent = () => {
     setFilter(newFilter);
   }, [searchParams, setFilter, filter]);
 
-  // Сортировка автомобилей
-  useEffect(() => {
+  // Функция для сортировки автомобилей
+  const handleSortCars = useCallback(() => {
     if (typeof sortCars === 'function') {
       const sorted = sortCars([...filteredCars], sortOption);
       setSortedCars(sorted);
@@ -65,14 +80,37 @@ const IndexContent = () => {
     }
   }, [filteredCars, sortCars, sortOption]);
 
+  // Сортировка автомобилей при изменении фильтров или опции сортировки
+  useEffect(() => {
+    handleSortCars();
+  }, [filteredCars, handleSortCars, sortOption]);
+
+  // Функция для загрузки дополнительных автомобилей
   const loadMore = () => {
     setVisibleCars(prev => prev + 12);
   };
   
-  // Фильтруем новые и популярные автомобили
-  const newCars = cars.filter(car => car.isNew && car.status === 'published');
-  const popularCars = cars.filter(car => car.isPopular && car.status === 'published');
+  // Получаем новые и популярные автомобили
+  const [newCars, setNewCars] = useState<Car[]>([]);
+  const [popularCars, setPopularCars] = useState<Car[]>([]);
+  
+  // Обновляем списки новых и популярных автомобилей при изменении общего списка
+  useEffect(() => {
+    if (cars && cars.length > 0) {
+      console.log(`Всего загружено автомобилей: ${cars.length}`);
+      
+      const newCarsList = getNewCars();
+      const popularCarsList = getPopularCars();
+      
+      setNewCars(newCarsList);
+      setPopularCars(popularCarsList);
+      
+      console.log(`Получено новых автомобилей: ${newCarsList.length}`);
+      console.log(`Получено популярных автомобилей: ${popularCarsList.length}`);
+    }
+  }, [cars, getNewCars, getPopularCars]);
 
+  // Функции для управления модальным окном фильтров
   const openFilterModal = () => {
     setIsFilterModalOpen(true);
   };
@@ -81,12 +119,14 @@ const IndexContent = () => {
     setIsFilterModalOpen(false);
   };
 
+  // Функция для прокрутки к форме консультации
   const scrollToConsultForm = () => {
     consultFormRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
   
   // Обработчик изменения сортировки
   const handleSortChange = (option: string) => {
+    console.log("Изменена опция сортировки на:", option);
     setSortOption(option);
   };
   
@@ -102,7 +142,7 @@ const IndexContent = () => {
   };
 
   // Добавляем данные для демонстрации, если автомобилей мало
-  const ensureData = (cars: any[], label: string) => {
+  const ensureData = (cars: Car[], label: string) => {
     if (cars.length < 3) {
       console.log(`Недостаточно автомобилей для секции "${label}". Текущее количество:`, cars.length);
     }
@@ -227,21 +267,21 @@ const IndexContent = () => {
         </div>
       </section>
 
-      {ensureData(newCars, "Новые поступления").length > 0 && (
-        <FeaturedCars 
-          cars={newCars} 
-          title="Новые поступления" 
-          subtitle="Самые свежие модели в нашем каталоге"
-        />
-      )}
+      {/* Секция "Новые поступления" с логированием данных */}
+      <FeaturedCars 
+        cars={newCars} 
+        title="Новые поступления" 
+        subtitle="Самые свежие модели в нашем каталоге"
+        filter="new"
+      />
       
-      {ensureData(popularCars, "Популярные модели").length > 0 && (
-        <FeaturedCars 
-          cars={popularCars} 
-          title="Популярные модели" 
-          subtitle="Автомобили, которые чаще всего выбирают наши пользователи"
-        />
-      )}
+      {/* Секция "Популярные модели" с логированием данных */}
+      <FeaturedCars 
+        cars={popularCars} 
+        title="Популярные модели" 
+        subtitle="Автомобили, которые чаще всего выбирают наши пользователи"
+        filter="popular"
+      />
 
       <section className="py-12 bg-auto-gray-50">
         <div className="container mx-auto px-4">
