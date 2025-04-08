@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { Order } from '@/types/car';
 import { useToast } from "@/hooks/use-toast";
@@ -109,7 +108,6 @@ export const useOrderManagement = () => {
     }
   }, [toast]);
 
-  // Function to create a new order
   const createOrder = useCallback(async (order: Order) => {
     setLoading(true);
     try {

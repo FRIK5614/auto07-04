@@ -32,6 +32,9 @@ export const useCars = () => {
     return carManagement.importCarsData(data);
   };
 
+  // Explicitly expose createOrder from orderManagement
+  const { createOrder, syncOrders, processOrder, deleteOrder, orders, loading: orderLoading } = orderManagement;
+
   return {
     // Car management
     ...carManagement,
@@ -50,5 +53,12 @@ export const useCars = () => {
     
     // Order management
     ...orderManagement,
+    // Explicitly including these to ensure TypeScript recognizes them
+    createOrder,
+    syncOrders,
+    processOrder,
+    deleteOrder,
+    orders,
+    orderLoading,
   };
 };
