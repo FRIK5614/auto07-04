@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAdmin } from '../contexts/AdminContext';
 import { useCars } from '../hooks/useCars';
@@ -19,6 +19,7 @@ const Header: React.FC = () => {
   const { favoriteCarIds, compareCarIds } = useCars();
   const { settings } = useSettings();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   
   const logoUrl = settings?.companyLogo || '/placeholder.svg';
   const companyName = settings?.companyName || 'Автосалон';
@@ -26,9 +27,27 @@ const Header: React.FC = () => {
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
+
+  // Add scroll event listener to detect when page is scrolled
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 10) {
+        setIsScrolled(true);
+      } else {
+        setIsScrolled(false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    
+    // Clean up event listener
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
   
   return (
-    <header className="bg-white shadow-sm sticky top-0 z-50">
+    <header className={`bg-white shadow-sm sticky top-0 z-50 transition-all duration-300 ${isScrolled ? 'shadow-md' : ''}`}>
       <div className="container mx-auto px-4 py-4">
         <div className="flex justify-between items-center">
           {/* Logo */}
