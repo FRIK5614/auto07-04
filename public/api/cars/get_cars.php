@@ -10,6 +10,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 }
 
 try {
+    // Логируем начало запроса
+    error_log("Starting get_cars request with params: " . json_encode($_GET));
+    
     // Оптимизированный запрос - используем подготовленные запросы и улучшаем производительность
     $query = 'SELECT * FROM cars';
     
@@ -22,7 +25,9 @@ try {
         'brand' => 'brand = :brand',
         'model' => 'model = :model',
         'year' => 'year = :year',
-        'bodyType' => 'bodyType = :bodyType'
+        'bodyType' => 'bodyType = :bodyType',
+        'country' => 'country = :country',
+        'status' => 'status = :status'
     ];
     
     foreach ($filterFields as $field => $condition) {
@@ -41,6 +46,12 @@ try {
             $conditions[] = "$field = :$field";
             $params[":$field"] = $value;
         }
+    }
+    
+    // По умолчанию показываем только опубликованные автомобили, если не указан другой статус
+    if (!isset($_GET['status']) && !isset($_GET['admin'])) {
+        $conditions[] = "status = :status";
+        $params[':status'] = 'published';
     }
     
     // Добавляем условия к запросу, если они есть
@@ -78,6 +89,10 @@ try {
             $params[':offset'] = $offset;
         }
     }
+    
+    // Логируем построенный запрос
+    error_log("Built query: $query");
+    error_log("With params: " . json_encode($params));
     
     // Улучшаем производительность запроса, добавляем индексацию
     $pdo->exec('ANALYZE TABLE cars, car_images, car_features');
@@ -173,8 +188,10 @@ try {
             $car['features'] = isset($carFeatures[$car['id']]) ? $carFeatures[$car['id']] : [];
             
             // Преобразуем JSON-поля
-            if (isset($car['colors'])) {
+            if (isset($car['colors']) && !empty($car['colors'])) {
                 $car['colors'] = json_decode($car['colors'], true) ?? [];
+            } else {
+                $car['colors'] = [];
             }
             
             // Формируем структуры для объектов
@@ -187,37 +204,37 @@ try {
             
             // Соберем данные о двигателе в единый объект
             $car['engine'] = [
-                'type' => $car['engineType'],
-                'displacement' => (float)$car['engineDisplacement'],
-                'power' => (int)$car['enginePower'],
-                'torque' => (int)$car['engineTorque'],
-                'fuelType' => $car['fuelType']
+                'type' => $car['engineType'] ?? '',
+                'displacement' => (float)($car['engineDisplacement'] ?? 0),
+                'power' => (int)($car['enginePower'] ?? 0),
+                'torque' => (int)($car['engineTorque'] ?? 0),
+                'fuelType' => $car['fuelType'] ?? ''
             ];
             
             // Соберем данные о трансмиссии
             $car['transmission'] = [
-                'type' => $car['transmissionType'],
-                'gears' => (int)$car['transmissionGears']
+                'type' => $car['transmissionType'] ?? '',
+                'gears' => (int)($car['transmissionGears'] ?? 0)
             ];
             
             // Соберем данные о размерах
             $car['dimensions'] = [
-                'length' => (int)$car['dimensionsLength'],
-                'width' => (int)$car['dimensionsWidth'],
-                'height' => (int)$car['dimensionsHeight'],
-                'wheelbase' => (int)$car['dimensionsWheelbase'],
-                'weight' => (int)$car['dimensionsWeight'],
-                'trunkVolume' => (int)$car['dimensionsTrunkVolume']
+                'length' => (int)($car['dimensionsLength'] ?? 0),
+                'width' => (int)($car['dimensionsWidth'] ?? 0),
+                'height' => (int)($car['dimensionsHeight'] ?? 0),
+                'wheelbase' => (int)($car['dimensionsWheelbase'] ?? 0),
+                'weight' => (int)($car['dimensionsWeight'] ?? 0),
+                'trunkVolume' => (int)($car['dimensionsTrunkVolume'] ?? 0)
             ];
             
             // Соберем данные о производительности
             $car['performance'] = [
-                'acceleration' => (float)$car['performanceAcceleration'],
-                'topSpeed' => (int)$car['performanceTopSpeed'],
+                'acceleration' => (float)($car['performanceAcceleration'] ?? 0),
+                'topSpeed' => (int)($car['performanceTopSpeed'] ?? 0),
                 'fuelConsumption' => [
-                    'city' => (float)$car['performanceFuelConsumptionCity'],
-                    'highway' => (float)$car['performanceFuelConsumptionHighway'],
-                    'combined' => (float)$car['performanceFuelConsumptionCombined']
+                    'city' => (float)($car['performanceFuelConsumptionCity'] ?? 0),
+                    'highway' => (float)($car['performanceFuelConsumptionHighway'] ?? 0),
+                    'combined' => (float)($car['performanceFuelConsumptionCombined'] ?? 0)
                 ]
             ];
             
@@ -240,9 +257,9 @@ try {
             $car['isNew'] = (bool)($car['isNew'] ?? false);
             $car['isPopular'] = (bool)($car['isPopular'] ?? false);
             
-            // Добавляем поле status если его нет
-            if (!isset($car['status'])) {
-                $car['status'] = 'published';
+            // Проверяем, имеется ли поле status
+            if (!isset($car['status']) || empty($car['status'])) {
+                $car['status'] = 'published'; // Устанавливаем значение по умолчанию
             }
         }
     }
@@ -259,6 +276,7 @@ try {
     
 } catch (PDOException $e) {
     header('Content-Type: application/json');
+    error_log("PDO Exception in get_cars: " . $e->getMessage());
     echo json_encode([
         'success' => false, 
         'message' => 'Ошибка при получении автомобилей: ' . $e->getMessage(),

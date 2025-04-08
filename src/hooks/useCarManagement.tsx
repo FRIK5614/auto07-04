@@ -176,6 +176,20 @@ export const useCarManagement = () => {
         return carsToSort;
     }
   };
+  
+  const getCarsByCountry = (country: string): Car[] => {
+    return cars.filter(car => car.country === country);
+  };
+  
+  const getAvailableCountries = (): string[] => {
+    const countries = new Set<string>();
+    cars.forEach(car => {
+      if (car.country) {
+        countries.add(car.country);
+      }
+    });
+    return Array.from(countries);
+  };
 
   return {
     cars,
@@ -196,31 +210,7 @@ export const useCarManagement = () => {
     sortCars,
     exportCarsData,
     importCarsData,
+    getCarsByCountry,
+    getAvailableCountries
   };
 };
-
-// Fix the fallback implementation
-function getGlobalCars() {
-  try {
-    return useGlobalCars();
-  } catch (error) {
-    console.error('Error accessing global cars context:', error);
-    return {
-      cars: [],
-      filteredCars: [],
-      loading: false,
-      error: 'Failed to access cars context',
-      filter: {},
-      setFilter: () => {},
-      getCarById: () => undefined,
-      reloadCars: async () => {},
-      viewCar: () => {},
-      deleteCar: () => {},
-      updateCar: () => {},
-      addCar: () => {},
-      getPopularCarModels: () => [],
-      getCarsByBodyType: () => [],
-      sortCars: (cars: Car[], _: string) => cars
-    };
-  }
-}

@@ -1,141 +1,103 @@
 
-import { useEffect, useState } from "react";
-import { Car } from "@/types/car";
-import CarCard from "@/components/CarCard";
-import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import LoadingState from "./LoadingState";
-import ErrorState from "./ErrorState";
-import { useIsMobile } from "@/hooks/use-mobile";
-import useEmblaCarousel from "embla-carousel-react";
-import { useCars } from "@/hooks/useCars";
+import React, { useEffect, useState } from 'react';
+import { useCars } from '../hooks/useCars';
+import { Car } from '../types/car';
+import CarCard from './CarCard';
+import { Link } from 'react-router-dom';
+import { Button } from './ui/button';
+import { ChevronRight } from 'lucide-react';
 
 interface FeaturedCarsProps {
-  cars: Car[];
   title: string;
-  subtitle?: string;
-  loading?: boolean;
-  error?: string | null;
-  onRetry?: () => void;
+  subtitle: string;
+  filter?: 'new' | 'popular' | 'all';
+  limit?: number;
 }
 
-const FeaturedCars = ({ 
-  cars, 
+const FeaturedCars: React.FC<FeaturedCarsProps> = ({ 
   title, 
   subtitle, 
-  loading = false, 
-  error = null,
-  onRetry 
-}: FeaturedCarsProps) => {
-  const [visibleCount, setVisibleCount] = useState(4);
-  const isMobile = useIsMobile();
-  const { applySavedImagesToCar } = useCars();
-  const [processedCars, setProcessedCars] = useState<Car[]>([]);
+  filter = 'all',
+  limit = 6
+}) => {
+  const { cars } = useCars();
+  const [filteredCars, setFilteredCars] = useState<Car[]>([]);
   
-  const options = {
-    align: "start" as const,
-    loop: false,
-    slidesToScroll: isMobile ? 1 : visibleCount,
-  };
-  
-  const [emblaRef, emblaApi] = useEmblaCarousel(options);
-  
-  // Process cars with images on component mount and whenever cars change
   useEffect(() => {
-    if (!cars || cars.length === 0) {
-      setProcessedCars([]);
-      return;
+    // Фильтруем автомобили
+    let result = cars;
+    
+    // Применяем фильтр
+    if (filter === 'new') {
+      result = result.filter(car => car.isNew);
+    } else if (filter === 'popular') {
+      result = result.filter(car => car.isPopular);
     }
     
-    // Use the original cars without modifying them
-    // In a real app, the cars from API would already have proper image paths
-    setProcessedCars([...cars]);
-    console.log('FeaturedCars - Cars count:', cars.length);
-  }, [cars]);
+    // Выводим только опубликованные автомобили
+    result = result.filter(car => car.status === 'published');
+    
+    // Ограничиваем количество
+    result = result.slice(0, limit);
+    
+    console.info(`${title} - Cars count: ${result.length}`);
+    setFilteredCars(result);
+    
+  }, [cars, filter, limit, title]);
   
-  useEffect(() => {
-    const handleResize = () => {
-      const width = window.innerWidth;
-      if (width < 640) {
-        setVisibleCount(1);
-      } else if (width < 768) {
-        setVisibleCount(2);
-      } else if (width < 1024) {
-        setVisibleCount(3);
-      } else {
-        setVisibleCount(4);
-      }
-    };
-
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  useEffect(() => {
-    if (emblaApi) {
-      emblaApi.reInit({
-        ...options,
-        slidesToScroll: isMobile ? 1 : visibleCount
-      });
-    }
-  }, [visibleCount, emblaApi, isMobile, options]);
-
+  // Проверяем количество автомобилей после фильтрации
+  const showMoreButton = cars.filter(car => {
+    if (filter === 'new') return car.isNew && car.status === 'published';
+    if (filter === 'popular') return car.isPopular && car.status === 'published';
+    return car.status === 'published';
+  }).length > limit;
+  
   return (
-    <div className="py-8">
+    <div className="py-12 bg-gray-50">
       <div className="container mx-auto px-4">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-          <div>
-            <h2 className="text-2xl md:text-3xl font-bold text-auto-gray-900">{title}</h2>
-            {subtitle && <p className="text-auto-gray-600 mt-1">{subtitle}</p>}
-          </div>
+        <div className="text-center mb-8">
+          <h2 className="text-3xl font-bold mb-2">{title}</h2>
+          <p className="text-gray-600">{subtitle}</p>
         </div>
         
-        {error && <ErrorState message={error} onRetry={onRetry} />}
-        
-        {loading ? (
-          <LoadingState count={visibleCount} type="card" />
-        ) : !error && processedCars.length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-6 text-center">
-            <p className="text-auto-gray-600">В этой категории нет автомобилей</p>
+        {filteredCars.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredCars.map((car) => (
+              <CarCard key={car.id} car={car} />
+            ))}
           </div>
-        ) : !error && (
-          <div className="relative">
-            <div className="overflow-hidden" ref={emblaRef}>
-              <div className="flex">
-                {processedCars.map((car) => (
-                  <div 
-                    key={car.id} 
-                    className={isMobile ? "flex-[0_0_100%]" : `flex-[0_0_${100/visibleCount}%]`}
-                    style={{ 
-                      flex: isMobile ? "0 0 100%" : `0 0 calc(100% / ${visibleCount})`,
-                      padding: "0 8px" 
-                    }}
-                  >
-                    <CarCard car={car} className="h-full" />
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="flex justify-end space-x-2 mt-4">
-              <Button 
-                onClick={() => emblaApi?.scrollPrev()}
-                className="static transform-none h-10 w-10 bg-blue-600 hover:bg-blue-700 text-white border-none rounded-full"
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-gray-500">Нет автомобилей для отображения</p>
+          </div>
+        )}
+        
+        {showMoreButton && (
+          <div className="flex justify-center mt-8">
+            <Button asChild>
+              <Link 
+                to={`/catalog${createFilterQueryString(filter)}`}
+                className="flex items-center"
               >
-                <ChevronLeft className="h-6 w-6" />
-              </Button>
-              <Button
-                onClick={() => emblaApi?.scrollNext()}
-                className="static transform-none h-10 w-10 bg-blue-600 hover:bg-blue-700 text-white border-none rounded-full"
-              >
-                <ChevronRight className="h-6 w-6" />
-              </Button>
-            </div>
+                Больше автомобилей
+                <ChevronRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
           </div>
         )}
       </div>
     </div>
   );
 };
+
+// Функция для создания строки запроса на основе фильтра
+function createFilterQueryString(filter: 'new' | 'popular' | 'all'): string {
+  if (filter === 'new') {
+    return '?isNew=true';
+  } else if (filter === 'popular') {
+    return '?isPopular=true';
+  }
+  return '';
+}
 
 export default FeaturedCars;

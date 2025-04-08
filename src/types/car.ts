@@ -1,3 +1,4 @@
+
 export interface CarImage {
   id: string;
   url: string;
@@ -58,41 +59,12 @@ export interface Car {
   year: number;
   bodyType: string;
   colors: string[];
-  price: {
-    base: number;
-    withOptions?: number;
-    discount?: number;
-    special?: boolean | number;
-  };
-  engine: {
-    type: string;
-    displacement: number;
-    power: number;
-    torque: number;
-    fuelType: string;
-  };
-  transmission: {
-    type: string;
-    gears: number;
-  };
+  price: CarPrice;
+  engine: CarEngine;
+  transmission: CarTransmission;
   drivetrain: string;
-  dimensions: {
-    length: number;
-    width: number;
-    height: number;
-    wheelbase: number;
-    weight: number;
-    trunkVolume: number;
-  };
-  performance: {
-    acceleration: number;
-    topSpeed: number;
-    fuelConsumption: {
-      city: number;
-      highway: number;
-      combined: number;
-    };
-  };
+  dimensions: CarDimensions;
+  performance: CarPerformance;
   features?: CarFeature[];
   images?: CarImage[];
   description?: string;

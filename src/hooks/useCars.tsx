@@ -5,6 +5,7 @@ import { useCarImages } from "./useCarImages";
 import { useOrderManagement } from "./useOrderManagement";
 import { Car } from "@/types/car";
 import { useToast } from "@/hooks/use-toast";
+import { useCallback } from "react";
 
 export const useCars = () => {
   const carManagement = useCarManagement();
@@ -20,7 +21,7 @@ export const useCars = () => {
   const filteredCarsWithImages = filteredCars.map(car => carImages.applySavedImagesToCar(car));
 
   // Create a loadCars convenience method that wraps reloadCars from carManagement
-  const loadCars = () => {
+  const loadCars = useCallback(() => {
     console.log('Loading cars via useCars hook');
     try {
       return carManagement.reloadCars();
@@ -33,10 +34,10 @@ export const useCars = () => {
       });
       return Promise.resolve();
     }
-  };
+  }, [carManagement, toast]);
   
   // Make sure exportCarsData returns Car[]
-  const exportCarsData = (): Car[] => {
+  const exportCarsData = useCallback((): Car[] => {
     try {
       return carManagement.exportCarsData();
     } catch (error) {
@@ -48,12 +49,15 @@ export const useCars = () => {
       });
       return [];
     }
-  };
+  }, [carManagement, toast]);
   
   // Import cars data with proper typing and error handling
-  const importCarsData = (data: Car[] | Car): { success: number, failed: number } => {
+  const importCarsData = useCallback((data: Car[] | Car): { success: number, failed: number } => {
     try {
-      return carManagement.importCarsData(data);
+      const result = carManagement.importCarsData(data);
+      // Force reload after import
+      loadCars();
+      return result;
     } catch (error) {
       console.error('Error importing cars data:', error);
       toast({
@@ -64,7 +68,7 @@ export const useCars = () => {
       const count = Array.isArray(data) ? data.length : 1;
       return { success: 0, failed: count };
     }
-  };
+  }, [carManagement, loadCars, toast]);
   
   // Extract these methods from orderManagement to ensure they're properly typed
   const { createOrder, syncOrders, processOrder, deleteOrder, orders, loading: orderLoading } = orderManagement;
@@ -75,32 +79,38 @@ export const useCars = () => {
     addCar: rawAddCar, 
     deleteCar: rawDeleteCar,
     getCarById,
-    viewCar
+    viewCar,
+    getCarsByCountry,
+    getAvailableCountries
   } = carManagement;
   
   // Wrap these methods with proper error handling
-  const updateCar = async (car: Car) => {
+  const updateCar = useCallback(async (car: Car) => {
     try {
       await rawUpdateCar(car);
+      await loadCars(); // Reload cars after update
       return true;
     } catch (error) {
       console.error('Error updating car in useCars:', error);
       return false;
     }
-  };
+  }, [rawUpdateCar, loadCars]);
   
-  const addCar = (car: Car) => {
+  const addCar = useCallback((car: Car) => {
     try {
-      return rawAddCar(car);
+      const result = rawAddCar(car);
+      loadCars(); // Reload cars after adding
+      return result;
     } catch (error) {
       console.error('Error adding car in useCars:', error);
       throw error;
     }
-  };
+  }, [rawAddCar, loadCars]);
   
-  const deleteCar = (carId: string) => {
+  const deleteCar = useCallback((carId: string) => {
     try {
       rawDeleteCar(carId);
+      loadCars(); // Reload cars after deletion
     } catch (error) {
       console.error('Error deleting car in useCars:', error);
       toast({
@@ -110,7 +120,7 @@ export const useCars = () => {
       });
       throw error;
     }
-  };
+  }, [rawDeleteCar, loadCars, toast]);
 
   return {
     // Car management
@@ -126,6 +136,8 @@ export const useCars = () => {
     deleteCar,
     getCarById,
     viewCar,
+    getCarsByCountry,
+    getAvailableCountries,
     
     // Favorites and comparison
     ...favoritesAndCompare,
@@ -134,8 +146,6 @@ export const useCars = () => {
     ...carImages,
     
     // Order management
-    // We'll spread orderManagement but also explicitly include key functions
-    // to ensure TypeScript recognizes them
     ...orderManagement,
     createOrder,
     syncOrders,
