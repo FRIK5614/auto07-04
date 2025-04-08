@@ -11,8 +11,9 @@ const Header = () => {
       <div className="container mx-auto px-4 py-3 flex justify-between items-center">
         <Link to="/" className="text-xl font-bold">AutoDeal</Link>
         <nav>
-          <ul className="flex space-x-4">
+          <ul className="flex flex-wrap space-x-4">
             <li><Link to="/" className="hover:text-blue-600">Главная</Link></li>
+            <li><Link to="/hot-deals" className="hover:text-blue-600">Горячие предложения</Link></li>
             <li><Link to="/compare" className="hover:text-blue-600">Сравнение</Link></li>
             <li><Link to="/favorites" className="hover:text-blue-600">Избранное</Link></li>
             {isAdmin && (

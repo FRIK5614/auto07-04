@@ -1,6 +1,7 @@
 
 <?php
 require_once 'config.php';
+require_once 'telegram/send_notification.php'; // Include the notification script
 
 // Явно указываем заголовок Content-Type для JSON
 header('Content-Type: application/json');
@@ -11,70 +12,51 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-// Получаем данные из тела запроса
-$inputJSON = file_get_contents('php://input');
-$input = json_decode($inputJSON, true);
-
-// Проверяем данные
-if (
-    !isset($input['id']) || 
-    !isset($input['customerName']) || 
-    !isset($input['customerPhone']) || 
-    !isset($input['carId']) || 
-    !isset($input['status'])
-) {
-    echo json_encode(['success' => false, 'message' => 'Неверные данные запроса']);
-    exit;
-}
-
 try {
-    // Подготавливаем запрос
-    $stmt = $pdo->prepare('
-        INSERT INTO orders (
-            id, 
-            carId, 
-            customerName, 
-            customerPhone, 
-            customerEmail, 
-            status, 
-            createdAt, 
-            message
-        ) VALUES (
-            :id,
-            :carId,
-            :customerName,
-            :customerPhone,
-            :customerEmail,
-            :status,
-            :createdAt,
-            :message
-        )
-    ');
-
+    // Получаем данные из тела запроса
+    $inputJSON = file_get_contents('php://input');
+    $input = json_decode($inputJSON, true);
+    
+    // Проверка наличия обязательных полей
+    if (!isset($input['name']) || !isset($input['phone'])) {
+        echo json_encode(['success' => false, 'message' => 'Недостаточно данных для создания заказа']);
+        exit;
+    }
+    
+    // Генерируем UUID для заказа
+    $orderId = generateUUID();
+    
+    // Подготавливаем запрос для создания заказа
+    $stmt = $pdo->prepare('INSERT INTO orders (id, name, email, phone, message, carId, status, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())');
+    
     // Выполняем запрос с данными
-    $success = $stmt->execute([
-        'id' => $input['id'],
-        'carId' => $input['carId'],
-        'customerName' => sanitizeInput($input['customerName']),
-        'customerPhone' => sanitizeInput($input['customerPhone']),
-        'customerEmail' => isset($input['customerEmail']) ? sanitizeInput($input['customerEmail']) : null,
-        'status' => $input['status'],
-        'createdAt' => isset($input['createdAt']) ? $input['createdAt'] : date('Y-m-d H:i:s'),
-        'message' => isset($input['message']) ? sanitizeInput($input['message']) : null
+    $stmt->execute([
+        $orderId,
+        sanitizeInput($input['name']),
+        isset($input['email']) ? sanitizeInput($input['email']) : null,
+        sanitizeInput($input['phone']),
+        isset($input['message']) ? sanitizeInput($input['message']) : null,
+        isset($input['carId']) ? sanitizeInput($input['carId']) : null,
+        'new'
     ]);
-
-    if ($success) {
+    
+    // Проверяем, удалось ли добавить запись
+    if ($stmt->rowCount() > 0) {
+        // Send notification to Telegram admins
+        $notificationResult = notifyAdminsAboutNewOrder($orderId);
+        
         echo json_encode([
             'success' => true, 
-            'message' => 'Заказ успешно создан', 
-            'orderId' => $input['id']
+            'id' => $orderId, 
+            'message' => 'Заказ успешно создан',
+            'notification' => $notificationResult['success']
         ]);
     } else {
-        echo json_encode(['success' => false, 'message' => 'Ошибка при создании заказа']);
+        echo json_encode(['success' => false, 'message' => 'Не удалось создать заказ']);
     }
-    exit;
 } catch (PDOException $e) {
     echo json_encode(['success' => false, 'message' => 'Ошибка базы данных: ' . $e->getMessage()]);
-    exit;
+} catch (Exception $e) {
+    echo json_encode(['success' => false, 'message' => 'Произошла ошибка: ' . $e->getMessage()]);
 }
 ?>
