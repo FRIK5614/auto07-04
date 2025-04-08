@@ -105,6 +105,8 @@ export interface Order {
   createdAt: string;
   syncStatus?: 'pending' | 'synced' | 'failed';
   jsonFilePath?: string;
+  amount?: number;
+  customerComment?: string;
 }
 
 export interface OrdersFile {
