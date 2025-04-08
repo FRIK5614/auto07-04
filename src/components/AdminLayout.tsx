@@ -1,7 +1,7 @@
 
-import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
+import React, { ReactNode, useEffect } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAdmin } from "@/contexts/AdminContext";
-import { useEffect } from "react";
 import { 
   LayoutDashboard, 
   Car,
@@ -11,7 +11,11 @@ import {
   Settings
 } from "lucide-react";
 
-const AdminLayout = () => {
+interface AdminLayoutProps {
+  children: ReactNode;
+}
+
+const AdminLayout = ({ children }: AdminLayoutProps) => {
   const { isAdmin, logout } = useAdmin();
   const location = useLocation();
   const navigate = useNavigate();
@@ -32,7 +36,7 @@ const AdminLayout = () => {
 
   // Отображаем только компонент Outlet для страницы входа
   if (location.pathname === "/admin/login") {
-    return <Outlet />;
+    return <>{children}</>;
   }
 
   const isActive = (path: string) => {
@@ -112,7 +116,7 @@ const AdminLayout = () => {
       {/* Основное содержимое */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50">
-          <Outlet />
+          {children}
         </main>
       </div>
     </div>

@@ -11,7 +11,7 @@ import {
   TooltipProvider,
   TooltipTrigger
 } from './ui/tooltip';
-import { Heart, Menu, ShoppingCart, X, Brain } from 'lucide-react';
+import { Heart, Menu, ShoppingCart, X } from 'lucide-react';
 
 const Header: React.FC = () => {
   const location = useLocation();
@@ -80,14 +80,6 @@ const Header: React.FC = () => {
             >
               Каталог
             </Link>
-            <Link 
-              to="/deepseek" 
-              className={`text-sm font-medium transition-colors hover:text-primary ${
-                location.pathname === '/deepseek' ? 'text-primary border-b-2 border-primary' : 'text-gray-600'
-              }`}
-            >
-              DeepSeek ИИ
-            </Link>
             {isAdmin && (
               <Link 
                 to="/admin" 
@@ -150,24 +142,6 @@ const Header: React.FC = () => {
                   <p>Сравнение</p>
                 </TooltipContent>
               </Tooltip>
-              
-              {/* DeepSeek button */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    variant="outline"
-                    size="icon"
-                    asChild
-                  >
-                    <Link to="/deepseek">
-                      <Brain className="h-5 w-5" />
-                    </Link>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>DeepSeek ИИ</p>
-                </TooltipContent>
-              </Tooltip>
             </TooltipProvider>
             
             {/* Mobile menu button */}
@@ -204,15 +178,6 @@ const Header: React.FC = () => {
               onClick={() => setIsMobileMenuOpen(false)}
             >
               Каталог
-            </Link>
-            <Link 
-              to="/deepseek" 
-              className={`block py-2 px-4 rounded-md ${
-                location.pathname === '/deepseek' ? 'bg-primary/10 text-primary' : ''
-              }`}
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              DeepSeek ИИ
             </Link>
             <Link 
               to="/favorites" 
