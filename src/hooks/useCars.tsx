@@ -69,6 +69,13 @@ export const useCars = () => {
       return { success: 0, failed: count };
     }
   }, [carManagement, loadCars, toast]);
+
+  // Extract favorites and compare lists
+  const { favorites, compareCars } = favoritesAndCompare;
+
+  // Add these properties for compatibility with the Header component
+  const favoriteCarIds = favorites;
+  const compareCarIds = compareCars;
   
   // Extract these methods from orderManagement to ensure they're properly typed
   const { createOrder, syncOrders, processOrder, deleteOrder, orders, loading: orderLoading } = orderManagement;
@@ -141,6 +148,9 @@ export const useCars = () => {
     
     // Favorites and comparison
     ...favoritesAndCompare,
+    // Add explicit properties needed by Header component
+    favoriteCarIds,
+    compareCarIds,
     
     // Car images
     ...carImages,

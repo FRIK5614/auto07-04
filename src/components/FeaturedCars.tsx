@@ -1,6 +1,5 @@
 
 import React, { useEffect, useState } from 'react';
-import { useCars } from '../hooks/useCars';
 import { Car } from '../types/car';
 import CarCard from './CarCard';
 import { Link } from 'react-router-dom';
@@ -12,37 +11,39 @@ interface FeaturedCarsProps {
   subtitle: string;
   filter?: 'new' | 'popular' | 'all';
   limit?: number;
+  cars?: Car[]; // Added cars prop to support both direct passing of cars and filtering
 }
 
 const FeaturedCars: React.FC<FeaturedCarsProps> = ({ 
   title, 
   subtitle, 
   filter = 'all',
-  limit = 6
+  limit = 6,
+  cars = [] // Default to empty array
 }) => {
-  const { cars } = useCars();
   const [filteredCars, setFilteredCars] = useState<Car[]>([]);
   
   useEffect(() => {
-    // Фильтруем автомобили
-    let result = cars;
-    
-    // Применяем фильтр
-    if (filter === 'new') {
-      result = result.filter(car => car.isNew);
-    } else if (filter === 'popular') {
-      result = result.filter(car => car.isPopular);
+    // If cars are directly provided, use them, otherwise filter would work from context
+    if (cars && cars.length > 0) {
+      let result = cars;
+      
+      // Применяем фильтр, если он указан и если мы не получили уже отфильтрованные данные напрямую
+      if (filter === 'new') {
+        result = result.filter(car => car.isNew);
+      } else if (filter === 'popular') {
+        result = result.filter(car => car.isPopular);
+      }
+      
+      // Выводим только опубликованные автомобили
+      result = result.filter(car => car.status === 'published');
+      
+      // Ограничиваем количество
+      result = result.slice(0, limit);
+      
+      console.info(`${title} - Cars count: ${result.length}`);
+      setFilteredCars(result);
     }
-    
-    // Выводим только опубликованные автомобили
-    result = result.filter(car => car.status === 'published');
-    
-    // Ограничиваем количество
-    result = result.slice(0, limit);
-    
-    console.info(`${title} - Cars count: ${result.length}`);
-    setFilteredCars(result);
-    
   }, [cars, filter, limit, title]);
   
   // Проверяем количество автомобилей после фильтрации
