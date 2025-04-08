@@ -14,13 +14,41 @@ export const useCarManagement = () => {
     reloadCars,
     viewCar,
     deleteCar,
-    updateCar,
-    addCar,
+    updateCar: contextUpdateCar,
+    addCar: contextAddCar,
     exportCarsData: contextExportCarsData,
     importCarsData: contextImportCarsData
   } = useGlobalCars();
   
   const { toast } = useToast();
+  
+  const updateCar = async (car: Car) => {
+    try {
+      const carWithStatus = {
+        ...car,
+        status: car.status || 'published'
+      };
+      
+      return await contextUpdateCar(carWithStatus);
+    } catch (error) {
+      console.error('Error in updateCar wrapper:', error);
+      throw error;
+    }
+  };
+  
+  const addCar = (car: Car) => {
+    try {
+      const carWithStatus = {
+        ...car,
+        status: car.status || 'published'
+      };
+      
+      return contextAddCar(carWithStatus);
+    } catch (error) {
+      console.error('Error in addCar wrapper:', error);
+      throw error;
+    }
+  };
   
   const getMostViewedCars = (limit = 5): Car[] => {
     return [...cars]
@@ -149,10 +177,19 @@ export const useCarManagement = () => {
     updateCar,
     addCar,
     getMostViewedCars,
-    getPopularCarModels,
-    getCarsByBodyType,
-    sortCars,
+    getPopularCarModels: getGlobalCars().getPopularCarModels || (() => []),
+    getCarsByBodyType: getGlobalCars().getCarsByBodyType || (() => []),
+    sortCars: getGlobalCars().sortCars || ((cars, _) => cars),
     exportCarsData,
     importCarsData,
   };
 };
+
+function getGlobalCars() {
+  try {
+    return useGlobalCars();
+  } catch (error) {
+    console.error('Error accessing global cars context:', error);
+    return {};
+  }
+}

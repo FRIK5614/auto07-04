@@ -45,56 +45,56 @@ const AdminCars: React.FC = () => {
   }, [isAdmin, navigate, loadCars]);
 
   const handleAddCar = () => {
-    const newCar: CarType = {
-      id: `car_${Date.now()}`,
-      brand: '',
-      model: '',
-      year: new Date().getFullYear(),
-      bodyType: 'седан',
-      colors: ['#FFFFFF'],
-      price: { base: 0 },
-      engine: { 
-        type: 'бензин', 
-        displacement: 2.0, 
-        power: 150, 
-        torque: 200, 
-        fuelType: 'АИ-95' 
-      },
-      transmission: { type: 'автомат', gears: 6 },
-      drivetrain: 'передний',
-      dimensions: { 
-        length: 4500, 
-        width: 1800, 
-        height: 1400, 
-        wheelbase: 2700, 
-        weight: 1500, 
-        trunkVolume: 450 
-      },
-      performance: { 
-        acceleration: 9.0, 
-        topSpeed: 220, 
-        fuelConsumption: { 
-          city: 10.0, 
-          highway: 6.0, 
-          combined: 8.0 
-        } 
-      },
-      features: [],
-      images: [],
-      description: '',
-      isNew: true,
-      mileage: 0, // New field for mileage
-      status: 'published', // New status field
-    };
-
     try {
+      const newCar: CarType = {
+        id: `car_${Date.now()}`,
+        brand: '',
+        model: '',
+        year: new Date().getFullYear(),
+        bodyType: 'седан',
+        colors: ['#FFFFFF'],
+        price: { base: 0 },
+        engine: { 
+          type: 'бензин', 
+          displacement: 2.0, 
+          power: 150, 
+          torque: 200, 
+          fuelType: 'АИ-95' 
+        },
+        transmission: { type: 'автомат', gears: 6 },
+        drivetrain: 'передний',
+        dimensions: { 
+          length: 4500, 
+          width: 1800, 
+          height: 1400, 
+          wheelbase: 2700, 
+          weight: 1500, 
+          trunkVolume: 450 
+        },
+        performance: { 
+          acceleration: 9.0, 
+          topSpeed: 220, 
+          fuelConsumption: { 
+            city: 10.0, 
+            highway: 6.0, 
+            combined: 8.0 
+          } 
+        },
+        features: [],
+        images: [],
+        description: '',
+        isNew: true,
+        mileage: 0,
+        status: 'published',
+      };
+
       addCar(newCar);
       toast({
         title: "Успешно",
         description: "Автомобиль добавлен"
       });
       loadCars();
-      handleEditCar(newCar);
+      setSelectedCar(newCar);
     } catch (error) {
       console.error('Error adding car:', error);
       toast({
@@ -173,6 +173,10 @@ const AdminCars: React.FC = () => {
           ...selectedCar,
           status: carStatus
         };
+        
+        // Log the car being saved for debugging
+        console.log('Saving car:', updatedCar);
+        
         await updateCar(updatedCar);
         toast({
           title: "Успешно",

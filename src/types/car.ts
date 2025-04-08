@@ -1,9 +1,8 @@
-
 export interface CarImage {
   id: string;
   url: string;
   alt: string;
-  isMain?: boolean; // Добавляем флаг основного изображения
+  isMain?: boolean;
 }
 
 export interface CarPrice {
@@ -36,8 +35,8 @@ export interface CarDimensions {
 }
 
 export interface CarPerformance {
-  acceleration: number; // 0-100 km/h in seconds
-  topSpeed: number; // km/h
+  acceleration: number;
+  topSpeed: number;
   fuelConsumption: {
     city: number;
     highway: number;
@@ -59,24 +58,52 @@ export interface Car {
   year: number;
   bodyType: string;
   colors: string[];
-  price: CarPrice;
-  engine: CarEngine;
-  transmission: CarTransmission;
+  price: {
+    base: number;
+    discount?: number;
+    special?: boolean;
+  };
+  engine: {
+    type: string;
+    displacement: number;
+    power: number;
+    torque: number;
+    fuelType: string;
+  };
+  transmission: {
+    type: string;
+    gears: number;
+  };
   drivetrain: string;
-  dimensions: CarDimensions;
-  performance: CarPerformance;
-  features: CarFeature[];
-  images: CarImage[];
-  description: string;
-  isNew: boolean;
+  dimensions: {
+    length: number;
+    width: number;
+    height: number;
+    wheelbase: number;
+    weight: number;
+    trunkVolume: number;
+  };
+  performance: {
+    acceleration: number;
+    topSpeed: number;
+    fuelConsumption: {
+      city: number;
+      highway: number;
+      combined: number;
+    };
+  };
+  features?: CarFeature[];
+  images?: CarImage[];
+  description?: string;
+  isNew?: boolean;
   isPopular?: boolean;
-  country?: string; // Country field for car origin
-  viewCount?: number; // Track number of views
-  mileage?: number; // New field for mileage
-  exteriorColor?: string; // New field for specific exterior color
-  interiorColor?: string; // New field for interior color
-  trim?: string; // New field for trim level/configuration
-  status?: 'published' | 'draft'; // Publication status
+  trim?: string;
+  exteriorColor?: string;
+  interiorColor?: string;
+  country?: string;
+  viewCount?: number;
+  mileage?: number;
+  status?: 'published' | 'draft';
 }
 
 export interface CarFilter {
@@ -91,7 +118,7 @@ export interface CarFilter {
   engineTypes?: string[];
   drivetrains?: string[];
   isNew?: boolean;
-  countries?: string[]; // Countries filter
+  countries?: string[];
 }
 
 export interface Order {
@@ -103,8 +130,8 @@ export interface Order {
   message?: string;
   status: 'new' | 'processing' | 'completed' | 'canceled';
   createdAt: string;
-  syncStatus?: 'pending' | 'synced' | 'failed'; // Synchronization status
-  jsonFilePath?: string; // Path to the JSON file where the order is saved
+  syncStatus?: 'pending' | 'synced' | 'failed';
+  jsonFilePath?: string;
 }
 
 export interface OrdersFile {
