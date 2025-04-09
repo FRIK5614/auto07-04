@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, Database } from 'lucide-react';
+import { RefreshCw, Database, PlusCircle } from 'lucide-react';
 
 interface CarBasicInfo {
   id: string;
@@ -34,6 +34,7 @@ const AdminCheckCars: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [insertLoading, setInsertLoading] = useState(false);
   const [result, setResult] = useState<CheckCarsResponse | null>(null);
 
   // Проверяем авторизацию админа
@@ -49,8 +50,9 @@ const AdminCheckCars: React.FC = () => {
       const response = await fetch('/api/check_cars.php');
       const data = await response.json();
       
+      setResult(data);
+      
       if (data.success) {
-        setResult(data);
         toast({
           title: "Проверка завершена",
           description: data.message
@@ -71,6 +73,38 @@ const AdminCheckCars: React.FC = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+  
+  const insertSampleCars = async () => {
+    setInsertLoading(true);
+    try {
+      const response = await fetch('/api/insert_cars.php');
+      const data = await response.json();
+      
+      if (data.success) {
+        toast({
+          title: "Автомобили добавлены",
+          description: data.message || "Тестовые автомобили успешно добавлены"
+        });
+        // После успешного добавления обновляем список автомобилей
+        await checkCars();
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Ошибка",
+          description: data.message || "Не удалось добавить тестовые автомобили"
+        });
+      }
+    } catch (error) {
+      console.error("Ошибка при добавлении тестовых автомобилей:", error);
+      toast({
+        variant: "destructive",
+        title: "Ошибка",
+        description: "Не удалось подключиться к API для добавления автомобилей"
+      });
+    } finally {
+      setInsertLoading(false);
     }
   };
 
@@ -96,14 +130,25 @@ const AdminCheckCars: React.FC = () => {
           )}
         </div>
         
-        <Button 
-          onClick={checkCars} 
-          disabled={loading}
-          variant="outline"
-        >
-          <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          {loading ? 'Проверка...' : 'Обновить'}
-        </Button>
+        <div className="flex space-x-2">
+          <Button 
+            onClick={insertSampleCars} 
+            disabled={insertLoading}
+            variant="outline"
+          >
+            <PlusCircle className={`mr-2 h-4 w-4 ${insertLoading ? 'animate-spin' : ''}`} />
+            {insertLoading ? 'Добавление...' : 'Добавить тестовые авто'}
+          </Button>
+          
+          <Button 
+            onClick={checkCars} 
+            disabled={loading}
+            variant="outline"
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            {loading ? 'Проверка...' : 'Обновить'}
+          </Button>
+        </div>
       </div>
       
       {result && (
@@ -115,48 +160,61 @@ const AdminCheckCars: React.FC = () => {
           
           <TabsContent value="list">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {result.cars.map(car => (
-                <Card key={car.id} className="overflow-hidden">
-                  {car.imageUrl && (
-                    <div className="w-full h-48 overflow-hidden">
-                      <img 
-                        src={car.imageUrl} 
-                        alt={`${car.brand} ${car.model}`}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  )}
-                  <CardHeader className="pb-2">
-                    <div className="flex justify-between items-start">
-                      <CardTitle>{car.brand} {car.model}</CardTitle>
-                      <Badge variant={car.status === 'published' ? 'default' : 'secondary'}>
-                        {car.status === 'published' ? 'Опубликован' : 'Черновик'}
-                      </Badge>
-                    </div>
-                    <CardDescription>{car.year} · {car.bodyType}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-xl font-bold">{car.price}</p>
-                    <div className="grid grid-cols-2 gap-2 mt-2 text-sm">
-                      <div>
-                        <span className="text-gray-500">Двигатель:</span> {car.engine}
+              {result.cars && result.cars.length > 0 ? (
+                result.cars.map(car => (
+                  <Card key={car.id} className="overflow-hidden">
+                    {car.imageUrl && (
+                      <div className="w-full h-48 overflow-hidden">
+                        <img 
+                          src={car.imageUrl} 
+                          alt={`${car.brand} ${car.model}`}
+                          className="w-full h-full object-cover"
+                        />
                       </div>
-                      <div>
-                        <span className="text-gray-500">КПП:</span> {car.transmission}
+                    )}
+                    <CardHeader className="pb-2">
+                      <div className="flex justify-between items-start">
+                        <CardTitle>{car.brand} {car.model}</CardTitle>
+                        <Badge variant={car.status === 'published' ? 'default' : 'secondary'}>
+                          {car.status === 'published' ? 'Опубликован' : 'Черновик'}
+                        </Badge>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                      <CardDescription>{car.year} · {car.bodyType}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-xl font-bold">{car.price}</p>
+                      <div className="grid grid-cols-2 gap-2 mt-2 text-sm">
+                        <div>
+                          <span className="text-gray-500">Двигатель:</span> {car.engine}
+                        </div>
+                        <div>
+                          <span className="text-gray-500">КПП:</span> {car.transmission}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                <div className="col-span-3 text-center p-8">
+                  <Database className="mx-auto h-12 w-12 text-gray-400" />
+                  <p className="mt-2 text-lg font-semibold">В базе данных нет автомобилей</p>
+                  <p className="text-gray-500 mb-4">Добавьте тестовые автомобили или создайте их вручную</p>
+                  <Button onClick={insertSampleCars} disabled={insertLoading}>
+                    {insertLoading ? (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                        Добавление...
+                      </>
+                    ) : (
+                      <>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Добавить тестовые автомобили
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
             </div>
-            
-            {result.cars.length === 0 && (
-              <div className="text-center p-8">
-                <Database className="mx-auto h-12 w-12 text-gray-400" />
-                <p className="mt-2 text-lg font-semibold">В базе данных нет автомобилей</p>
-                <p className="text-gray-500">Добавьте автомобили через административную панель</p>
-              </div>
-            )}
           </TabsContent>
           
           <TabsContent value="debug">

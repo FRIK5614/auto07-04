@@ -1,10 +1,10 @@
-
 // Здесь содержатся адаптеры для работы с внешними API
 
 import { Car } from '../types/car';
 import { Order } from '../types/car';
 
-const BASE_API_URL = 'https://metallika29.ru/public/api';
+// Используем относительный путь для API в пределах нашего приложения
+const BASE_API_URL = '/api';
 
 interface ApiResponse<T> {
   success: boolean;
@@ -21,7 +21,7 @@ export const apiAdapter = {
       
       // Добавляем случайный параметр для предотвращения кэширования
       const timestamp = new Date().getTime();
-      const response = await fetch(`${BASE_API_URL}/cars/get_cars.php?t=${timestamp}`);
+      const response = await fetch(`${BASE_API_URL}/check_cars.php?t=${timestamp}`);
       
       if (!response.ok) {
         const text = await response.text();
@@ -29,7 +29,7 @@ export const apiAdapter = {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      const result: ApiResponse<Car[]> = await response.json();
+      const result = await response.json();
       
       if (!result.success) {
         console.error('API Error:', result.message);
@@ -39,34 +39,124 @@ export const apiAdapter = {
         throw new Error(result.message || 'Ошибка при получении автомобилей');
       }
       
-      if (!result.data || !Array.isArray(result.data)) {
-        console.error('Invalid data format received:', result);
-        throw new Error('Некорректный формат данных от API');
-      }
-      
-      // Убедимся, что все автомобили имеют статус и id
-      const carsWithStatus = result.data.map(car => ({
-        ...car,
-        id: car.id || crypto.randomUUID(),
-        status: car.status || 'published'
+      // Преобразуем данные из check_cars.php в формат Car[]
+      const carsWithStatus = result.cars.map(car => ({
+        id: car.id,
+        brand: car.brand,
+        model: car.model,
+        year: car.year,
+        bodyType: car.bodyType,
+        price: {
+          base: parseInt(car.price.replace(/[^\d]/g, ''), 10) || 0,
+        },
+        engine: {
+          type: car.engine.split(' ')[0] || '',
+          displacement: parseFloat(car.engine.split(' ')[1]?.replace('л', '')) || 0,
+          power: 0,
+          torque: 0,
+          fuelType: '',
+        },
+        transmission: {
+          type: car.transmission || '',
+          gears: 0,
+        },
+        drivetrain: '',
+        dimensions: {
+          length: 0,
+          width: 0,
+          height: 0,
+          wheelbase: 0,
+          weight: 0,
+          trunkVolume: 0,
+        },
+        performance: {
+          acceleration: 0,
+          topSpeed: 0,
+          fuelConsumption: {
+            city: 0,
+            highway: 0,
+            combined: 0,
+          },
+        },
+        images: car.imageUrl ? [{ 
+          id: `img_${car.id}`, 
+          url: car.imageUrl, 
+          alt: `${car.brand} ${car.model}` 
+        }] : [],
+        status: car.status || 'published',
       }));
       
       console.log(`Loaded ${carsWithStatus.length} cars from API`);
       
-      // Дополнительная проверка структуры данных
-      for (const car of carsWithStatus) {
-        if (!car.price || typeof car.price !== 'object') {
-          car.price = { base: 0 };
-        }
-        
-        if (!car.images || !Array.isArray(car.images)) {
-          car.images = [];
-        }
-      }
-      
       return carsWithStatus;
     } catch (error) {
       console.error('API fetch error:', error);
+      
+      // При ошибке попробуем добавить автомобили в базу данных и повторить запрос
+      try {
+        console.log('Trying to insert sample cars...');
+        // Вызываем PHP скрипт для добавления тестовых автомобилей
+        const insertResponse = await fetch(`${BASE_API_URL}/insert_cars.php`);
+        const insertResult = await insertResponse.json();
+        console.log('Insert cars result:', insertResult);
+        
+        if (insertResult.success) {
+          console.log('Sample cars inserted, retrying fetching...');
+          // Если добавление прошло успешно, повторяем запрос на получение автомобилей
+          const retryResponse = await fetch(`${BASE_API_URL}/check_cars.php?t=${new Date().getTime()}`);
+          const retryResult = await retryResponse.json();
+          
+          if (retryResult.success && retryResult.cars) {
+            return retryResult.cars.map(car => ({
+              id: car.id,
+              brand: car.brand,
+              model: car.model,
+              year: car.year,
+              bodyType: car.bodyType,
+              price: {
+                base: parseInt(car.price.replace(/[^\d]/g, ''), 10) || 0,
+              },
+              engine: {
+                type: car.engine.split(' ')[0] || '',
+                displacement: parseFloat(car.engine.split(' ')[1]?.replace('л', '')) || 0,
+                power: 0,
+                torque: 0,
+                fuelType: '',
+              },
+              transmission: {
+                type: car.transmission || '',
+                gears: 0,
+              },
+              drivetrain: '',
+              dimensions: {
+                length: 0,
+                width: 0,
+                height: 0,
+                wheelbase: 0,
+                weight: 0,
+                trunkVolume: 0,
+              },
+              performance: {
+                acceleration: 0,
+                topSpeed: 0,
+                fuelConsumption: {
+                  city: 0,
+                  highway: 0,
+                  combined: 0,
+                },
+              },
+              images: car.imageUrl ? [{ 
+                id: `img_${car.id}`, 
+                url: car.imageUrl, 
+                alt: `${car.brand} ${car.model}` 
+              }] : [],
+              status: car.status || 'published',
+            }));
+          }
+        }
+      } catch (insertError) {
+        console.error('Error inserting sample cars:', insertError);
+      }
       
       // Возвращаем пустой массив вместо выбрасывания исключения для более стабильной работы UI
       return [];
@@ -106,7 +196,7 @@ export const apiAdapter = {
     } catch (error) {
       console.error('Error getting car by ID:', error);
       
-      // Если API не реализован, попробуем получить из списка всех автомобилей
+      // Если API не реал��зован, попробуем получить из списка всех автомобилей
       try {
         const cars = await this.getCars();
         const car = cars.find(c => c.id === carId);

@@ -20,6 +20,17 @@ try {
     $countResult = $countStmt->fetch(PDO::FETCH_ASSOC);
     $totalCars = $countResult['count'];
     
+    // Проверяем наличие автомобилей в БД
+    if ($totalCars == 0) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'В базе данных нет автомобилей. Используйте /api/insert_cars.php для добавления тестовых автомобилей.',
+            'totalCars' => 0,
+            'cars' => []
+        ]);
+        exit;
+    }
+    
     // Запрос для получения списка автомобилей с основной информацией
     $stmt = $pdo->query('
         SELECT 
@@ -35,6 +46,7 @@ try {
             transmissionType
         FROM cars 
         ORDER BY brand, model
+        LIMIT 50
     ');
     
     $cars = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -68,7 +80,7 @@ try {
             'id' => $car['id'],
             'brand' => $car['brand'],
             'model' => $car['model'],
-            'year' => $car['year'],
+            'year' => intval($car['year']),
             'bodyType' => $car['bodyType'],
             'price' => number_format($car['priceBase'], 0, '.', ' ') . ' ₽',
             'engine' => $car['engineType'] . ' ' . $car['engineDisplacement'] . 'л',
