@@ -31,17 +31,25 @@ export const useCars = () => {
     setError(null);
     
     try {
-      // Получаем данные с реального API
+      // Получаем данные с API с защитой от ошибок
       const carsData = await apiAdapter.getCars();
       console.log('API returned cars:', carsData.length);
       
-      // Обновляем состояние в carManagement
-      carManagement.setCars(carsData); // Изменено с reloadCars() на прямую установку данных
-      
-      toast({
-        title: "Загрузка успешна",
-        description: `Загружено ${carsData.length} автомобилей`
-      });
+      if (carsData.length > 0) {
+        // Обновляем состояние в carManagement
+        carManagement.setCars(carsData); 
+        
+        toast({
+          title: "Загрузка успешна",
+          description: `Загружено ${carsData.length} автомобилей`
+        });
+      } else {
+        toast({
+          variant: "warning",
+          title: "Нет данных",
+          description: "API не вернул ни одного автомобиля"
+        });
+      }
       
       return carsData;
     } catch (err) {
@@ -62,7 +70,9 @@ export const useCars = () => {
   
   // Загружаем автомобили при первом рендере
   useEffect(() => {
-    loadCars();
+    loadCars().catch(err => {
+      console.error("Failed to load cars on initial render:", err);
+    });
   }, [loadCars]);
   
   // Make sure exportCarsData returns Car[]
@@ -92,12 +102,25 @@ export const useCars = () => {
       // Вызываем функцию из carManagement
       carManagement.addCar(addedCar);
       
+      // Показываем уведомление об успешном добавлении
+      toast({
+        title: "Автомобиль добавлен",
+        description: `${addedCar.brand} ${addedCar.model} успешно добавлен в базу`
+      });
+      
       // Перезагружаем список автомобилей
       await loadCars();
       
       return addedCar;
     } catch (error) {
       console.error('Ошибка при добавлении автомобиля:', error);
+      
+      toast({
+        variant: "destructive",
+        title: "Ошибка добавления",
+        description: `Не удалось добавить автомобиль: ${(error as Error).message}`
+      });
+      
       throw error;
     } finally {
       setIsLoading(false);
@@ -121,12 +144,25 @@ export const useCars = () => {
       // Вызываем функцию из carManagement
       carManagement.updateCar(updatedCar);
       
+      // Показываем уведомление об успешном обновлении
+      toast({
+        title: "Автомобиль обновлен",
+        description: `${updatedCar.brand} ${updatedCar.model} успешно обновлен`
+      });
+      
       // Перезагружаем список автомобилей для синхронизации с БД
       await loadCars();
       
       return updatedCar;
     } catch (error) {
       console.error('Ошибка при обновлении автомобиля:', error);
+      
+      toast({
+        variant: "destructive",
+        title: "Ошибка обновления",
+        description: `Не удалось обновить автомобиль: ${(error as Error).message}`
+      });
+      
       throw error;
     } finally {
       setIsLoading(false);
@@ -146,6 +182,12 @@ export const useCars = () => {
         // Вызываем функцию из carManagement
         carManagement.deleteCar(carId);
         
+        // Показываем уведомление об успешном удалении
+        toast({
+          title: "Автомобиль удален",
+          description: `Автомобиль успешно удален из базы`
+        });
+        
         // Перезагружаем список автомобилей
         await loadCars();
       }
@@ -153,6 +195,13 @@ export const useCars = () => {
       return result;
     } catch (error) {
       console.error('Ошибка при удалении автомобиля:', error);
+      
+      toast({
+        variant: "destructive",
+        title: "Ошибка удаления",
+        description: `Не удалось удалить автомобиль: ${(error as Error).message}`
+      });
+      
       throw error;
     } finally {
       setIsLoading(false);

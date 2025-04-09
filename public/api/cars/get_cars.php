@@ -83,43 +83,33 @@ try {
         }
     }
     
-    // Лимит и смещение для пагинации
-    if (isset($_GET['limit']) && is_numeric($_GET['limit'])) {
-        $limit = intval($_GET['limit']);
-        $query .= ' LIMIT :limit';
-        $params[':limit'] = $limit;
-        
-        if (isset($_GET['offset']) && is_numeric($_GET['offset'])) {
-            $offset = intval($_GET['offset']);
-            $query .= ' OFFSET :offset';
-            $params[':offset'] = $offset;
-        }
-    }
-    
     // Подготавливаем запрос
     $stmt = $pdo->prepare($query);
     
     // Привязываем параметры
     foreach ($params as $key => $value) {
-        // Для LIMIT и OFFSET используем специальную привязку для PDO
-        if ($key === ':limit' || $key === ':offset') {
-            $stmt->bindValue($key, $value, PDO::PARAM_INT);
-        } else {
-            $stmt->bindValue($key, $value);
-        }
+        $stmt->bindValue($key, $value);
     }
     
     // Выполняем запрос
     $stmt->execute();
+    
+    // Получаем ВСЕ результаты сразу, чтобы избежать ошибки с активными запросами
     $cars = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Получаем изображения для каждого автомобиля
     $carIds = array_column($cars, 'id');
     
+    // Подготавливаем массивы для хранения изображений и характеристик
+    $carImages = [];
+    $carFeatures = [];
+    
     if (!empty($carIds)) {
         // Получаем изображения
-        $imagePlaceholders = implode(',', array_fill(0, count($carIds), '?'));
-        $imageQuery = "SELECT * FROM car_images WHERE carId IN ($imagePlaceholders)";
+        $placeholders = implode(',', array_fill(0, count($carIds), '?'));
+        
+        // Запрос для получения изображений
+        $imageQuery = "SELECT * FROM car_images WHERE carId IN ($placeholders)";
         $imageStmt = $pdo->prepare($imageQuery);
         
         // Привязываем идентификаторы автомобилей
@@ -131,7 +121,6 @@ try {
         $images = $imageStmt->fetchAll(PDO::FETCH_ASSOC);
         
         // Группируем изображения по идентификатору автомобиля
-        $carImages = [];
         foreach ($images as $image) {
             if (!isset($carImages[$image['carId']])) {
                 $carImages[$image['carId']] = [];
@@ -145,8 +134,8 @@ try {
         }
         
         // Получаем характеристики для каждого автомобиля
-        $featurePlaceholders = implode(',', array_fill(0, count($carIds), '?'));
-        $featuresQuery = "SELECT * FROM car_features WHERE carId IN ($featurePlaceholders)";
+        // Здесь используем новое соединение для второго запроса
+        $featuresQuery = "SELECT * FROM car_features WHERE carId IN ($placeholders)";
         $featuresStmt = $pdo->prepare($featuresQuery);
         
         // Привязываем идентификаторы автомобилей
@@ -158,7 +147,6 @@ try {
         $features = $featuresStmt->fetchAll(PDO::FETCH_ASSOC);
         
         // Группируем характеристики по идентификатору автомобиля
-        $carFeatures = [];
         foreach ($features as $feature) {
             if (!isset($carFeatures[$feature['carId']])) {
                 $carFeatures[$feature['carId']] = [];
@@ -262,7 +250,13 @@ try {
     
     echo json_encode(['success' => true, 'data' => array_values($cars)]);
 } catch (PDOException $e) {
-    error_log("Database error in get_cars.php: " . $e->getMessage());
-    echo json_encode(['success' => false, 'message' => 'Ошибка при получении автомобилей: ' . $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+    // Более подробный лог ошибки
+    error_log("Database error in get_cars.php: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+    echo json_encode([
+        'success' => false, 
+        'message' => 'Ошибка при получении автомобилей: ' . $e->getMessage(),
+        'trace' => $e->getTraceAsString(),
+        'query' => $query ?? 'no query'
+    ]);
 }
 ?>

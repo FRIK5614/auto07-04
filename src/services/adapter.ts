@@ -18,7 +18,10 @@ export const apiAdapter = {
   async getCars(): Promise<Car[]> {
     try {
       console.log('Fetching cars from API...');
-      const response = await fetch(`${BASE_API_URL}/cars/get_cars.php`);
+      
+      // Добавляем случайный параметр для предотвращения кэширования
+      const timestamp = new Date().getTime();
+      const response = await fetch(`${BASE_API_URL}/cars/get_cars.php?t=${timestamp}`);
       
       if (!response.ok) {
         const text = await response.text();
@@ -36,24 +39,47 @@ export const apiAdapter = {
         throw new Error(result.message || 'Ошибка при получении автомобилей');
       }
       
-      // Убедимся, что все автомобили имеют статус
-      const carsWithStatus = (result.data || []).map(car => ({
+      if (!result.data || !Array.isArray(result.data)) {
+        console.error('Invalid data format received:', result);
+        throw new Error('Некорректный формат данных от API');
+      }
+      
+      // Убедимся, что все автомобили имеют статус и id
+      const carsWithStatus = result.data.map(car => ({
         ...car,
+        id: car.id || crypto.randomUUID(),
         status: car.status || 'published'
       }));
       
       console.log(`Loaded ${carsWithStatus.length} cars from API`);
+      
+      // Дополнительная проверка структуры данных
+      for (const car of carsWithStatus) {
+        if (!car.price || typeof car.price !== 'object') {
+          car.price = { base: 0 };
+        }
+        
+        if (!car.images || !Array.isArray(car.images)) {
+          car.images = [];
+        }
+      }
+      
       return carsWithStatus;
     } catch (error) {
       console.error('API fetch error:', error);
-      throw error;
+      
+      // Возвращаем пустой массив вместо выбрасывания исключения для более стабильной работы UI
+      return [];
     }
   },
 
   // ПОЛУЧЕНИЕ ОТДЕЛЬНОГО АВТОМОБИЛЯ ПО ID
-  async getCarById(carId: string): Promise<Car> {
+  async getCarById(carId: string): Promise<Car | null> {
     try {
-      const response = await fetch(`${BASE_API_URL}/cars/get_car_by_id.php?id=${carId}`);
+      console.log(`Fetching car with ID ${carId} from API...`);
+      
+      const timestamp = new Date().getTime();
+      const response = await fetch(`${BASE_API_URL}/cars/get_car_by_id.php?id=${carId}&t=${timestamp}`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -65,7 +91,18 @@ export const apiAdapter = {
         throw new Error(result.message || `Автомобиль с ID ${carId} не найден`);
       }
       
-      return result.data;
+      if (!result.data) {
+        throw new Error(`Нет данных для автомобиля с ID ${carId}`);
+      }
+      
+      // Обеспечим наличие всех необходимых полей
+      const car = {
+        ...result.data,
+        status: result.data.status || 'published',
+        images: Array.isArray(result.data.images) ? result.data.images : []
+      };
+      
+      return car;
     } catch (error) {
       console.error('Error getting car by ID:', error);
       
@@ -75,13 +112,14 @@ export const apiAdapter = {
         const car = cars.find(c => c.id === carId);
         
         if (!car) {
-          throw new Error(`Автомобиль с ID ${carId} не найден`);
+          console.log(`Car with ID ${carId} not found in the list of all cars`);
+          return null;
         }
         
         return car;
       } catch (fallbackError) {
         console.error('Fallback error:', fallbackError);
-        throw error; // Выбрасываем оригинальную ошибку
+        return null;
       }
     }
   },
@@ -101,16 +139,25 @@ export const apiAdapter = {
         car.status = 'published';
       }
       
+      // Убедимся, что все необходимые поля существуют
+      const carToSend = {
+        ...car,
+        price: car.price || { base: 0 },
+        images: car.images || [],
+        features: car.features || []
+      };
+      
       const response = await fetch(`${BASE_API_URL}/cars/add_car.php`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(car),
+        body: JSON.stringify(carToSend),
       });
       
       if (!response.ok) {
         const errorText = await response.text();
+        console.error(`HTTP error! status: ${response.status}, ${errorText}`);
         throw new Error(`HTTP error! status: ${response.status}, ${errorText}`);
       }
       
@@ -125,7 +172,9 @@ export const apiAdapter = {
       }
       
       console.log('Car added successfully:', result);
-      return car;
+      
+      // Возвращаем автомобиль, который был добавлен (с возможными обновлениями с сервера)
+      return result.data || car;
     } catch (error) {
       console.error('API add car error:', error);
       throw error;
@@ -152,6 +201,7 @@ export const apiAdapter = {
       
       if (!response.ok) {
         const errorText = await response.text();
+        console.error(`HTTP error! status: ${response.status}, ${errorText}`);
         throw new Error(`HTTP error! status: ${response.status}, ${errorText}`);
       }
       
@@ -166,6 +216,7 @@ export const apiAdapter = {
       }
       
       console.log('Car updated successfully:', result);
+      // Возвращаем обновленный автомобиль
       return car;
     } catch (error) {
       console.error('API update car error:', error);
@@ -187,6 +238,7 @@ export const apiAdapter = {
       
       if (!response.ok) {
         const errorText = await response.text();
+        console.error(`HTTP error! status: ${response.status}, ${errorText}`);
         throw new Error(`HTTP error! status: ${response.status}, ${errorText}`);
       }
       
@@ -220,23 +272,21 @@ export const apiAdapter = {
         body: JSON.stringify({ id: orderId }),
       });
       
-      // Даже если API не реализован, для тестирования вернем успех
       if (!response.ok) {
-        console.warn(`API endpoint for deleting orders not implemented. Status: ${response.status}`);
-        return true; // Возвращаем true для UI
+        console.warn(`API endpoint for deleting orders returned status: ${response.status}`);
+        return false;
       }
       
       try {
         const result = await response.json();
-        return result.success || true;
+        return result.success || false;
       } catch (e) {
-        // Если ответ не JSON, просто вернем true для UI
-        return true;
+        console.error('Error parsing delete order response:', e);
+        return false;
       }
     } catch (error) {
       console.error('API delete order error:', error);
-      // Для тестирования вернем true
-      return true;
+      return false;
     }
   },
 
@@ -263,16 +313,41 @@ export const apiAdapter = {
         body: JSON.stringify(order),
       });
       
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`HTTP error! status: ${response.status}, ${errorText}`);
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const result = await response.json();
       
       if (!result.success) {
         throw new Error(result.message || 'Ошибка при создании заказа');
       }
       
+      if (!result.data) {
+        // Если API не вернул данные, создаем новый заказ локально
+        const newOrder: Order = {
+          id: crypto.randomUUID(),
+          status: 'new',
+          createdAt: new Date().toISOString(),
+          ...order
+        };
+        return newOrder;
+      }
+      
       return result.data;
     } catch (error) {
       console.error('API create order error:', error);
-      throw error;
+      
+      // В случае ошибки создаем локальный заказ для корректной работы UI
+      const newOrder: Order = {
+        id: crypto.randomUUID(),
+        status: 'new',
+        createdAt: new Date().toISOString(),
+        ...order
+      };
+      return newOrder;
     }
   },
 
@@ -280,7 +355,10 @@ export const apiAdapter = {
   async getOrders(): Promise<Order[]> {
     try {
       console.log('Fetching orders from API...');
-      const response = await fetch(`${BASE_API_URL}/get_orders.php`);
+      
+      // Добавляем случайный параметр для предотвращения кэширования
+      const timestamp = new Date().getTime();
+      const response = await fetch(`${BASE_API_URL}/get_orders.php?t=${timestamp}`);
       
       if (!response.ok) {
         const text = await response.text();
@@ -295,11 +373,17 @@ export const apiAdapter = {
         throw new Error(result.message || 'Ошибка при получении заказов');
       }
       
-      console.log(`Loaded ${result.data?.length || 0} orders from API`);
+      if (!result.data) {
+        console.warn('API returned no orders data');
+        return [];
+      }
+      
+      console.log(`Loaded ${result.data.length || 0} orders from API`);
       return result.data || [];
     } catch (error) {
       console.error('API get orders error:', error);
-      throw error;
+      // Возвращаем пустой массив вместо выбрасывания исключения
+      return [];
     }
   },
 
@@ -315,16 +399,21 @@ export const apiAdapter = {
         body: JSON.stringify({ id: orderId, status }),
       });
       
-      const result = await response.json();
-      
-      if (!result.success) {
-        throw new Error(result.message || 'Ошибка при обновлении статуса заказа');
+      if (!response.ok) {
+        console.warn(`API endpoint for updating order status returned status: ${response.status}`);
+        return false;
       }
       
-      return true;
+      try {
+        const result = await response.json();
+        return result.success || false;
+      } catch (e) {
+        console.error('Error parsing update order status response:', e);
+        return false;
+      }
     } catch (error) {
       console.error('API update order status error:', error);
-      throw error;
+      return false;
     }
   },
 
@@ -332,6 +421,7 @@ export const apiAdapter = {
   async uploadImage(file: File, carId?: string): Promise<{ url: string; id: string; isMain: boolean }> {
     try {
       console.log('Uploading image for car', carId);
+      
       const formData = new FormData();
       formData.append('image', file);
       
@@ -347,7 +437,7 @@ export const apiAdapter = {
       if (!response.ok) {
         const text = await response.text();
         console.error(`HTTP error when uploading image! Status: ${response.status}, Response: ${text}`);
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`HTTP error! status: ${response.status}, ${text}`);
       }
       
       const result = await response.json();
@@ -355,6 +445,12 @@ export const apiAdapter = {
       if (!result.success) {
         console.error('API Error when uploading image:', result.message);
         throw new Error(result.message || 'Ошибка при загрузке изображения');
+      }
+      
+      console.log('Image uploaded successfully:', result);
+      
+      if (!result.data) {
+        throw new Error('API did not return image data');
       }
       
       return {

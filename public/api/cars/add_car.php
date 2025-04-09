@@ -12,9 +12,12 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $inputJSON = file_get_contents('php://input');
 $input = json_decode($inputJSON, true);
 
+// Подробный лог для отладки
+error_log("Received data in add_car.php: " . $inputJSON);
+
 // Проверяем данные
 if (!isset($input['id']) || !isset($input['brand']) || !isset($input['model']) || !isset($input['year'])) {
-    echo json_encode(['success' => false, 'message' => 'Неверные данные запроса']);
+    echo json_encode(['success' => false, 'message' => 'Неверные данные запроса - отсутствуют обязательные поля']);
     exit;
 }
 
@@ -24,6 +27,15 @@ try {
     
     // Начинаем транзакцию
     $pdo->beginTransaction();
+    
+    // Проверяем, существует ли автомобиль с таким ID
+    $checkStmt = $pdo->prepare('SELECT id FROM cars WHERE id = ?');
+    $checkStmt->execute([$input['id']]);
+    $exists = $checkStmt->fetch(PDO::FETCH_ASSOC);
+    
+    if ($exists) {
+        throw new PDOException("Автомобиль с ID {$input['id']} уже существует");
+    }
     
     // Подготавливаем запрос для добавления автомобиля
     $stmt = $pdo->prepare('
@@ -93,6 +105,9 @@ try {
         throw new PDOException("Не удалось добавить автомобиль: " . print_r($stmt->errorInfo(), true));
     }
     
+    // Логгируем успешное добавление автомобиля
+    error_log("Successfully added car with ID: {$input['id']}");
+    
     // Добавляем характеристики автомобиля, если они есть
     if (isset($input['features']) && is_array($input['features']) && !empty($input['features'])) {
         $featureStmt = $pdo->prepare('
@@ -130,17 +145,25 @@ try {
                 'alt' => $image['alt'] ?? "{$input['brand']} {$input['model']}",
                 'isMain' => $isMain ? 1 : 0
             ]);
+            
+            error_log("Added image for car {$input['id']}: {$image['url']}");
         }
+    } else {
+        error_log("No images provided for car {$input['id']}");
     }
     
     // Если все прошло успешно, фиксируем транзакцию
     $pdo->commit();
     
+    // Собираем полные данные автомобиля для ответа
+    $fullData = $input;
+    
+    // Возвращаем успешный ответ
     echo json_encode([
         'success' => true, 
         'message' => 'Автомобиль успешно добавлен', 
         'carId' => $input['id'],
-        'data' => array_merge($carData, ['id' => $input['id']])
+        'data' => $fullData
     ]);
 } catch (PDOException $e) {
     // В случае ошибки отменяем транзакцию
@@ -149,7 +172,8 @@ try {
     echo json_encode([
         'success' => false, 
         'message' => 'Ошибка при добавлении автомобиля: ' . $e->getMessage(),
-        'trace' => $e->getTraceAsString()
+        'trace' => $e->getTraceAsString(),
+        'input' => $input
     ]);
 }
 ?>
