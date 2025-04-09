@@ -54,7 +54,8 @@ export const useCarManagement = () => {
     if (typeof reloadCars === 'function') {
       console.log("Calling reloadCars from context with validated cars", validatedCars.length);
       try {
-        reloadCars(validatedCars);
+        // Здесь была ошибка TS2554, исправляем вызов метода
+        reloadCars();
       } catch (error) {
         console.error("Error calling reloadCars from context:", error);
         // Если вызов reloadCars не удался, используем только локальное состояние

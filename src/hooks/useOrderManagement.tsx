@@ -133,6 +133,8 @@ export const useOrderManagement = () => {
         setOrders(current => current.filter(order => order.id !== orderId));
         
         toast({
+          // Исправляем тип variant, 'warning' не является допустимым значением
+          variant: "default",
           title: "Заказ удален локально",
           description: "Заказ удален из интерфейса, но возможно не из базы данных"
         });
@@ -146,7 +148,8 @@ export const useOrderManagement = () => {
       setOrders(current => current.filter(order => order.id !== orderId));
       
       toast({
-        variant: "warning",
+        // Исправляем тип variant, 'warning' не является допустимым значением
+        variant: "default",
         title: "Ошибка API",
         description: "Заказ удален из интерфейса, но возможно не из базы данных"
       });

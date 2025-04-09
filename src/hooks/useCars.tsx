@@ -1,4 +1,3 @@
-
 import { useCarManagement } from "./useCarManagement";
 import { useFavoritesAndCompare } from "./useFavoritesAndCompare";
 import { useCarImages } from "./useCarImages";
@@ -45,7 +44,7 @@ export const useCars = () => {
         });
       } else {
         toast({
-          variant: "warning",
+          variant: "default",
           title: "Нет данных",
           description: "API не вернул ни одного автомобиля"
         });
