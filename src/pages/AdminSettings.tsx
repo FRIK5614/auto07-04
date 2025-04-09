@@ -7,6 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSettings } from '@/hooks/useSettings';
 import { Loader2, Save, RefreshCw } from 'lucide-react';
 import { TelegramSettings } from '@/components/admin/TelegramSettings';
+import SettingField from '@/components/admin/SettingField';
+import { Separator } from '@/components/ui/separator';
 
 interface SettingsGroupProps {
   title: string;
