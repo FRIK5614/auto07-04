@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import Header from "@/components/Header";
@@ -15,7 +14,7 @@ import { CarsProvider } from "@/contexts/CarsContext";
 import { ChevronDown, Car, CarFront, Settings, UserRound } from "lucide-react";
 
 const IndexContent = () => {
-  const { cars, filteredCars, setFilter, filter } = useCars();
+  const { cars, filteredCars, setFilter, filter, isLoading, error, loadCars } = useCars();
   const [searchParams] = useSearchParams();
   const [visibleCars, setVisibleCars] = useState(12);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
@@ -45,8 +44,8 @@ const IndexContent = () => {
     setVisibleCars(prev => prev + 12);
   };
 
-  const newCars = cars.filter(car => car.isNew);
-  const popularCars = cars.filter(car => car.isPopular);
+  const newCars = cars.filter(car => car.isNew === true);
+  const popularCars = cars.filter(car => car.isPopular === true);
 
   const openFilterModal = () => {
     setIsFilterModalOpen(true);
@@ -58,6 +57,10 @@ const IndexContent = () => {
 
   const scrollToConsultForm = () => {
     consultFormRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleRetry = () => {
+    loadCars();
   };
 
   return (
@@ -155,7 +158,7 @@ const IndexContent = () => {
               </div>
               <h3 className="text-xl font-semibold mb-2">Детальное сравнение</h3>
               <p className="text-auto-gray-600">
-                Сравнивайте до 3 автомобилей одновременно по всем техническим характеристикам.
+                Сравнять до 3 автомобилей одновременно по всем техническим характеристикам.
               </p>
             </div>
             
@@ -172,21 +175,23 @@ const IndexContent = () => {
         </div>
       </section>
 
-      {newCars.length > 0 && (
-        <FeaturedCars 
-          cars={newCars} 
-          title="Новые поступления" 
-          subtitle="Самые свежие модели в нашем каталоге"
-        />
-      )}
+      <FeaturedCars 
+        cars={newCars} 
+        title="Новые поступления" 
+        subtitle="Самые свежие модели в нашем каталоге"
+        loading={isLoading}
+        error={error}
+        onRetry={handleRetry}
+      />
       
-      {popularCars.length > 0 && (
-        <FeaturedCars 
-          cars={popularCars} 
-          title="Популярные модели" 
-          subtitle="Автомобили, которые чаще всего выбирают наши пользователи"
-        />
-      )}
+      <FeaturedCars 
+        cars={popularCars} 
+        title="Популярные модели" 
+        subtitle="Автомобили, которые чаще всего выбирают наши пользователи"
+        loading={isLoading}
+        error={error}
+        onRetry={handleRetry}
+      />
 
       <section className="py-12 bg-auto-gray-50">
         <div className="container mx-auto px-4">

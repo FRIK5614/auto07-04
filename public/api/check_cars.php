@@ -75,7 +75,13 @@ try {
     
     // Форматируем данные для удобства чтения
     $formattedCars = [];
-    foreach ($cars as $car) {
+    foreach ($cars as $index => $car) {
+        // Определяем, является ли автомобиль новым (последние 3 модели считаем новыми)
+        $isNew = ($index < 3);
+        
+        // Определяем, является ли автомобиль популярным (модели с индексами 2,3,4 считаем популярными)
+        $isPopular = ($index >= 2 && $index <= 4);
+        
         $formattedCars[] = [
             'id' => $car['id'],
             'brand' => $car['brand'],
@@ -86,7 +92,9 @@ try {
             'engine' => $car['engineType'] . ' ' . $car['engineDisplacement'] . 'л',
             'transmission' => $car['transmissionType'],
             'status' => $car['status'],
-            'imageUrl' => $carImages[$car['id']] ?? null
+            'imageUrl' => $carImages[$car['id']] ?? null,
+            'isNew' => $isNew,
+            'isPopular' => $isPopular
         ];
     }
     

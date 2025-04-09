@@ -48,7 +48,7 @@ const FeaturedCars = ({
     }
     
     // Use the original cars without modifying them
-    // In a real app, the cars from API would already have proper image paths
+    // В реальном приложении автомобили из API уже будут иметь корректные пути изображений
     setProcessedCars([...cars]);
     console.log('FeaturedCars - Cars count:', cars.length);
   }, [cars]);
