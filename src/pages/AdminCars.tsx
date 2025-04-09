@@ -11,7 +11,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Form, FormField, FormItem, FormLabel, FormControl } from '@/components/ui/form';
+import { useForm } from 'react-hook-form'; // Добавляем импорт useForm
+import { Form } from '@/components/ui/form';
 import CarImageUploader from '@/components/CarImageUploader';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
@@ -465,7 +466,7 @@ const AdminCars: React.FC = () => {
               <TabsContent value="basic" className="pt-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <FormLabel>Марка <span className="text-red-500">*</span></FormLabel>
+                    <label className="block text-sm font-medium mb-1">Марка <span className="text-red-500">*</span></label>
                     <Input
                       value={selectedCar.brand}
                       onChange={(e) => handleBasicChange(e, 'brand')}
@@ -475,7 +476,7 @@ const AdminCars: React.FC = () => {
                   </div>
                   
                   <div>
-                    <FormLabel>Модель <span className="text-red-500">*</span></FormLabel>
+                    <label className="block text-sm font-medium mb-1">Модель <span className="text-red-500">*</span></label>
                     <Input
                       value={selectedCar.model}
                       onChange={(e) => handleBasicChange(e, 'model')}
@@ -485,7 +486,7 @@ const AdminCars: React.FC = () => {
                   </div>
                   
                   <div>
-                    <FormLabel>Год выпуска <span className="text-red-500">*</span></FormLabel>
+                    <label className="block text-sm font-medium mb-1">Год выпуска <span className="text-red-500">*</span></label>
                     <Input
                       type="number"
                       value={selectedCar.year}
@@ -495,7 +496,7 @@ const AdminCars: React.FC = () => {
                   </div>
                   
                   <div>
-                    <FormLabel>Тип кузова <span className="text-red-500">*</span></FormLabel>
+                    <label className="block text-sm font-medium mb-1">Тип кузова <span className="text-red-500">*</span></label>
                     <Select 
                       value={selectedCar.bodyType} 
                       onValueChange={(value) => handleSelectChange('bodyType', value)}
@@ -518,7 +519,7 @@ const AdminCars: React.FC = () => {
                   </div>
                   
                   <div>
-                    <FormLabel>Привод <span className="text-red-500">*</span></FormLabel>
+                    <label className="block text-sm font-medium mb-1">Привод <span className="text-red-500">*</span></label>
                     <Select 
                       value={selectedCar.drivetrain} 
                       onValueChange={(value) => handleSelectChange('drivetrain', value)}
@@ -535,7 +536,7 @@ const AdminCars: React.FC = () => {
                   </div>
                   
                   <div>
-                    <FormLabel>Комплектация</FormLabel>
+                    <label className="block text-sm font-medium mb-1">Комплектация</label>
                     <Input
                       value={selectedCar.trim || ''}
                       onChange={(e) => handleBasicChange(e, 'trim')}
@@ -544,7 +545,7 @@ const AdminCars: React.FC = () => {
                   </div>
 
                   <div>
-                    <FormLabel>Страна производитель</FormLabel>
+                    <label className="block text-sm font-medium mb-1">Страна производитель</label>
                     <Input
                       value={selectedCar.country || ''}
                       onChange={(e) => handleBasicChange(e, 'country')}
@@ -553,7 +554,7 @@ const AdminCars: React.FC = () => {
                   </div>
 
                   <div>
-                    <FormLabel>Пробег (км)</FormLabel>
+                    <label className="block text-sm font-medium mb-1">Пробег (км)</label>
                     <Input
                       type="number"
                       value={selectedCar.mileage || 0}
@@ -562,7 +563,7 @@ const AdminCars: React.FC = () => {
                   </div>
                   
                   <div>
-                    <FormLabel>Цена <span className="text-red-500">*</span></FormLabel>
+                    <label className="block text-sm font-medium mb-1">Цена <span className="text-red-500">*</span></label>
                     <Input
                       type="number"
                       value={selectedCar.price.base}
@@ -572,7 +573,7 @@ const AdminCars: React.FC = () => {
                   </div>
                   
                   <div>
-                    <FormLabel>Скидка</FormLabel>
+                    <label className="block text-sm font-medium mb-1">Скидка</label>
                     <Input
                       type="number"
                       value={selectedCar.price.discount || 0}
@@ -581,7 +582,7 @@ const AdminCars: React.FC = () => {
                   </div>
 
                   <div>
-                    <FormLabel>Цвет</FormLabel>
+                    <label className="block text-sm font-medium mb-1">Цвет</label>
                     <Input
                       value={selectedCar.exteriorColor || ''}
                       onChange={(e) => handleBasicChange(e, 'exteriorColor')}
@@ -590,7 +591,7 @@ const AdminCars: React.FC = () => {
                   </div>
                   
                   <div className="col-span-2">
-                    <FormLabel>Описание</FormLabel>
+                    <label className="block text-sm font-medium mb-1">Описание</label>
                     <Textarea
                       value={selectedCar.description}
                       onChange={(e) => handleBasicChange(e, 'description')}
@@ -626,7 +627,7 @@ const AdminCars: React.FC = () => {
               <TabsContent value="engine" className="pt-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <FormLabel>Тип двигателя <span className="text-red-500">*</span></FormLabel>
+                    <label className="block text-sm font-medium mb-1">Тип двигателя <span className="text-red-500">*</span></label>
                     <Select 
                       value={selectedCar.engine.type} 
                       onValueChange={(value) => setSelectedCar({
@@ -647,7 +648,7 @@ const AdminCars: React.FC = () => {
                   </div>
                   
                   <div>
-                    <FormLabel>Объем двигателя (л) <span className="text-red-500">*</span></FormLabel>
+                    <label className="block text-sm font-medium mb-1">Объем двигателя (л) <span className="text-red-500">*</span></label>
                     <Input
                       type="number"
                       step="0.1"
@@ -658,7 +659,7 @@ const AdminCars: React.FC = () => {
                   </div>
                   
                   <div>
-                    <FormLabel>Мощность (л.с.)</FormLabel>
+                    <label className="block text-sm font-medium mb-1">Мощность (л.с.)</label>
                     <Input
                       type="number"
                       value={selectedCar.engine.power}
@@ -667,7 +668,7 @@ const AdminCars: React.FC = () => {
                   </div>
                   
                   <div>
-                    <FormLabel>Крутящий момент (Нм)</FormLabel>
+                    <label className="block text-sm font-medium mb-1">Крутящий момент (Нм)</label>
                     <Input
                       type="number"
                       value={selectedCar.engine.torque}
@@ -676,7 +677,7 @@ const AdminCars: React.FC = () => {
                   </div>
                   
                   <div>
-                    <FormLabel>Тип топлива <span className="text-red-500">*</span></FormLabel>
+                    <label className="block text-sm font-medium mb-1">Тип топлива <span className="text-red-500">*</span></label>
                     <Input
                       value={selectedCar.engine.fuelType}
                       onChange={(e) => handleEngineChange(e, 'fuelType')}
@@ -686,7 +687,7 @@ const AdminCars: React.FC = () => {
                   </div>
                   
                   <div>
-                    <FormLabel>Тип трансмиссии <span className="text-red-500">*</span></FormLabel>
+                    <label className="block text-sm font-medium mb-1">Тип трансмиссии <span className="text-red-500">*</span></label>
                     <Select 
                       value={selectedCar.transmission.type} 
                       onValueChange={(value) => setSelectedCar({
@@ -707,7 +708,7 @@ const AdminCars: React.FC = () => {
                   </div>
                   
                   <div>
-                    <FormLabel>Количество передач</FormLabel>
+                    <label className="block text-sm font-medium mb-1">Количество передач</label>
                     <Input
                       type="number"
                       value={selectedCar.transmission.gears}
@@ -720,7 +721,7 @@ const AdminCars: React.FC = () => {
               <TabsContent value="dimensions" className="pt-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <FormLabel>Длина (мм)</FormLabel>
+                    <label className="block text-sm font-medium mb-1">Длина (мм)</label>
                     <Input
                       type="number"
                       value={selectedCar.dimensions.length}
@@ -729,7 +730,7 @@ const AdminCars: React.FC = () => {
                   </div>
                   
                   <div>
-                    <FormLabel>Ширина (мм)</FormLabel>
+                    <label className="block text-sm font-medium mb-1">Ширина (мм)</label>
                     <Input
                       type="number"
                       value={selectedCar.dimensions.width}
@@ -738,7 +739,7 @@ const AdminCars: React.FC = () => {
                   </div>
                   
                   <div>
-                    <FormLabel>Высота (мм)</FormLabel>
+                    <label className="block text-sm font-medium mb-1">Высота (мм)</label>
                     <Input
                       type="number"
                       value={selectedCar.dimensions.height}
@@ -747,7 +748,7 @@ const AdminCars: React.FC = () => {
                   </div>
                   
                   <div>
-                    <FormLabel>Колесная база (мм)</FormLabel>
+                    <label className="block text-sm font-medium mb-1">Колесная база (мм)</label>
                     <Input
                       type="number"
                       value={selectedCar.dimensions.wheelbase}
@@ -756,7 +757,7 @@ const AdminCars: React.FC = () => {
                   </div>
                   
                   <div>
-                    <FormLabel>Масса (кг)</FormLabel>
+                    <label className="block text-sm font-medium mb-1">Масса (кг)</label>
                     <Input
                       type="number"
                       value={selectedCar.dimensions.weight}
@@ -765,7 +766,7 @@ const AdminCars: React.FC = () => {
                   </div>
                   
                   <div>
-                    <FormLabel>Объем багажника (л)</FormLabel>
+                    <label className="block text-sm font-medium mb-1">Объем багажника (л)</label>
                     <Input
                       type="number"
                       value={selectedCar.dimensions.trunkVolume}
@@ -778,7 +779,7 @@ const AdminCars: React.FC = () => {
               <TabsContent value="performance" className="pt-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <FormLabel>Разгон до 100 км/ч (сек)</FormLabel>
+                    <label className="block text-sm font-medium mb-1">Разгон до 100 км/ч (сек)</label>
                     <Input
                       type="number"
                       step="0.1"
@@ -788,7 +789,7 @@ const AdminCars: React.FC = () => {
                   </div>
                   
                   <div>
-                    <FormLabel>Максимальная скорость (км/ч)</FormLabel>
+                    <label className="block text-sm font-medium mb-1">Максимальная скорость (км/ч)</label>
                     <Input
                       type="number"
                       value={selectedCar.performance.topSpeed}
@@ -797,7 +798,7 @@ const AdminCars: React.FC = () => {
                   </div>
                   
                   <div>
-                    <FormLabel>Расход топлива в городе (л/100км)</FormLabel>
+                    <label className="block text-sm font-medium mb-1">Расход топлива в городе (л/100км)</label>
                     <Input
                       type="number"
                       step="0.1"
@@ -807,7 +808,7 @@ const AdminCars: React.FC = () => {
                   </div>
                   
                   <div>
-                    <FormLabel>Расход топлива на трассе (л/100км)</FormLabel>
+                    <label className="block text-sm font-medium mb-1">Расход топлива на трассе (л/100км)</label>
                     <Input
                       type="number"
                       step="0.1"
@@ -817,7 +818,7 @@ const AdminCars: React.FC = () => {
                   </div>
                   
                   <div>
-                    <FormLabel>Расход топлива смешанный (л/100км)</FormLabel>
+                    <label className="block text-sm font-medium mb-1">Расход топлива смешанный (л/100км)</label>
                     <Input
                       type="number"
                       step="0.1"
