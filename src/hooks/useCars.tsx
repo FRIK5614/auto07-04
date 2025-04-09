@@ -1,3 +1,4 @@
+
 import { useCarManagement } from "./useCarManagement";
 import { useFavoritesAndCompare } from "./useFavoritesAndCompare";
 import { useCarImages } from "./useCarImages";
@@ -217,7 +218,7 @@ export const useCars = () => {
     
     error,
     isLoading,
-    loadCars,
+    // Удаляем дублирующееся свойство loadCars
     
     ...favoritesAndCompare,
     
