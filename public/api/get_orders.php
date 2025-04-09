@@ -12,9 +12,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 }
 
 try {
-    // Подготавливаем запрос
-    $stmt = $pdo->query('SELECT * FROM orders ORDER BY createdAt DESC');
-    $orders = $stmt->fetchAll();
+    // Подготавливаем запрос с использованием fetchAll для избежания ошибок с активными запросами
+    $stmt = $pdo->prepare('SELECT * FROM orders ORDER BY createdAt DESC');
+    $stmt->execute(); // Сначала выполняем запрос
+    $orders = $stmt->fetchAll(PDO::FETCH_ASSOC); // Затем забираем все результаты сразу
 
     // Форматируем даты и обрабатываем данные
     foreach ($orders as &$order) {
@@ -23,14 +24,12 @@ try {
             $date = new DateTime($order['createdAt']);
             $order['createdAt'] = $date->format('c');
         }
-        
-        // Добавляем syncStatus для совместимости с фронтендом
-        $order['syncStatus'] = 'synced';
     }
 
     echo json_encode(['success' => true, 'data' => $orders]);
     exit;
 } catch (PDOException $e) {
+    error_log("Database error in get_orders.php: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'Ошибка базы данных: ' . $e->getMessage()]);
     exit;
 }

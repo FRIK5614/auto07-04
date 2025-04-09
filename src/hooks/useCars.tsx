@@ -33,7 +33,7 @@ export const useCars = () => {
       const carsData = await apiAdapter.getCars();
       
       // Обновляем состояние в carManagement
-      carManagement.reloadCars(); // Вызываем метод без параметров, т.к. он уже получает данные carsData
+      carManagement.reloadCars(); 
       
       return carsData;
     } catch (err) {

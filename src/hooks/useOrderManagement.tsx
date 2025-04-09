@@ -3,6 +3,7 @@ import { useState, useCallback } from 'react';
 import { Order } from '@/types/car';
 import { useToast } from "@/hooks/use-toast";
 import * as apiService from '@/services/api';
+import { apiAdapter } from '@/services/adapter';
 
 export const useOrderManagement = () => {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -12,11 +13,13 @@ export const useOrderManagement = () => {
   const syncOrders = useCallback(async (showNotification = true) => {
     setLoading(true);
     try {
-      console.info('Начало синхронизации заказов с JSON...');
-      const response = await apiService.loadOrdersFromJson();
+      console.info('Начало синхронизации заказов из БД...');
+      
+      // Вместо загрузки из JSON используем API для загрузки из БД
+      const response = await apiAdapter.getOrders();
       
       if (Array.isArray(response)) {
-        console.info(`Получено ${response.length} заказов из JSON-файлов`);
+        console.info(`Получено ${response.length} заказов из БД`);
         setOrders(response);
         
         if (showNotification) {
@@ -51,22 +54,26 @@ export const useOrderManagement = () => {
   const processOrder = useCallback(async (orderId: string, newStatus: Order['status']) => {
     setLoading(true);
     try {
-      // For now, we'll just update the order locally
-      // In a real implementation, we would call the API
+      // Вызываем API для обновления статуса заказа в БД
+      const success = await apiAdapter.updateOrderStatus(orderId, newStatus);
       
-      // Обновляем локальный список заказов
-      setOrders(current => 
-        current.map(order => 
-          order.id === orderId ? { ...order, status: newStatus } : order
-        )
-      );
-      
-      toast({
-        title: "Статус заказа обновлен",
-        description: `Заказ ${orderId.substring(0, 8)} помечен как "${newStatus}"`
-      });
-      
-      return true;
+      if (success) {
+        // Обновляем локальный список заказов
+        setOrders(current => 
+          current.map(order => 
+            order.id === orderId ? { ...order, status: newStatus } : order
+          )
+        );
+        
+        toast({
+          title: "Статус заказа обновлен",
+          description: `Заказ ${orderId.substring(0, 8)} помечен как "${newStatus}"`
+        });
+        
+        return true;
+      } else {
+        throw new Error('Не удалось обновить статус заказа');
+      }
     } catch (error) {
       console.error('Ошибка при обновлении заказа:', error);
       toast({
@@ -80,14 +87,14 @@ export const useOrderManagement = () => {
     }
   }, [toast]);
 
-  // Function to delete an order
+  // Функция для удаления заказа
   const deleteOrder = useCallback(async (orderId: string) => {
     setLoading(true);
     try {
-      // Since we don't have a backend endpoint for deletion, we'll handle it client-side
-      // In a real app, you'd make an API call to delete the order
+      // Здесь должен быть API-запрос на удаление заказа
+      // На данный момент у нас нет такого эндпоинта, поэтому просто обновляем UI
       
-      // Remove the order from the local state
+      // Удаляем заказ из локального состояния
       setOrders(current => current.filter(order => order.id !== orderId));
       
       toast({
@@ -113,19 +120,18 @@ export const useOrderManagement = () => {
     setLoading(true);
     try {
       console.log("Creating order:", order);
-      // Save the order to JSON
-      const jsonFilePath = await apiService.saveOrderToJson(order);
-      console.log("Order saved to JSON, path:", jsonFilePath);
       
-      // Update the order with the JSON file path
-      const updatedOrder = {
-        ...order,
-        jsonFilePath,
-        syncStatus: 'synced' as const
-      };
+      // Используем API для сохранения заказа в БД
+      const createdOrder = await apiAdapter.createOrder({
+        carId: order.carId,
+        customerName: order.customerName,
+        customerPhone: order.customerPhone,
+        customerEmail: order.customerEmail,
+        message: order.message
+      });
       
-      // Add the order to the local state
-      setOrders(current => [...current, updatedOrder]);
+      // Добавляем заказ в локальное состояние
+      setOrders(current => [...current, createdOrder]);
       
       return true;
     } catch (error) {
