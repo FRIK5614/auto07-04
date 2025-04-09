@@ -46,71 +46,61 @@ const router = createBrowserRouter([
   {
     path: "/admin",
     element: (
-      <AdminProvider>
-        <AdminLayout>
-          <AdminDashboard />
-        </AdminLayout>
-      </AdminProvider>
+      <AdminLayout>
+        <AdminDashboard />
+      </AdminLayout>
     ),
   },
   {
     path: "/admin/cars",
     element: (
-      <AdminProvider>
-        <AdminLayout>
-          <AdminCars />
-        </AdminLayout>
-      </AdminProvider>
+      <AdminLayout>
+        <AdminCars />
+      </AdminLayout>
     ),
   },
   {
     path: "/admin/orders",
     element: (
-      <AdminProvider>
-        <AdminLayout>
-          <AdminOrders />
-        </AdminLayout>
-      </AdminProvider>
+      <AdminLayout>
+        <AdminOrders />
+      </AdminLayout>
     ),
   },
   {
     path: "/admin/settings",
     element: (
-      <AdminProvider>
-        <AdminLayout>
-          <AdminSettings />
-        </AdminLayout>
-      </AdminProvider>
+      <AdminLayout>
+        <AdminSettings />
+      </AdminLayout>
     ),
   },
   {
     path: "/admin/import",
     element: (
-      <AdminProvider>
-        <AdminLayout>
-          <AdminImport />
-        </AdminLayout>
-      </AdminProvider>
+      <AdminLayout>
+        <AdminImport />
+      </AdminLayout>
     ),
   },
   // Добавляем новый маршрут для проверки автомобилей в БД
   {
     path: "/admin/check-cars",
     element: (
-      <AdminProvider>
-        <AdminLayout>
-          <AdminCheckCars />
-        </AdminLayout>
-      </AdminProvider>
+      <AdminLayout>
+        <AdminCheckCars />
+      </AdminLayout>
     ),
   },
 ]);
 
 function App() {
   return (
-    <CarsProvider>
-      <RouterProvider router={router} />
-    </CarsProvider>
+    <AdminProvider>
+      <CarsProvider>
+        <RouterProvider router={router} />
+      </CarsProvider>
+    </AdminProvider>
   );
 }
 
