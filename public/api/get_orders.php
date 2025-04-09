@@ -24,6 +24,16 @@ try {
             $date = new DateTime($order['createdAt']);
             $order['createdAt'] = $date->format('c');
         }
+        
+        // Преобразуем булевы поля и числовые значения
+        if (isset($order['processed'])) {
+            $order['processed'] = (bool)$order['processed'];
+        }
+        
+        // Если есть поле carId, убедимся что оно строка
+        if (isset($order['carId'])) {
+            $order['carId'] = (string)$order['carId'];
+        }
     }
 
     echo json_encode(['success' => true, 'data' => $orders]);

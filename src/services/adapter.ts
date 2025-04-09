@@ -1,3 +1,4 @@
+
 // Здесь содержатся адаптеры для работы с внешними API
 
 import { Car } from '../types/car';
@@ -17,6 +18,11 @@ export const apiAdapter = {
     try {
       console.log('Fetching cars from API...');
       const response = await fetch(`${BASE_API_URL}/cars/get_cars.php`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const result: ApiResponse<Car[]> = await response.json();
       
       if (!result.success) {
@@ -61,6 +67,11 @@ export const apiAdapter = {
         body: JSON.stringify(car),
       });
       
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP error! status: ${response.status}, ${errorText}`);
+      }
+      
       const result: ApiResponse<{carId: string}> = await response.json();
       
       if (!result.success) {
@@ -88,6 +99,11 @@ export const apiAdapter = {
         body: JSON.stringify(car),
       });
       
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP error! status: ${response.status}, ${errorText}`);
+      }
+      
       const result: ApiResponse<{carId: string}> = await response.json();
       
       if (!result.success) {
@@ -114,6 +130,11 @@ export const apiAdapter = {
         },
         body: JSON.stringify({ id: carId }),
       });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP error! status: ${response.status}, ${errorText}`);
+      }
       
       const result: ApiResponse<{carId: string}> = await response.json();
       

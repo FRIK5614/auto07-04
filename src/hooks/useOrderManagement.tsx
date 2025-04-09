@@ -2,7 +2,6 @@
 import { useState, useCallback } from 'react';
 import { Order } from '@/types/car';
 import { useToast } from "@/hooks/use-toast";
-import * as apiService from '@/services/api';
 import { apiAdapter } from '@/services/adapter';
 
 export const useOrderManagement = () => {
@@ -15,7 +14,7 @@ export const useOrderManagement = () => {
     try {
       console.info('Начало синхронизации заказов из БД...');
       
-      // Вместо загрузки из JSON используем API для загрузки из БД
+      // Используем API для загрузки заказов из БД
       const response = await apiAdapter.getOrders();
       
       if (Array.isArray(response)) {
@@ -142,6 +141,11 @@ export const useOrderManagement = () => {
     }
   }, []);
 
+  // Загружаем заказы при первом рендере
+  useEffect(() => {
+    syncOrders(false);
+  }, [syncOrders]);
+
   return {
     orders,
     loading,
@@ -151,3 +155,5 @@ export const useOrderManagement = () => {
     createOrder
   };
 };
+
+import { useEffect } from 'react';

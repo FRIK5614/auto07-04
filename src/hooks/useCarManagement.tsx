@@ -14,7 +14,7 @@ export const useCarManagement = () => {
     getCarById,
     reloadCars,
     viewCar,
-    deleteCar,
+    deleteCar: contextDeleteCar,
     updateCar: contextUpdateCar,
     addCar: contextAddCar,
     exportCarsData: contextExportCarsData,
@@ -23,6 +23,7 @@ export const useCarManagement = () => {
   
   const { toast } = useToast();
   
+  // Этот метод будет вызываться из useCars
   const updateCar = async (car: Car) => {
     try {
       const carWithStatus = {
@@ -43,6 +44,7 @@ export const useCarManagement = () => {
     }
   };
   
+  // Этот метод будет вызываться из useCars
   const addCar = (car: Car) => {
     try {
       const carWithStatus = {
@@ -58,6 +60,22 @@ export const useCarManagement = () => {
         variant: "destructive",
         title: "Ошибка добавления",
         description: "Произошла ошибка при добавлении автомобиля"
+      });
+      throw error;
+    }
+  };
+  
+  // Этот метод будет вызываться из useCars
+  const deleteCar = (carId: string) => {
+    try {
+      console.log('Deleting car with ID:', carId);
+      return contextDeleteCar(carId);
+    } catch (error) {
+      console.error('Error in deleteCar wrapper:', error);
+      toast({
+        variant: "destructive",
+        title: "Ошибка удаления",
+        description: "Произошла ошибка при удалении автомобиля"
       });
       throw error;
     }
