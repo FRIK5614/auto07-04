@@ -19,8 +19,27 @@ import AdminLayout from "./components/AdminLayout";
 import { CarsProvider } from "./contexts/CarsContext";
 import { AdminProvider } from "./contexts/AdminContext";
 import { Toaster } from "@/components/ui/toaster";
+import { useEffect } from "react";
+import { apiAdapter } from "./services/adapter";
+
+// Проверка подключения к API при запуске приложения
+const checkApiConnection = async () => {
+  try {
+    const response = await fetch('https://metallika29.ru/public/api/check_tables.php');
+    const data = await response.json();
+    console.log('API connection status:', data);
+    return data.success;
+  } catch (error) {
+    console.error('API connection error:', error);
+    return false;
+  }
+};
 
 function App() {
+  useEffect(() => {
+    checkApiConnection();
+  }, []);
+
   return (
     <Router>
       <CarsProvider>
@@ -31,7 +50,7 @@ function App() {
             <Route path="/car/:id" element={<CarDetails />} />
             <Route path="/compare" element={<CompareCars />} />
             <Route path="/favorites" element={<Favorites />} />
-            <Route path="/hot-deals" element={<HotDeals />} /> {/* New route */}
+            <Route path="/hot-deals" element={<HotDeals />} />
             
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboard />} />
