@@ -41,6 +41,9 @@ if (!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
 }
 
 try {
+    // Настраиваем PDO для использования буферизованных запросов
+    $pdo->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, true);
+    
     // Проверяем тип файла
     $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     $fileType = $_FILES['image']['type'];
@@ -71,15 +74,31 @@ try {
     
     // Получаем идентификатор автомобиля, если он задан
     $carId = isset($_POST['carId']) ? $_POST['carId'] : null;
+    $imageId = generateUUID();
     
     // Если задан идентификатор автомобиля, то добавляем изображение в базу данных
     if ($carId) {
+        // Проверяем существование таблицы car_images
+        $checkTable = $pdo->query("SHOW TABLES LIKE 'car_images'");
+        if ($checkTable->rowCount() === 0) {
+            // Создаем таблицу car_images
+            $pdo->exec("
+                CREATE TABLE car_images (
+                    id VARCHAR(36) PRIMARY KEY,
+                    carId VARCHAR(36) NOT NULL,
+                    url VARCHAR(255) NOT NULL,
+                    alt VARCHAR(255),
+                    isMain TINYINT(1) DEFAULT 0,
+                    INDEX (carId)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            ");
+        }
+        
         $stmt = $pdo->prepare('
             INSERT INTO car_images (id, carId, url, alt, isMain) 
             VALUES (?, ?, ?, ?, ?)
         ');
         
-        $imageId = generateUUID();
         $isMain = isset($_POST['isMain']) && $_POST['isMain'] === 'true';
         
         // Если это главное изображение, сначала сбросим флаг isMain у всех изображений этого автомобиля
@@ -101,9 +120,15 @@ try {
         'url' => $publicUrl,
         'filename' => $fileName,
         'carId' => $carId,
-        'id' => $imageId ?? null
+        'id' => $imageId,
+        'isMain' => isset($_POST['isMain']) && $_POST['isMain'] === 'true'
     ]]);
 } catch (Exception $e) {
-    echo json_encode(['success' => false, 'message' => 'Ошибка при загрузке изображения: ' . $e->getMessage()]);
+    error_log("Error in upload.php: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+    echo json_encode([
+        'success' => false, 
+        'message' => 'Ошибка при загрузке изображения: ' . $e->getMessage(),
+        'trace' => $e->getTraceAsString()
+    ]);
 }
 ?>

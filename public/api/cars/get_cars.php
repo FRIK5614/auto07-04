@@ -9,6 +9,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 }
 
 try {
+    // Настраиваем PDO для использования буферизованных запросов
+    $pdo->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, true);
+    
     // Базовый запрос к таблице автомобилей
     $query = 'SELECT * FROM cars';
     
@@ -108,13 +111,15 @@ try {
     
     // Выполняем запрос
     $stmt->execute();
-    $cars = $stmt->fetchAll();
+    $cars = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Получаем изображения для каждого автомобиля
     $carIds = array_column($cars, 'id');
+    
     if (!empty($carIds)) {
-        $placeholders = implode(',', array_fill(0, count($carIds), '?'));
-        $imageQuery = "SELECT * FROM car_images WHERE carId IN ($placeholders)";
+        // Получаем изображения
+        $imagePlaceholders = implode(',', array_fill(0, count($carIds), '?'));
+        $imageQuery = "SELECT * FROM car_images WHERE carId IN ($imagePlaceholders)";
         $imageStmt = $pdo->prepare($imageQuery);
         
         // Привязываем идентификаторы автомобилей
@@ -123,7 +128,7 @@ try {
         }
         
         $imageStmt->execute();
-        $images = $imageStmt->fetchAll();
+        $images = $imageStmt->fetchAll(PDO::FETCH_ASSOC);
         
         // Группируем изображения по идентификатору автомобиля
         $carImages = [];
@@ -134,20 +139,14 @@ try {
             $carImages[$image['carId']][] = [
                 'id' => $image['id'],
                 'url' => $image['url'],
-                'alt' => $image['alt']
+                'alt' => $image['alt'],
+                'isMain' => (bool)$image['isMain']
             ];
         }
         
-        // Добавляем изображения к автомобилям
-        foreach ($cars as &$car) {
-            $car['images'] = isset($carImages[$car['id']]) ? $carImages[$car['id']] : [];
-        }
-    }
-    
-    // Получаем характеристики для каждого автомобиля
-    if (!empty($carIds)) {
-        $placeholders = implode(',', array_fill(0, count($carIds), '?'));
-        $featuresQuery = "SELECT * FROM car_features WHERE carId IN ($placeholders)";
+        // Получаем характеристики для каждого автомобиля
+        $featurePlaceholders = implode(',', array_fill(0, count($carIds), '?'));
+        $featuresQuery = "SELECT * FROM car_features WHERE carId IN ($featurePlaceholders)";
         $featuresStmt = $pdo->prepare($featuresQuery);
         
         // Привязываем идентификаторы автомобилей
@@ -156,7 +155,7 @@ try {
         }
         
         $featuresStmt->execute();
-        $features = $featuresStmt->fetchAll();
+        $features = $featuresStmt->fetchAll(PDO::FETCH_ASSOC);
         
         // Группируем характеристики по идентификатору автомобиля
         $carFeatures = [];
@@ -172,9 +171,15 @@ try {
             ];
         }
         
-        // Добавляем характеристики к автомобилям
+        // Добавляем изображения и характеристики к автомобилям
         foreach ($cars as &$car) {
+            $car['images'] = isset($carImages[$car['id']]) ? $carImages[$car['id']] : [];
             $car['features'] = isset($carFeatures[$car['id']]) ? $carFeatures[$car['id']] : [];
+            
+            // Устанавливаем статус если его нет (по умолчанию published)
+            if (!isset($car['status'])) {
+                $car['status'] = 'published';
+            }
             
             // Конвертируем JSON-поля в массивы
             if (isset($car['colors'])) {
@@ -190,37 +195,37 @@ try {
             
             // Формируем структуру двигателя
             $car['engine'] = [
-                'type' => $car['engineType'],
-                'displacement' => (float)$car['engineDisplacement'],
-                'power' => (int)$car['enginePower'],
-                'torque' => (int)$car['engineTorque'],
-                'fuelType' => $car['fuelType']
+                'type' => $car['engineType'] ?? '',
+                'displacement' => (float)($car['engineDisplacement'] ?? 0),
+                'power' => (int)($car['enginePower'] ?? 0),
+                'torque' => (int)($car['engineTorque'] ?? 0),
+                'fuelType' => $car['fuelType'] ?? ''
             ];
             
             // Формируем структуру трансмиссии
             $car['transmission'] = [
-                'type' => $car['transmissionType'],
-                'gears' => (int)$car['transmissionGears']
+                'type' => $car['transmissionType'] ?? '',
+                'gears' => (int)($car['transmissionGears'] ?? 0)
             ];
             
             // Формируем структуру размеров
             $car['dimensions'] = [
-                'length' => (int)$car['dimensionsLength'],
-                'width' => (int)$car['dimensionsWidth'],
-                'height' => (int)$car['dimensionsHeight'],
-                'wheelbase' => (int)$car['dimensionsWheelbase'],
-                'weight' => (int)$car['dimensionsWeight'],
-                'trunkVolume' => (int)$car['dimensionsTrunkVolume']
+                'length' => (int)($car['dimensionsLength'] ?? 0),
+                'width' => (int)($car['dimensionsWidth'] ?? 0),
+                'height' => (int)($car['dimensionsHeight'] ?? 0),
+                'wheelbase' => (int)($car['dimensionsWheelbase'] ?? 0),
+                'weight' => (int)($car['dimensionsWeight'] ?? 0),
+                'trunkVolume' => (int)($car['dimensionsTrunkVolume'] ?? 0)
             ];
             
             // Формируем структуру производительности
             $car['performance'] = [
-                'acceleration' => (float)$car['performanceAcceleration'],
-                'topSpeed' => (int)$car['performanceTopSpeed'],
+                'acceleration' => (float)($car['performanceAcceleration'] ?? 0),
+                'topSpeed' => (int)($car['performanceTopSpeed'] ?? 0),
                 'fuelConsumption' => [
-                    'city' => (float)$car['performanceFuelConsumptionCity'],
-                    'highway' => (float)$car['performanceFuelConsumptionHighway'],
-                    'combined' => (float)$car['performanceFuelConsumptionCombined']
+                    'city' => (float)($car['performanceFuelConsumptionCity'] ?? 0),
+                    'highway' => (float)($car['performanceFuelConsumptionHighway'] ?? 0),
+                    'combined' => (float)($car['performanceFuelConsumptionCombined'] ?? 0)
                 ]
             ];
             
@@ -250,13 +255,14 @@ try {
             );
             
             // Конвертируем булевы поля
-            $car['isNew'] = (bool)$car['isNew'];
-            $car['isPopular'] = (bool)$car['isPopular'];
+            $car['isNew'] = (bool)($car['isNew'] ?? false);
+            $car['isPopular'] = (bool)($car['isPopular'] ?? false);
         }
     }
     
     echo json_encode(['success' => true, 'data' => array_values($cars)]);
 } catch (PDOException $e) {
-    echo json_encode(['success' => false, 'message' => 'Ошибка при получении автомобилей: ' . $e->getMessage()]);
+    error_log("Database error in get_cars.php: " . $e->getMessage());
+    echo json_encode(['success' => false, 'message' => 'Ошибка при получении автомобилей: ' . $e->getMessage(), 'trace' => $e->getTraceAsString()]);
 }
 ?>

@@ -19,17 +19,25 @@ export const useOrderManagement = () => {
       
       if (Array.isArray(response)) {
         console.info(`Получено ${response.length} заказов из БД`);
-        setOrders(response);
+        
+        // Сортируем заказы по дате (новые сверху)
+        const sortedOrders = [...response].sort((a, b) => {
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return dateB - dateA;
+        });
+        
+        setOrders(sortedOrders);
         
         if (showNotification) {
           toast({
             title: "Заказы обновлены",
-            description: `Загружено заказов: ${response.length}`
+            description: `Загружено заказов: ${sortedOrders.length}`
           });
         }
         
         console.info('Синхронизация заказов успешно завершена');
-        return response;
+        return sortedOrders;
       } else {
         throw new Error('Ошибка при получении заказов');
       }
@@ -53,6 +61,8 @@ export const useOrderManagement = () => {
   const processOrder = useCallback(async (orderId: string, newStatus: Order['status']) => {
     setLoading(true);
     try {
+      console.log(`Обработка заказа ${orderId}, новый статус: ${newStatus}`);
+      
       // Вызываем API для обновления статуса заказа в БД
       const success = await apiAdapter.updateOrderStatus(orderId, newStatus);
       
@@ -89,18 +99,24 @@ export const useOrderManagement = () => {
   const deleteOrder = useCallback(async (orderId: string) => {
     setLoading(true);
     try {
+      console.log(`Удаление заказа ${orderId}`);
+      
       // Вызываем API для удаления заказа из БД
-      await apiAdapter.deleteOrder(orderId); // Предполагается, что такой метод есть или будет добавлен
+      const success = await apiAdapter.deleteOrder(orderId);
       
-      // Удаляем заказ из локального состояния
-      setOrders(current => current.filter(order => order.id !== orderId));
-      
-      toast({
-        title: "Заказ удален",
-        description: `Заказ ${orderId.substring(0, 8)} успешно удален`
-      });
-      
-      return true;
+      if (success) {
+        // Удаляем заказ из локального состояния
+        setOrders(current => current.filter(order => order.id !== orderId));
+        
+        toast({
+          title: "Заказ удален",
+          description: `Заказ ${orderId.substring(0, 8)} успешно удален`
+        });
+        
+        return true;
+      } else {
+        throw new Error('Не удалось удалить заказ');
+      }
     } catch (error) {
       console.error('Ошибка при удалении заказа:', error);
       toast({
@@ -114,31 +130,37 @@ export const useOrderManagement = () => {
     }
   }, [toast]);
 
-  const createOrder = useCallback(async (order: Order) => {
+  const createOrder = useCallback(async (orderData: Omit<Order, 'id' | 'status' | 'createdAt'>) => {
     setLoading(true);
     try {
-      console.log("Creating order:", order);
+      console.log("Creating order:", orderData);
       
       // Используем API для сохранения заказа в БД
-      const createdOrder = await apiAdapter.createOrder({
-        carId: order.carId,
-        customerName: order.customerName,
-        customerPhone: order.customerPhone,
-        customerEmail: order.customerEmail,
-        message: order.message
-      });
+      const createdOrder = await apiAdapter.createOrder(orderData);
       
       // Добавляем заказ в локальное состояние
-      setOrders(current => [...current, createdOrder]);
+      setOrders(current => [createdOrder, ...current]);
+      
+      toast({
+        title: "Заказ создан",
+        description: "Новый заказ успешно создан"
+      });
       
       return true;
     } catch (error) {
       console.error('Ошибка при создании заказа:', error);
+      
+      toast({
+        variant: "destructive",
+        title: "Ошибка",
+        description: "Не удалось создать заказ"
+      });
+      
       return false;
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   // Загружаем заказы при первом рендере
   useEffect(() => {

@@ -19,6 +19,9 @@ if (!isset($input['id']) || !isset($input['brand']) || !isset($input['model']) |
 }
 
 try {
+    // Настраиваем PDO для использования буферизованных запросов
+    $pdo->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, true);
+    
     // Начинаем транзакцию
     $pdo->beginTransaction();
     
@@ -32,7 +35,7 @@ try {
             dimensionsLength, dimensionsWidth, dimensionsHeight, dimensionsWheelbase, dimensionsWeight, dimensionsTrunkVolume,
             performanceAcceleration, performanceTopSpeed, 
             performanceFuelConsumptionCity, performanceFuelConsumptionHighway, performanceFuelConsumptionCombined,
-            description, isNew, isPopular, country, viewCount
+            description, isNew, isPopular, country, viewCount, status
         ) VALUES (
             :id, :brand, :model, :year, :bodyType, :colors, 
             :priceBase, :priceDiscount, :priceSpecial,
@@ -41,7 +44,7 @@ try {
             :dimensionsLength, :dimensionsWidth, :dimensionsHeight, :dimensionsWheelbase, :dimensionsWeight, :dimensionsTrunkVolume,
             :performanceAcceleration, :performanceTopSpeed, 
             :performanceFuelConsumptionCity, :performanceFuelConsumptionHighway, :performanceFuelConsumptionCombined,
-            :description, :isNew, :isPopular, :country, :viewCount
+            :description, :isNew, :isPopular, :country, :viewCount, :status
         )
     ');
     
@@ -79,14 +82,15 @@ try {
         'isNew' => isset($input['isNew']) ? ($input['isNew'] ? 1 : 0) : 0,
         'isPopular' => isset($input['isPopular']) ? ($input['isPopular'] ? 1 : 0) : 0,
         'country' => $input['country'] ?? null,
-        'viewCount' => $input['viewCount'] ?? 0
+        'viewCount' => $input['viewCount'] ?? 0,
+        'status' => $input['status'] ?? 'published'
     ];
     
     // Выполняем запрос
     $success = $stmt->execute($carData);
     
     if (!$success) {
-        throw new PDOException("Не удалось добавить автомобиль");
+        throw new PDOException("Не удалось добавить автомобиль: " . print_r($stmt->errorInfo(), true));
     }
     
     // Добавляем характеристики автомобиля, если они есть
@@ -97,8 +101,9 @@ try {
         ');
         
         foreach ($input['features'] as $feature) {
+            $featureId = isset($feature['id']) ? $feature['id'] : generateUUID();
             $featureStmt->execute([
-                'id' => isset($feature['id']) ? $feature['id'] : generateUUID(),
+                'id' => $featureId,
                 'carId' => $input['id'],
                 'name' => $feature['name'],
                 'category' => $feature['category'] ?? 'Общие',
@@ -110,16 +115,20 @@ try {
     // Добавляем изображения автомобиля, если они есть
     if (isset($input['images']) && is_array($input['images']) && !empty($input['images'])) {
         $imageStmt = $pdo->prepare('
-            INSERT INTO car_images (id, carId, url, alt) 
-            VALUES (:id, :carId, :url, :alt)
+            INSERT INTO car_images (id, carId, url, alt, isMain) 
+            VALUES (:id, :carId, :url, :alt, :isMain)
         ');
         
-        foreach ($input['images'] as $image) {
+        foreach ($input['images'] as $index => $image) {
+            $imageId = isset($image['id']) ? $image['id'] : generateUUID();
+            $isMain = isset($image['isMain']) ? $image['isMain'] : ($index === 0);
+            
             $imageStmt->execute([
-                'id' => isset($image['id']) ? $image['id'] : generateUUID(),
+                'id' => $imageId,
                 'carId' => $input['id'],
                 'url' => $image['url'],
-                'alt' => $image['alt'] ?? "{$input['brand']} {$input['model']}"
+                'alt' => $image['alt'] ?? "{$input['brand']} {$input['model']}",
+                'isMain' => $isMain ? 1 : 0
             ]);
         }
     }
@@ -127,10 +136,20 @@ try {
     // Если все прошло успешно, фиксируем транзакцию
     $pdo->commit();
     
-    echo json_encode(['success' => true, 'message' => 'Автомобиль успешно добавлен', 'carId' => $input['id']]);
+    echo json_encode([
+        'success' => true, 
+        'message' => 'Автомобиль успешно добавлен', 
+        'carId' => $input['id'],
+        'data' => array_merge($carData, ['id' => $input['id']])
+    ]);
 } catch (PDOException $e) {
     // В случае ошибки отменяем транзакцию
     $pdo->rollBack();
-    echo json_encode(['success' => false, 'message' => 'Ошибка при добавлении автомобиля: ' . $e->getMessage()]);
+    error_log("Error in add_car.php: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+    echo json_encode([
+        'success' => false, 
+        'message' => 'Ошибка при добавлении автомобиля: ' . $e->getMessage(),
+        'trace' => $e->getTraceAsString()
+    ]);
 }
 ?>

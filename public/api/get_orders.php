@@ -12,10 +12,15 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 }
 
 try {
-    // Подготавливаем запрос с использованием fetchAll для избежания ошибок с активными запросами
+    // Настраиваем PDO для использования буферизованных запросов
+    $pdo->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, true);
+    
+    // Подготавливаем и выполняем запрос
     $stmt = $pdo->prepare('SELECT * FROM orders ORDER BY createdAt DESC');
-    $stmt->execute(); // Сначала выполняем запрос
-    $orders = $stmt->fetchAll(PDO::FETCH_ASSOC); // Затем забираем все результаты сразу
+    $stmt->execute();
+    
+    // Забираем все результаты сразу (избегаем ошибки с активными запросами)
+    $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Форматируем даты и обрабатываем данные
     foreach ($orders as &$order) {
