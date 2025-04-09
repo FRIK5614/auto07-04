@@ -5,7 +5,7 @@ import { useCarImages } from "./useCarImages";
 import { useOrderManagement } from "./useOrderManagement";
 import { apiAdapter } from "@/services/adapter";
 import { Car } from "@/types/car";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 
 export const useCars = () => {
@@ -25,7 +25,7 @@ export const useCars = () => {
   const filteredCarsWithImages = filteredCars.map(car => carImages.applySavedImagesToCar(car));
 
   // Create a loadCars convenience method that calls the API
-  const loadCars = async () => {
+  const loadCars = useCallback(async () => {
     console.log('Loading cars from API via useCars hook');
     setIsLoading(true);
     setError(null);
@@ -33,9 +33,10 @@ export const useCars = () => {
     try {
       // Получаем данные с реального API
       const carsData = await apiAdapter.getCars();
+      console.log('API returned cars:', carsData.length);
       
       // Обновляем состояние в carManagement
-      carManagement.reloadCars();
+      carManagement.setCars(carsData); // Изменено с reloadCars() на прямую установку данных
       
       toast({
         title: "Загрузка успешна",
@@ -57,12 +58,12 @@ export const useCars = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast, carManagement]);
   
   // Загружаем автомобили при первом рендере
   useEffect(() => {
     loadCars();
-  }, []);
+  }, [loadCars]);
   
   // Make sure exportCarsData returns Car[]
   const exportCarsData = (): Car[] => {
@@ -78,6 +79,13 @@ export const useCars = () => {
   const addCar = async (car: Car) => {
     setIsLoading(true);
     try {
+      console.log('Adding new car:', car);
+      
+      // Убедимся, что статус установлен
+      if (!car.status) {
+        car.status = 'published';
+      }
+      
       // Вызываем API для добавления автомобиля в БД
       const addedCar = await apiAdapter.addCar(car);
       
@@ -100,13 +108,20 @@ export const useCars = () => {
   const updateCar = async (car: Car) => {
     setIsLoading(true);
     try {
+      console.log('Updating car:', car);
+      
+      // Убедимся, что статус установлен
+      if (!car.status) {
+        car.status = 'published';
+      }
+      
       // Вызываем API для обновления автомобиля в БД
       const updatedCar = await apiAdapter.updateCar(car);
       
       // Вызываем функцию из carManagement
       carManagement.updateCar(updatedCar);
       
-      // Перезагружаем список автомобилей
+      // Перезагружаем список автомобилей для синхронизации с БД
       await loadCars();
       
       return updatedCar;
@@ -122,16 +137,20 @@ export const useCars = () => {
   const deleteCar = async (carId: string) => {
     setIsLoading(true);
     try {
+      console.log('Deleting car with ID:', carId);
+      
       // Вызываем API для удаления автомобиля из БД
-      await apiAdapter.deleteCar(carId);
+      const result = await apiAdapter.deleteCar(carId);
       
-      // Вызываем функцию из carManagement
-      carManagement.deleteCar(carId);
+      if (result) {
+        // Вызываем функцию из carManagement
+        carManagement.deleteCar(carId);
+        
+        // Перезагружаем список автомобилей
+        await loadCars();
+      }
       
-      // Перезагружаем список автомобилей
-      await loadCars();
-      
-      return true;
+      return result;
     } catch (error) {
       console.error('Ошибка при удалении автомобиля:', error);
       throw error;
@@ -146,12 +165,14 @@ export const useCars = () => {
   // Explicitly extract key methods from carManagement
   const { 
     getCarById,
-    viewCar
+    viewCar,
+    setCars
   } = carManagement;
 
   return {
     // Car management
     ...carManagement,
+    setCars,
     // Overwrite cars with image-enhanced versions
     cars: carsWithImages,
     filteredCars: filteredCarsWithImages,

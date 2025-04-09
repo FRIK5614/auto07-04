@@ -2,6 +2,7 @@
 import { useCars as useGlobalCars } from "../contexts/CarsContext";
 import { Car } from "../types/car";
 import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 
 export const useCarManagement = () => {
   const {
@@ -21,7 +22,19 @@ export const useCarManagement = () => {
     importCarsData: contextImportCarsData
   } = useGlobalCars();
   
+  // Добавляем локальное состояние для автомобилей
+  const [localCars, setLocalCars] = useState<Car[]>(cars);
+  
   const { toast } = useToast();
+  
+  // Метод для установки списка автомобилей
+  const setCars = (newCars: Car[]) => {
+    setLocalCars(newCars);
+    // Также вызываем метод из контекста, если он доступен
+    if (typeof reloadCars === 'function') {
+      reloadCars();
+    }
+  };
   
   // Этот метод будет вызываться из useCars
   const updateCar = async (car: Car) => {
@@ -195,7 +208,7 @@ export const useCarManagement = () => {
   };
 
   return {
-    cars,
+    cars: localCars, // Используем локальное состояние
     filteredCars,
     loading,
     error,
@@ -213,6 +226,7 @@ export const useCarManagement = () => {
     sortCars,
     exportCarsData,
     importCarsData,
+    setCars, // Добавляем новый метод
   };
 };
 

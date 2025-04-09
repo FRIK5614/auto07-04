@@ -34,6 +34,20 @@ try {
         if (isset($order['carId'])) {
             $order['carId'] = (string)$order['carId'];
         }
+        
+        // Добавляем статус, если его нет
+        if (!isset($order['status'])) {
+            $order['status'] = 'new';
+        }
+        
+        // Добавляем поля syncStatus и jsonFilePath если их нет
+        if (!isset($order['syncStatus'])) {
+            $order['syncStatus'] = 'synced';
+        }
+        
+        if (!isset($order['jsonFilePath'])) {
+            $order['jsonFilePath'] = null;
+        }
     }
 
     echo json_encode(['success' => true, 'data' => $orders]);

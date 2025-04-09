@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Order } from '@/types/car';
 import { useToast } from "@/hooks/use-toast";
 import { apiAdapter } from '@/services/adapter';
@@ -86,12 +86,11 @@ export const useOrderManagement = () => {
     }
   }, [toast]);
 
-  // Функция для удаления заказа
   const deleteOrder = useCallback(async (orderId: string) => {
     setLoading(true);
     try {
-      // Здесь должен быть API-запрос на удаление заказа
-      // На данный момент у нас нет такого эндпоинта, поэтому просто обновляем UI
+      // Вызываем API для удаления заказа из БД
+      await apiAdapter.deleteOrder(orderId); // Предполагается, что такой метод есть или будет добавлен
       
       // Удаляем заказ из локального состояния
       setOrders(current => current.filter(order => order.id !== orderId));
@@ -155,5 +154,3 @@ export const useOrderManagement = () => {
     createOrder
   };
 };
-
-import { useEffect } from 'react';
