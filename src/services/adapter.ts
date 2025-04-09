@@ -1,8 +1,7 @@
-
 // Здесь содержатся адаптеры для работы с внешними API
 
 import { Car } from '../types/car';
-import { Order } from '../types/order';
+import { Order } from '../types/car';
 
 const BASE_API_URL = 'https://metallika29.ru/public/api';
 
