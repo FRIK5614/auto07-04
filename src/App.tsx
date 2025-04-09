@@ -20,6 +20,7 @@ import Favorites from './pages/Favorites'; // Меняем с FavoritesPage на
 import CompareCars from './pages/CompareCars'; // Меняем с ComparePage на CompareCars
 import NotFound from './pages/NotFound'; // Меняем с OrderPage и NotFoundPage на NotFound
 import AdminCheckCars from './pages/AdminCheckCars'; // Добавляем импорт новой страницы
+import Catalog from './pages/Catalog'; // Добавляем импорт страницы каталога
 
 const router = createBrowserRouter([
   {
@@ -30,6 +31,10 @@ const router = createBrowserRouter([
   {
     path: "/car/:id",
     element: <CarDetails />,
+  },
+  {
+    path: "/catalog",
+    element: <Catalog />,
   },
   {
     path: "/favorites",

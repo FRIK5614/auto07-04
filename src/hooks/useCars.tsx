@@ -34,6 +34,7 @@ export const useCars = () => {
       
       if (carsData.length > 0) {
         const processedCars = carsData.map((car: Car, index: number) => {
+          // Проверяем и устанавливаем флаги isNew и isPopular если они не определены
           if (typeof car.isNew === 'undefined') {
             car.isNew = !!car.isNew;
           }

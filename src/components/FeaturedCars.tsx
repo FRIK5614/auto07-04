@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Car } from "@/types/car";
 import CarCard from "@/components/CarCard";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,8 @@ const FeaturedCars = ({
   const isMobile = useIsMobile();
   const { applySavedImagesToCar } = useCars();
   const [processedCars, setProcessedCars] = useState<Car[]>([]);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const prevCarsLength = useRef(0);
   
   const options = {
     align: "start" as const,
@@ -42,16 +44,14 @@ const FeaturedCars = ({
   
   // Process cars with images on component mount and whenever cars change
   useEffect(() => {
-    if (!cars || cars.length === 0) {
-      setProcessedCars([]);
-      return;
+    // Только если есть данные и их количество изменилось, обновляем отображаемые автомобили
+    if (cars && (cars.length > 0 || prevCarsLength.current > 0)) {
+      prevCarsLength.current = cars.length;
+      setProcessedCars(cars);
+      setIsInitialized(true);
+      console.log(`FeaturedCars - ${title} - Cars count:`, cars.length);
     }
-    
-    // Use the original cars without modifying them
-    // В реальном приложении автомобили из API уже будут иметь корректные пути изображений
-    setProcessedCars([...cars]);
-    console.log('FeaturedCars - Cars count:', cars.length);
-  }, [cars]);
+  }, [cars, title]);
   
   useEffect(() => {
     const handleResize = () => {
@@ -80,6 +80,17 @@ const FeaturedCars = ({
       });
     }
   }, [visibleCount, emblaApi, isMobile, options]);
+
+  // Не рендерить компонент до первой инициализации данных
+  if (!isInitialized && !loading && !error) {
+    return <div className="py-8">
+      <div className="container mx-auto px-4">
+        <div className="h-64 flex items-center justify-center">
+          <LoadingState count={visibleCount} type="card" />
+        </div>
+      </div>
+    </div>;
+  }
 
   return (
     <div className="py-8">
@@ -117,20 +128,22 @@ const FeaturedCars = ({
                 ))}
               </div>
             </div>
-            <div className="flex justify-end space-x-2 mt-4">
-              <Button 
-                onClick={() => emblaApi?.scrollPrev()}
-                className="static transform-none h-10 w-10 bg-blue-600 hover:bg-blue-700 text-white border-none rounded-full"
-              >
-                <ChevronLeft className="h-6 w-6" />
-              </Button>
-              <Button
-                onClick={() => emblaApi?.scrollNext()}
-                className="static transform-none h-10 w-10 bg-blue-600 hover:bg-blue-700 text-white border-none rounded-full"
-              >
-                <ChevronRight className="h-6 w-6" />
-              </Button>
-            </div>
+            {processedCars.length > visibleCount && (
+              <div className="flex justify-end space-x-2 mt-4">
+                <Button 
+                  onClick={() => emblaApi?.scrollPrev()}
+                  className="static transform-none h-10 w-10 bg-blue-600 hover:bg-blue-700 text-white border-none rounded-full"
+                >
+                  <ChevronLeft className="h-6 w-6" />
+                </Button>
+                <Button
+                  onClick={() => emblaApi?.scrollNext()}
+                  className="static transform-none h-10 w-10 bg-blue-600 hover:bg-blue-700 text-white border-none rounded-full"
+                >
+                  <ChevronRight className="h-6 w-6" />
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>
