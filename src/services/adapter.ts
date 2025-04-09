@@ -1,74 +1,60 @@
-import { Car, Order } from "../types/car";
 
-const API_BASE_URL = 'https://metallika29.ru/public/api';
+// Здесь содержатся адаптеры для работы с внешними API
 
-interface ApiAdapter {
-  // Автомобили
-  getCars: () => Promise<Car[]>;
-  getCarById: (id: string) => Promise<Car | null>;
-  addCar: (car: Car) => Promise<boolean>;
-  updateCar: (car: Car) => Promise<boolean>;
-  deleteCar: (id: string) => Promise<boolean>;
-  viewCar: (id: string) => Promise<number>;
-  
-  // Заказы
-  getOrders: () => Promise<Order[]>;
-  createOrder: (order: Order) => Promise<boolean>;
-  updateOrderStatus: (id: string, status: Order['status']) => Promise<boolean>;
-  
-  // Избранное и сравнение
-  getFavorites: (userId?: string) => Promise<{ carIds: string[], cars: Car[] }>;
-  updateFavorite: (carId: string, action: 'add' | 'remove' | 'toggle', userId?: string) => Promise<boolean>;
-  getComparisons: (userId?: string) => Promise<{ carIds: string[], cars: Car[] }>;
-  updateComparison: (carId: string, action: 'add' | 'remove' | 'toggle', userId?: string) => Promise<boolean>;
-  
-  // Изображения
-  uploadImage: (file: File, carId?: string) => Promise<{ url: string, filename: string } | null>;
-  assignImageToCar: (carId: string, imageUrl: string, alt?: string) => Promise<boolean>;
-  
-  // Импорт
-  importCarsFromTmcAvto: (cars: any[]) => Promise<{ imported: number, errors: string[] }>;
+import { Car } from '../types/car';
+import { Order } from '../types/order';
+
+const BASE_API_URL = 'https://metallika29.ru/public/api';
+
+interface ApiResponse<T> {
+  success: boolean;
+  message?: string;
+  data?: T;
 }
 
-const phpApiAdapter: ApiAdapter = {
-  // ===== Автомобили =====
-  getCars: async () => {
+export const apiAdapter = {
+  // ПОЛУЧЕНИЕ СПИСКА АВТОМОБИЛЕЙ
+  async getCars(): Promise<Car[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/cars/get_cars.php`);
-      const result = await response.json();
+      console.log('Fetching cars from API...');
+      const response = await fetch(`${BASE_API_URL}/cars/get_cars.php`);
+      const result: ApiResponse<Car[]> = await response.json();
       
-      if (result.success && Array.isArray(result.data)) {
-        return result.data;
-      } else {
-        console.error('Ошибка получения автомобилей:', result.message || 'Неизвестная ошибка');
-        return [];
+      if (!result.success) {
+        console.error('API Error:', result.message);
+        throw new Error(result.message || 'Ошибка при получении автомобилей');
       }
+      
+      console.log(`Loaded ${result.data?.length || 0} cars from API`);
+      return result.data || [];
     } catch (error) {
-      console.error('Ошибка при запросе автомобилей:', error);
-      return [];
+      console.error('API fetch error:', error);
+      throw error;
     }
   },
-  
-  getCarById: async (id: string) => {
+
+  // ПОЛУЧЕНИЕ ОТДЕЛЬНОГО АВТОМОБИЛЯ ПО ID
+  async getCarById(carId: string): Promise<Car> {
     try {
-      const response = await fetch(`${API_BASE_URL}/cars/get_cars.php?id=${id}`);
-      const result = await response.json();
+      const cars = await this.getCars();
+      const car = cars.find(c => c.id === carId);
       
-      if (result.success && Array.isArray(result.data) && result.data.length > 0) {
-        return result.data[0];
-      } else {
-        console.error('Автомобиль не найден:', result.message || 'Неизвестная ошибка');
-        return null;
+      if (!car) {
+        throw new Error(`Автомобиль с ID ${carId} не найден`);
       }
+      
+      return car;
     } catch (error) {
-      console.error('Ошибка при запросе автомобиля:', error);
-      return null;
+      console.error('Error getting car by ID:', error);
+      throw error;
     }
   },
-  
-  addCar: async (car: Car) => {
+
+  // ДОБАВЛЕНИЕ НОВОГО АВТОМОБИЛЯ
+  async addCar(car: Car): Promise<Car> {
     try {
-      const response = await fetch(`${API_BASE_URL}/cars/add_car.php`, {
+      console.log('Adding new car to API:', car);
+      const response = await fetch(`${BASE_API_URL}/cars/add_car.php`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -76,23 +62,26 @@ const phpApiAdapter: ApiAdapter = {
         body: JSON.stringify(car),
       });
       
-      const result = await response.json();
+      const result: ApiResponse<{carId: string}> = await response.json();
       
-      if (result.success) {
-        return true;
-      } else {
-        console.error('Ошибка добавления автомобиля:', result.message || 'Неизвестная ошибка');
-        return false;
+      if (!result.success) {
+        console.error('API Error when adding car:', result.message);
+        throw new Error(result.message || 'Ошибка при добавлении автомобиля');
       }
+      
+      console.log('Car added successfully:', result);
+      return car;
     } catch (error) {
-      console.error('Ошибка при запросе добавления автомобиля:', error);
-      return false;
+      console.error('API add car error:', error);
+      throw error;
     }
   },
-  
-  updateCar: async (car: Car) => {
+
+  // ОБНОВЛЕНИЕ СУЩЕСТВУЮЩЕГО АВТОМОБИЛЯ
+  async updateCar(car: Car): Promise<Car> {
     try {
-      const response = await fetch(`${API_BASE_URL}/cars/update_car.php`, {
+      console.log('Updating car in API:', car);
+      const response = await fetch(`${BASE_API_URL}/cars/update_car.php`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -100,89 +89,64 @@ const phpApiAdapter: ApiAdapter = {
         body: JSON.stringify(car),
       });
       
-      const result = await response.json();
+      const result: ApiResponse<{carId: string}> = await response.json();
       
-      if (result.success) {
-        return true;
-      } else {
-        console.error('Ошибка обновления автомобиля:', result.message || 'Неизвестная ошибка');
-        return false;
+      if (!result.success) {
+        console.error('API Error when updating car:', result.message);
+        throw new Error(result.message || 'Ошибка при обновлении автомобиля');
       }
+      
+      console.log('Car updated successfully:', result);
+      return car;
     } catch (error) {
-      console.error('Ошибка при запросе обновления автомобиля:', error);
-      return false;
+      console.error('API update car error:', error);
+      throw error;
     }
   },
-  
-  deleteCar: async (id: string) => {
+
+  // УДАЛЕНИЕ АВТОМОБИЛЯ
+  async deleteCar(carId: string): Promise<boolean> {
     try {
-      const response = await fetch(`${API_BASE_URL}/cars/delete_car.php`, {
+      console.log('Deleting car from API:', carId);
+      const response = await fetch(`${BASE_API_URL}/cars/delete_car.php`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ id }),
+        body: JSON.stringify({ id: carId }),
       });
       
-      const result = await response.json();
+      const result: ApiResponse<{carId: string}> = await response.json();
       
-      if (result.success) {
-        return true;
-      } else {
-        console.error('Ошибка удаления автомобиля:', result.message || 'Неизвестная ошибка');
-        return false;
+      if (!result.success) {
+        console.error('API Error when deleting car:', result.message);
+        throw new Error(result.message || 'Ошибка при удалении автомобиля');
       }
+      
+      console.log('Car deleted successfully:', result);
+      return true;
     } catch (error) {
-      console.error('Ошибка при запросе удаления автомобиля:', error);
-      return false;
+      console.error('API delete car error:', error);
+      throw error;
     }
   },
-  
-  viewCar: async (id: string) => {
+
+  // ОТСЛЕЖИВАНИЕ ПРОСМОТРА АВТОМОБИЛЯ
+  async viewCar(carId: string): Promise<void> {
     try {
-      const response = await fetch(`${API_BASE_URL}/cars/view.php`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ carId: id }),
-      });
-      
-      const result = await response.json();
-      
-      if (result.success && result.data && typeof result.data.viewCount === 'number') {
-        return result.data.viewCount;
-      } else {
-        console.error('Ошибка при регистрации просмотра автомобиля:', result.message || 'Неизвестная ошибка');
-        return 0;
-      }
+      console.log('Logging car view in API:', carId);
+      await fetch(`${BASE_API_URL}/cars/view.php?id=${carId}`);
     } catch (error) {
-      console.error('Ошибка при запросе регистрации просмотра автомобиля:', error);
-      return 0;
+      console.error('Error logging car view:', error);
+      // Не выбрасываем исключение, так как эта ошибка не должна блокировать просмотр
     }
   },
-  
-  // ===== Заказы =====
-  getOrders: async () => {
+
+  // СОЗДАНИЕ ЗАКАЗА
+  async createOrder(order: Omit<Order, 'id' | 'status' | 'createdAt'>): Promise<Order> {
     try {
-      const response = await fetch(`${API_BASE_URL}/get_orders.php`);
-      const result = await response.json();
-      
-      if (result.success && Array.isArray(result.data)) {
-        return result.data;
-      } else {
-        console.error('Ошибка получения заказов:', result.message || 'Неизвестная ошибка');
-        return [];
-      }
-    } catch (error) {
-      console.error('Ошибка при запросе заказов:', error);
-      return [];
-    }
-  },
-  
-  createOrder: async (order: Order) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/create_order.php`, {
+      console.log('Creating order in API:', order);
+      const response = await fetch(`${BASE_API_URL}/create_order.php`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -192,210 +156,57 @@ const phpApiAdapter: ApiAdapter = {
       
       const result = await response.json();
       
-      if (result.success) {
-        return true;
-      } else {
-        console.error('Ошибка создания заказа:', result.message || 'Неизвестная ошибка');
-        return false;
+      if (!result.success) {
+        throw new Error(result.message || 'Ошибка при создании заказа');
       }
+      
+      return result.data;
     } catch (error) {
-      console.error('Ошибка при запросе создания заказа:', error);
-      return false;
+      console.error('API create order error:', error);
+      throw error;
     }
   },
-  
-  updateOrderStatus: async (id: string, status: Order['status']) => {
+
+  // ПОЛУЧЕНИЕ СПИСКА ЗАКАЗОВ
+  async getOrders(): Promise<Order[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/update_order_status.php`, {
+      console.log('Fetching orders from API...');
+      const response = await fetch(`${BASE_API_URL}/get_orders.php`);
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.message || 'Ошибка при получении заказов');
+      }
+      
+      return result.data || [];
+    } catch (error) {
+      console.error('API get orders error:', error);
+      throw error;
+    }
+  },
+
+  // ОБНОВЛЕНИЕ СТАТУСА ЗАКАЗА
+  async updateOrderStatus(orderId: string, status: 'new' | 'processing' | 'completed' | 'canceled'): Promise<boolean> {
+    try {
+      console.log(`Updating order ${orderId} status to ${status}`);
+      const response = await fetch(`${BASE_API_URL}/update_order_status.php`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ id, status }),
+        body: JSON.stringify({ id: orderId, status }),
       });
       
       const result = await response.json();
       
-      if (result.success) {
-        return true;
-      } else {
-        console.error('Ошибка обновления статуса заказа:', result.message || 'Неизвестная ошибка');
-        return false;
+      if (!result.success) {
+        throw new Error(result.message || 'Ошибка при обновлении статуса заказа');
       }
+      
+      return true;
     } catch (error) {
-      console.error('Ошибка при запросе обновления статуса заказа:', error);
-      return false;
-    }
-  },
-  
-  // ===== Избранное и сравнение =====
-  getFavorites: async (userId?: string) => {
-    try {
-      const url = userId ? `${API_BASE_URL}/users/favorites.php?userId=${userId}` : `${API_BASE_URL}/users/favorites.php`;
-      const response = await fetch(url);
-      const result = await response.json();
-      
-      if (result.success && result.data) {
-        return result.data;
-      } else {
-        console.error('Ошибка получения избранных автомобилей:', result.message || 'Неизвестная ошибка');
-        return { carIds: [], cars: [] };
-      }
-    } catch (error) {
-      console.error('Ошибка при запросе избранных автомобилей:', error);
-      return { carIds: [], cars: [] };
-    }
-  },
-  
-  updateFavorite: async (carId: string, action: 'add' | 'remove' | 'toggle', userId?: string) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/users/favorites.php`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ carId, action, userId }),
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        return true;
-      } else {
-        console.error('Ошибка обновления избранного:', result.message || 'Неизвестная ошибка');
-        return false;
-      }
-    } catch (error) {
-      console.error('Ошибка при запросе обновления избранного:', error);
-      return false;
-    }
-  },
-  
-  getComparisons: async (userId?: string) => {
-    try {
-      const url = userId ? `${API_BASE_URL}/users/compare.php?userId=${userId}` : `${API_BASE_URL}/users/compare.php`;
-      const response = await fetch(url);
-      const result = await response.json();
-      
-      if (result.success && result.data) {
-        return result.data;
-      } else {
-        console.error('Ошибка получения автомобилей для сравнения:', result.message || 'Неизвестная ошибка');
-        return { carIds: [], cars: [] };
-      }
-    } catch (error) {
-      console.error('Ошибка при запросе автомобилей для сравнения:', error);
-      return { carIds: [], cars: [] };
-    }
-  },
-  
-  updateComparison: async (carId: string, action: 'add' | 'remove' | 'toggle', userId?: string) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/users/compare.php`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ carId, action, userId }),
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        return true;
-      } else {
-        console.error('Ошибка обновления сравнения:', result.message || 'Неизвестная ошибка');
-        return false;
-      }
-    } catch (error) {
-      console.error('Ошибка при запросе обновления сравнения:', error);
-      return false;
-    }
-  },
-  
-  // ===== Изображения =====
-  uploadImage: async (file: File, carId?: string) => {
-    try {
-      const formData = new FormData();
-      formData.append('image', file);
-      
-      if (carId) {
-        formData.append('carId', carId);
-      }
-      
-      const response = await fetch(`${API_BASE_URL}/images/upload.php`, {
-        method: 'POST',
-        body: formData,
-      });
-      
-      const result = await response.json();
-      
-      if (result.success && result.data) {
-        return {
-          url: result.data.url,
-          filename: result.data.filename,
-        };
-      } else {
-        console.error('Ошибка загрузки изображения:', result.message || 'Неизвестная ошибка');
-        return null;
-      }
-    } catch (error) {
-      console.error('Ошибка при запросе загрузки изображения:', error);
-      return null;
-    }
-  },
-  
-  assignImageToCar: async (carId: string, imageUrl: string, alt?: string) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/images/assign_to_car.php`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ carId, imageUrl, alt }),
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        return true;
-      } else {
-        console.error('Ошибка привязки изображения к автомобилю:', result.message || 'Неизвестная ошибка');
-        return false;
-      }
-    } catch (error) {
-      console.error('Ошибка при запросе привязки изображения к автомобилю:', error);
-      return false;
-    }
-  },
-  
-  // ===== Импорт =====
-  importCarsFromTmcAvto: async (cars: any[]) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/import/tmcavto.php`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ cars }),
-      });
-      
-      const result = await response.json();
-      
-      if (result.success && result.data) {
-        return {
-          imported: result.data.imported,
-          errors: result.data.errors,
-        };
-      } else {
-        console.error('Ошибка импорта автомобилей из TMC Avto:', result.message || 'Неизвестная ошибка');
-        return { imported: 0, errors: [result.message || 'Неизвестная ошибка'] };
-      }
-    } catch (error) {
-      console.error('Ошибка при запросе импорта автомобилей из TMC Avto:', error);
-      return { imported: 0, errors: [(error as Error).message] };
+      console.error('API update order status error:', error);
+      throw error;
     }
   },
 };
-
-export const apiAdapter: ApiAdapter = phpApiAdapter;

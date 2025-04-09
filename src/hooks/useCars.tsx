@@ -33,7 +33,7 @@ export const useCars = () => {
       const carsData = await apiAdapter.getCars();
       
       // Обновляем состояние в carManagement
-      carManagement.setCars(carsData);
+      carManagement.reloadCars(carsData); // Используем reloadCars вместо setCars
       
       return carsData;
     } catch (err) {
