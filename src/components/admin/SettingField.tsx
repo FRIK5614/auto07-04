@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { FormItem, FormLabel, FormDescription } from "@/components/ui/form";
+import { Label } from "@/components/ui/label"; // Заменяем FormLabel на Label
 import { SiteSetting } from '@/hooks/useSettings';
 
 interface SettingFieldProps {
@@ -102,11 +102,11 @@ const SettingField: React.FC<SettingFieldProps> = ({
   };
   
   return (
-    <FormItem className="mb-4">
-      <FormLabel htmlFor={name}>{label}</FormLabel>
-      {renderField()}
-      {description && <FormDescription>{description}</FormDescription>}
-    </FormItem>
+    <div className="mb-4 space-y-2">
+      <Label htmlFor={name}>{label}</Label>
+      <div>{renderField()}</div>
+      {description && <p className="text-sm text-muted-foreground">{description}</p>}
+    </div>
   );
 };
 
